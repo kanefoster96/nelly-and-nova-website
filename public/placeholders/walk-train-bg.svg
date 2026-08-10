@@ -7,7 +7,7 @@
     </radialGradient>
   </defs>
   <rect width="1600" height="1200" fill="url(#rgwt)"/>
-  <g stroke="#e8b15a" stroke-opacity="0.07" stroke-width="2">
+  <g stroke="#ffffff" stroke-opacity="0.07" stroke-width="2">
     <line x1="0" y1="0" x2="-160" y2="1200"/>
     <line x1="200" y1="0" x2="40" y2="1200"/>
     <line x1="400" y1="0" x2="240" y2="1200"/>

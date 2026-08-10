@@ -6,12 +6,12 @@
     </linearGradient>
     <pattern id="pd1" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
       <rect width="46" height="46" fill="none"/>
-      <line x1="0" y1="0" x2="0" y2="46" stroke="#e8b15a" stroke-opacity="0.05" stroke-width="14"/>
+      <line x1="0" y1="0" x2="0" y2="46" stroke="#ffffff" stroke-opacity="0.05" stroke-width="14"/>
     </pattern>
   </defs>
   <rect width="900" height="900" fill="url(#gd1)"/>
   <rect width="900" height="900" fill="url(#pd1)"/>
-  <g transform="translate(450, 416)" fill="#e8b15a" fill-opacity="0.55">
+  <g transform="translate(450, 416)" fill="#ffffff" fill-opacity="0.55">
     <circle cx="-26" cy="-10" r="9"/>
     <circle cx="-9" cy="-20" r="9"/>
     <circle cx="9" cy="-20" r="9"/>

@@ -17,7 +17,7 @@ mkdirSync(OUT, { recursive: true });
 
 const BG = "#141414";
 const BG2 = "#0f0f0f";
-const ACCENT = "#e8b15a";
+const ACCENT = "#ffffff"; // white accent (matches --color-accent in globals.css)
 const INK = "#f5f2ea";
 const MUTED = "#8a8a8a";
 

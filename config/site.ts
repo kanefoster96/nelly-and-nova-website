@@ -10,12 +10,9 @@ export const BOOKING_HREF = "#book";
 
 export type NavLink = { label: string; href: string };
 
-export const navLinks: NavLink[] = [
-  { label: "Walk & Train", href: "#walk-and-train" },
-  { label: "1-1 Training", href: "#one-to-one" },
-  { label: "Areas", href: "#areas" },
-  { label: "About", href: "#about" },
-];
+// Menu items are added back here as page sections are built, top to bottom.
+// While empty, the header shows just the logo and the Book Now button.
+export const navLinks: NavLink[] = [];
 
 /** Service areas covered across the North East. */
 export const areas: string[] = [
@@ -43,13 +40,8 @@ export const socials: SocialLink[] = [
   { label: "Instagram", href: "#", icon: "instagram" },
 ];
 
-export const footerLinks: NavLink[] = [
-  { label: "Walk & Train", href: "#walk-and-train" },
-  { label: "1-1 Training", href: "#one-to-one" },
-  { label: "Areas", href: "#areas" },
-  { label: "About", href: "#about" },
-  { label: "Policies", href: "#" },
-];
+// Footer quick links — repopulated as sections are built.
+export const footerLinks: NavLink[] = [];
 
 export const site = {
   name: "Nelly & Nova",

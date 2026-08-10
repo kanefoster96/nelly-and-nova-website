@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="520" height="120" viewBox="0 0 520 120" role="img" aria-label="Nelly and Nova wordmark">
-  <g transform="translate(30, 60)" fill="#e8b15a">
+  <g transform="translate(30, 60)" fill="#ffffff">
     <circle cx="-8" cy="-12" r="5.5"/>
     <circle cx="6" cy="-19" r="5.5"/>
     <circle cx="20" cy="-19" r="5.5"/>
@@ -7,6 +7,6 @@
     <path d="M13 -10 C 24 -10 31 -1 31 8 C 31 17 22 21 13 21 C 4 21 -5 17 -5 8 C -5 -1 2 -10 13 -10 Z"/>
   </g>
   <text x="86" y="52" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" letter-spacing="3" fill="#f5f2ea">NELLY &amp; NOVA</text>
-  <text x="88" y="82" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="600" letter-spacing="7" fill="#e8b15a">DOG TRAINING</text>
+  <text x="88" y="82" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="600" letter-spacing="7" fill="#ffffff">DOG TRAINING</text>
   <text x="88" y="100" font-family="Arial, Helvetica, sans-serif" font-size="9" letter-spacing="3" fill="#8a8a8a">PLACEHOLDER LOGO</text>
 </svg>

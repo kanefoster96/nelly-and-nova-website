@@ -11,6 +11,7 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const reduce = useReducedMotion();
+  const hasLinks = navLinks.length > 0;
 
   // Solidify the bar once the hero has begun to scroll away.
   useEffect(() => {
@@ -49,42 +50,46 @@ export function Nav() {
       >
         <Wordmark href="#top" height={34} priority className="shrink-0" />
 
-        {/* Desktop links */}
-        <ul className="hidden items-center gap-1 lg:flex">
-          {navLinks.map((link) => (
-            <li key={link.href}>
-              <a
-                href={link.href}
-                className="inline-flex min-h-[44px] items-center rounded-full px-4 text-sm font-medium text-paper/85 transition-colors hover:text-accent focus-visible:text-accent"
-              >
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
+        {/* Desktop links — shown once menu items exist in config/site.ts */}
+        {hasLinks && (
+          <ul className="hidden items-center gap-1 lg:flex">
+            {navLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  className="inline-flex min-h-[44px] items-center rounded-full px-4 text-sm font-medium text-paper/85 transition-colors hover:text-accent focus-visible:text-accent"
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <div className="flex items-center gap-2">
-          <Button href={BOOKING_HREF} size="md" className="hidden sm:inline-flex">
+          <Button href={BOOKING_HREF} size="md">
             Book Now
           </Button>
 
-          {/* Mobile menu toggle */}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-            aria-label={open ? "Close menu" : "Open menu"}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-paper transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:hidden"
-          >
-            {open ? <CloseIcon /> : <MenuIcon />}
-          </button>
+          {/* Mobile menu toggle — only when there are menu items */}
+          {hasLinks && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+              aria-label={open ? "Close menu" : "Open menu"}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-paper transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:hidden"
+            >
+              {open ? <CloseIcon /> : <MenuIcon />}
+            </button>
+          )}
         </div>
       </nav>
 
       {/* Mobile menu panel */}
       <AnimatePresence>
-        {open && (
+        {open && hasLinks && (
           <motion.div
             id="mobile-menu"
             key="mobile-menu"

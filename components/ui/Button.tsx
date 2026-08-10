@@ -11,9 +11,9 @@ const base =
   "select-none";
 
 const variants: Record<Variant, string> = {
-  // Warm accent fill — primary call to action.
+  // Accent fill — primary call to action.
   primary:
-    "bg-accent text-accent-ink hover:bg-accent-strong shadow-[0_6px_24px_-8px_rgba(232,177,90,0.7)]",
+    "bg-accent text-accent-ink hover:bg-accent-strong shadow-[0_6px_24px_-8px_rgba(255,255,255,0.35)]",
   // Outlined on dark.
   secondary:
     "border border-paper/30 text-paper hover:border-accent hover:text-accent bg-transparent",

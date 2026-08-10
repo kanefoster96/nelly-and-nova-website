@@ -35,24 +35,26 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Quick links */}
-          <nav aria-label="Footer">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-              Explore
-            </h2>
-            <ul className="mt-4 space-y-1">
-              {footerLinks.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="inline-flex min-h-[40px] items-center text-sm text-paper/85 transition-colors hover:text-accent"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          {/* Quick links — appear as sections are built (config/site.ts) */}
+          {footerLinks.length > 0 && (
+            <nav aria-label="Footer">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+                Explore
+              </h2>
+              <ul className="mt-4 space-y-1">
+                {footerLinks.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      className="inline-flex min-h-[40px] items-center text-sm text-paper/85 transition-colors hover:text-accent"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
 
           {/* Contact */}
           <div>

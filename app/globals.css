@@ -15,10 +15,10 @@
   --color-paper: #f5f2ea; /* off-white text */
   --color-paper-dim: #b8b4ab; /* muted text */
 
-  /* Warm accent — soft amber / gold. Change this one value to re-brand. */
-  --color-accent: #e8b15a;
-  --color-accent-strong: #f0c17a;
-  --color-accent-ink: #1a1206; /* text colour that sits on the accent */
+  /* Accent — white on a black theme. Change this one value to re-brand. */
+  --color-accent: #ffffff;
+  --color-accent-strong: #d9d9d9; /* hover / pressed */
+  --color-accent-ink: #0a0a0a; /* text colour that sits on the accent */
 
   /* Type — font families are provided by next/font in app/layout.tsx */
   --font-sans: var(--font-body), Arial, Helvetica, sans-serif;

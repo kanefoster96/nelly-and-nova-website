@@ -13,6 +13,6 @@ export const theme = {
   colors: {
     ink: "#0a0a0a",
     paper: "#f5f2ea",
-    accent: "#e8b15a",
+    accent: "#ffffff",
   },
 } as const;
