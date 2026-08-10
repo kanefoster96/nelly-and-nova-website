@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" preserveAspectRatio="xMidYMid slice" role="img" aria-label="1-1 Training placeholder">
+  <defs>
+    <radialGradient id="rgoto" cx="30%" cy="28%" r="90%">
+      <stop offset="0" stop-color="#20211d"/>
+      <stop offset="55%" stop-color="#141414"/>
+      <stop offset="100%" stop-color="#0f0f0f"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="1200" fill="url(#rgoto)"/>
+  <g stroke="#e8b15a" stroke-opacity="0.07" stroke-width="2">
+    <line x1="0" y1="0" x2="-160" y2="1200"/>
+    <line x1="200" y1="0" x2="40" y2="1200"/>
+    <line x1="400" y1="0" x2="240" y2="1200"/>
+    <line x1="600" y1="0" x2="440" y2="1200"/>
+    <line x1="800" y1="0" x2="640" y2="1200"/>
+    <line x1="1000" y1="0" x2="840" y2="1200"/>
+    <line x1="1200" y1="0" x2="1040" y2="1200"/>
+    <line x1="1400" y1="0" x2="1240" y2="1200"/>
+    <line x1="1600" y1="0" x2="1440" y2="1200"/>
+  </g>
+  <text x="50%" y="50%" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" letter-spacing="4" fill="#f5f2ea" fill-opacity="0.9">1-1 TRAINING</text>
+  <text x="50%" y="calc(50% + 32px)" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" letter-spacing="4" fill="#8a8a8a">PLACEHOLDER BACKGROUND</text>
+</svg>

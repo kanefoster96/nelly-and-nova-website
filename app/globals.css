@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/*
+ * NELLY & NOVA — Design system tokens
+ * -----------------------------------
+ * Colours and fonts are defined ONCE here as Tailwind theme tokens.
+ * Change the accent globally by editing `--color-accent` below — every
+ * `text-accent`, `bg-accent`, `border-accent`, `ring-accent` etc. updates.
+ */
+@theme {
+  /* Base palette */
+  --color-ink: #0a0a0a; /* near-black background */
+  --color-ink-soft: #121212; /* slightly raised surfaces */
+  --color-ink-raised: #1a1a1a; /* cards / raised surfaces */
+  --color-paper: #f5f2ea; /* off-white text */
+  --color-paper-dim: #b8b4ab; /* muted text */
+
+  /* Warm accent — soft amber / gold. Change this one value to re-brand. */
+  --color-accent: #e8b15a;
+  --color-accent-strong: #f0c17a;
+  --color-accent-ink: #1a1206; /* text colour that sits on the accent */
+
+  /* Type — font families are provided by next/font in app/layout.tsx */
+  --font-sans: var(--font-body), Arial, Helvetica, sans-serif;
+  --font-display: var(--font-heading), var(--font-body), sans-serif;
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Avoid horizontal scroll from full-bleed / parallax layers */
+  overflow-x: hidden;
+}
+
+/* Visible, accessible focus ring for keyboard users everywhere. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Display heading treatment */
+@utility display-heading {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+}
+
+/* Dark gradient overlay for full-bleed media (legibility) */
+@utility media-overlay {
+  background: linear-gradient(
+    to top,
+    rgba(10, 10, 10, 0.94) 0%,
+    rgba(10, 10, 10, 0.72) 38%,
+    rgba(10, 10, 10, 0.55) 68%,
+    rgba(10, 10, 10, 0.7) 100%
+  );
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}

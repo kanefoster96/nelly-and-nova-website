@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" role="img" aria-label="Dog Photo 3 placeholder">
+  <defs>
+    <linearGradient id="gd3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141414"/>
+      <stop offset="1" stop-color="#0f0f0f"/>
+    </linearGradient>
+    <pattern id="pd3" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="46" height="46" fill="none"/>
+      <line x1="0" y1="0" x2="0" y2="46" stroke="#e8b15a" stroke-opacity="0.05" stroke-width="14"/>
+    </pattern>
+  </defs>
+  <rect width="900" height="900" fill="url(#gd3)"/>
+  <rect width="900" height="900" fill="url(#pd3)"/>
+  <g transform="translate(450, 416)" fill="#e8b15a" fill-opacity="0.55">
+    <circle cx="-26" cy="-10" r="9"/>
+    <circle cx="-9" cy="-20" r="9"/>
+    <circle cx="9" cy="-20" r="9"/>
+    <circle cx="26" cy="-10" r="9"/>
+    <path d="M0 -8 C 18 -8 30 6 30 20 C 30 34 16 40 0 40 C -16 40 -30 34 -30 20 C -30 6 -18 -8 0 -8 Z"/>
+  </g>
+  <text x="450" y="484" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="2" fill="#f5f2ea">DOG PHOTO 3</text>
+  <text x="450" y="508" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" letter-spacing="3" fill="#8a8a8a">PLACEHOLDER PHOTO</text>
+</svg>
