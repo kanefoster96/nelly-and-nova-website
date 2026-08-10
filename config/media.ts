@@ -12,19 +12,23 @@
  */
 export const media = {
   logo: {
-    /** Primary wordmark (used in nav + footer). */
+    /** Primary wordmark (used in the footer). */
     wordmark: "/placeholders/logo-wordmark.svg",
     /** Pure-white variant for very dark placements. */
     wordmarkMono: "/placeholders/logo-wordmark-mono.svg",
+    /** Compact "NN" monogram (used in the header). */
+    monogram: "/placeholders/logo-monogram.svg",
     /** Square app/favicon mark. */
     mark: "/placeholders/icon-mark.svg",
   },
 
   hero: {
-    /** Poster frame shown before/while the video loads (and if no video set). */
+    /** Full-bleed hero background photo. Swap this file to change the hero. */
+    image: "/media/hero.jpg",
+    /** Poster frame used if a video is set (below). */
     poster: "/placeholders/hero-poster.svg",
     /**
-     * Muted, looping background video. Leave empty to use the poster only.
+     * Optional muted, looping background video. Leave empty to use the photo.
      * Set to e.g. "/media/hero.mp4" once real footage exists.
      */
     video: "",

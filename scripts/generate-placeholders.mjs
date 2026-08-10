@@ -119,6 +119,22 @@ function wordmark({ ink = INK } = {}) {
 </svg>`;
 }
 
+/** Compact " NN " monogram lockup (thin strokes) for the header. */
+function monogram() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="44" viewBox="0 0 64 44" role="img" aria-label="Nelly and Nova monogram">
+  <g fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="square">
+    <!-- reversed N -->
+    <line x1="8" y1="6" x2="8" y2="38"/>
+    <line x1="8" y1="38" x2="28" y2="6"/>
+    <line x1="28" y1="6" x2="28" y2="38"/>
+    <!-- N -->
+    <line x1="36" y1="6" x2="36" y2="38"/>
+    <line x1="36" y1="6" x2="56" y2="38"/>
+    <line x1="56" y1="6" x2="56" y2="38"/>
+  </g>
+</svg>`;
+}
+
 /** Compact square app icon / favicon mark. */
 function iconMark() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Nelly and Nova icon">
@@ -136,6 +152,7 @@ function iconMark() {
 const files = {
   "logo-wordmark.svg": wordmark({ ink: INK }),
   "logo-wordmark-mono.svg": wordmark({ ink: "#ffffff" }),
+  "logo-monogram.svg": monogram(),
   "icon-mark.svg": iconMark(),
   "hero-poster.svg": heroPoster(),
   "founder-portrait.svg": photo({ w: 900, h: 1100, label: "Charlotte", sub: "FOUNDER PORTRAIT PLACEHOLDER", id: "founder" }),

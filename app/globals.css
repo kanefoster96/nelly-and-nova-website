@@ -83,3 +83,24 @@ body {
   background: var(--color-accent);
   color: var(--color-accent-ink);
 }
+
+/* Scrolling keyword marquee (hero footer band) */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* Track holds two copies of the content; shift by one copy for a seamless loop. */
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 30s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}

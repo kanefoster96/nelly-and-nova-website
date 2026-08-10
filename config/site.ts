@@ -31,7 +31,37 @@ export const contact = {
   phone: "+44 0000 000000",
   phoneLabel: "07000 000000",
   email: "hello@nellyandnova.co.uk",
+  /** WhatsApp click-to-chat link — replace the number (international format, no +). */
+  whatsapp: "https://wa.me/440000000000",
 };
+
+/** Hero trust badges. `icon` maps to benefitIcons in components/ui/Icons.tsx. */
+export type Benefit = { label: string; icon: "message" | "close" | "card" | "insured" | "check" };
+
+export const heroBenefits: Benefit[] = [
+  { label: "24/7 Training Support", icon: "message" },
+  { label: "Cancel Anytime", icon: "close" },
+  { label: "Report Cards", icon: "card" },
+  { label: "Fully Insured", icon: "insured" },
+  { label: "Free Meet & Greet", icon: "check" },
+];
+
+export const reviews = {
+  stars: 5,
+  text: "5 stars based on Google Reviews",
+};
+
+/** Scrolling keyword marquee at the bottom of the hero. */
+export const marqueeWords: string[] = [
+  "Engagement",
+  "Confidence",
+  "Recall",
+  "Obedience",
+  "Loose Lead",
+  "Heel Work",
+  "Socialisation",
+  "Settling",
+];
 
 export type SocialLink = { label: string; href: string; icon: "facebook" | "instagram" };
 

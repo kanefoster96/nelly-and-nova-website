@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "frosted";
 type Size = "md" | "lg";
 
 const base =
@@ -19,6 +19,9 @@ const variants: Record<Variant, string> = {
     "border border-paper/30 text-paper hover:border-accent hover:text-accent bg-transparent",
   // Minimal text button.
   ghost: "text-paper/90 hover:text-accent bg-transparent",
+  // Frosted glass pill over imagery.
+  frosted:
+    "bg-white/20 text-paper backdrop-blur-md border border-white/25 hover:bg-white/30",
 };
 
 // min-h/min-w 44px keeps every button a comfortable touch target.

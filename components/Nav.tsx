@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Wordmark } from "./ui/Wordmark";
-import { MenuIcon, CloseIcon } from "./ui/Icons";
-import { navLinks } from "@/config/site";
+import { MenuIcon, CloseIcon, WhatsAppIcon } from "./ui/Icons";
+import { navLinks, contact, site } from "@/config/site";
+import { media } from "@/config/media";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
@@ -46,23 +48,44 @@ export function Nav() {
         aria-label="Primary"
         className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6"
       >
-        {/* Logo — top left */}
-        <Wordmark href="#top" height={34} priority className="shrink-0" />
+        {/* Monogram — top left */}
+        <Link href="#top" aria-label={`${site.name} — home`} className="shrink-0">
+          <Image
+            src={media.logo.monogram}
+            alt={`${site.name} logo`}
+            width={52}
+            height={36}
+            priority
+            style={{ height: 30, width: "auto" }}
+          />
+        </Link>
 
-        {/* Hamburger — top right */}
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-controls="menu"
-          aria-label={open ? "Close menu" : "Open menu"}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full text-paper transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          {open ? <CloseIcon /> : <MenuIcon />}
-        </button>
+        {/* WhatsApp + hamburger — top right */}
+        <div className="flex items-center gap-2">
+          <a
+            href={contact.whatsapp}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Message us on WhatsApp"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <WhatsAppIcon width={22} height={22} />
+          </a>
+
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls="menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-paper transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {open ? <CloseIcon /> : <MenuIcon />}
+          </button>
+        </div>
       </nav>
 
-      {/* Menu panel — populated from navLinks in config/site.ts as sections are built */}
+      {/* Menu panel — populated from navLinks as sections are built */}
       <AnimatePresence>
         {open && (
           <motion.div
