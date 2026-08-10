@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "./ui/Button";
-import { ChevronDownIcon } from "./ui/Icons";
 import { media } from "@/config/media";
 
 const HEADLINE = ["Happy.", "Healthy.", "Dogs."];
@@ -90,23 +89,6 @@ export function Hero() {
           </Button>
         </motion.div>
       </div>
-
-      {/* Scroll indicator */}
-      <a
-        href="#about"
-        aria-label="Scroll to learn more"
-        className="group absolute inset-x-0 bottom-5 mx-auto flex w-11 flex-col items-center gap-1 text-paper/70 transition-colors hover:text-accent"
-      >
-        <span className="text-[10px] font-semibold uppercase tracking-[0.3em]">
-          Scroll
-        </span>
-        <motion.span
-          animate={reduce ? undefined : { y: [0, 6, 0] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <ChevronDownIcon width={20} height={20} />
-        </motion.span>
-      </a>
     </section>
   );
 }
