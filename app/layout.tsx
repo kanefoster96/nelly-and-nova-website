@@ -1,22 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope, Archivo } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import { site } from "@/config/site";
 import { theme } from "@/config/theme";
 
-// Body typeface.
-const body = Manrope({
+// Body / paragraph typeface. (Titles use a Helvetica system stack — see globals.css.)
+const body = Outfit({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-// Display / heading typeface (bold uppercase).
-const heading = Archivo({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["600", "700", "800", "900"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -51,7 +43,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${body.variable} ${heading.variable} h-full`}
+      className={`${body.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-ink text-paper antialiased">
         {children}

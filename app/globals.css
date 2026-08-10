@@ -20,9 +20,11 @@
   --color-accent-strong: #d9d9d9; /* hover / pressed */
   --color-accent-ink: #0a0a0a; /* text colour that sits on the accent */
 
-  /* Type — font families are provided by next/font in app/layout.tsx */
+  /* Type
+   * - Body / paragraphs: Outfit (loaded via next/font in app/layout.tsx)
+   * - Titles / headings:  Helvetica Bold (system font stack; no web load) */
   --font-sans: var(--font-body), Arial, Helvetica, sans-serif;
-  --font-display: var(--font-heading), var(--font-body), sans-serif;
+  --font-display: "Helvetica Neue", Helvetica, Arial, sans-serif;
 
   /* Motion */
   --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
@@ -59,11 +61,11 @@ body {
   border-radius: 4px;
 }
 
-/* Display heading treatment */
+/* Display heading treatment — Helvetica Bold */
 @utility display-heading {
   font-family: var(--font-display);
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 0.95;
 }
