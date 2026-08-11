@@ -122,6 +122,19 @@ export const StarIcon = (p: IconProps) => (
   </svg>
 );
 
+export const PlusIcon = (p: IconProps) => (
+  <svg {...iconBase} {...p}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+export const MinusIcon = (p: IconProps) => (
+  <svg {...iconBase} {...p}>
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
 export const HandshakeIcon = (p: IconProps) => (
   <svg {...iconBase} {...p}>
     <path d="m11 17 2 2a1 1 0 1 0 3-3" />

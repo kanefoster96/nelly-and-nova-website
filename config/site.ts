@@ -98,6 +98,51 @@ export const services = {
   areaHref: "#areas",
 };
 
+/** FAQ accordion. Each answer is an array of paragraphs. */
+export type Faq = { q: string; a: string[] };
+
+export const faq = {
+  heading: "Frequently asked questions.",
+  cta: "Ask us a question",
+  items: [
+    {
+      q: "How much is dog training?",
+      a: [
+        "Our Walk & Train days are £60 per week, if you sign up for a membership with a fixed slot.",
+        "We also offer one-off Walk & Train days for £80, if you'd like to book in as and when you need it without a membership.",
+        "Our 1-1 sessions are an hour of in-person training, where we work with you and your dog to improve handling skills and address specific issues you're having. These are £90 per hour.",
+      ],
+    },
+    {
+      q: "What areas do you cover?",
+      a: [
+        "We started in Tynemouth, but now we're able to travel to surrounding areas such as Cramlington, Backworth and Blyth.",
+        "To check if we work in your area, please contact us using the button below and we will be happy to help!",
+      ],
+    },
+    {
+      q: "How long does the training take?",
+      a: [
+        'Training varies based on your dog and their specific behaviours. Promising results in set time periods requires lots of "punishment" - we believe in supporting dogs through their journey and rewarding their learning at their own pace. We work by telling your dog the answers first, before working on correcting their mistakes.',
+        "The homework provided each week is designed to help them progress more quickly, so the more you learn and ask us, the faster your dog will progress. Once you feel like they're ready, you can cancel anytime.",
+      ],
+    },
+    {
+      q: "Do I need a meet and greet?",
+      a: [
+        "Yes. Before we can collect your dog for training, they need to be familiar with us. We also like to know how your dog behaves with you, and chat in-person about your struggles and goals for their training.",
+        "There are no wrong answers. If you don't care about your dog jumping up but would just like to have them not pull on the lead - that's what we will help you with!",
+      ],
+    },
+    {
+      q: "What equipment do I need?",
+      a: [
+        "We will train your dog in whatever you currently have. As they progress, we will recommend training equipment that we think will benefit them the most. You'll never be forced to purchase more items, but we would advise them if needed.",
+      ],
+    },
+  ] as Faq[],
+};
+
 /** "Leave when you're ready" reassurance section. */
 export const leaveWhenReady = {
   heading: "Leave when you're ready",
