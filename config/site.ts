@@ -37,9 +37,9 @@ export const understand = {
 
 export type NavLink = { label: string; href: string };
 
-// Menu items are added back here as page sections are built, top to bottom.
-// While empty, the header shows just the logo and the Book Now button.
-export const navLinks: NavLink[] = [];
+export const navLinks: NavLink[] = [
+  { label: "Walk & Train", href: "/walk-and-train" },
+];
 
 /** Service areas covered across the North East. */
 export const areas: string[] = [
@@ -153,6 +153,43 @@ export const googleReviews = {
       text: "Genuinely life-changing for our rescue. Kind, knowledgeable and always on hand over WhatsApp when we have questions. Our confidence as owners has grown just as much as our dog's.",
     },
   ] as Review[],
+};
+
+/** Walk & Train page content. */
+export const walkTrainPage = {
+  intro: {
+    eyebrow: "Real World Dog Training",
+    titleLines: ["Walk & Train."],
+    paragraphs: [
+      "Our Full Day Walk & Train sessions give dogs the time and structure to build lasting skills in real-world environments. Training takes place throughout the day in different outdoor settings, helping dogs stay calm, confident, and focused no matter what's happening around them.",
+      "Your dog will take part in multiple short training sessions mixed with rest breaks, social exposure, and training around other dogs. We focus on key obedience skills such as loose lead walking, recall, and engagement, while also teaching dogs to settle and relax in public spaces.",
+      "At the end of the day, you'll receive a detailed report on what your dog worked on, how they progressed, and homework to keep their learning consistent at home.",
+      "Our goal is to help dogs return home calm, fulfilled, and better prepared for everyday life both on and off the lead.",
+    ],
+  },
+  van: {
+    eyebrow: "Our Van",
+    titleLines: ["Safe.", "Comfortable.", "Transport."],
+    paragraphs: [
+      "We collect your dog directly from home and return them after their session. Each dog travels safely in our crash-proof transport crates, fitted with soft mats for comfort and stability during the journey.",
+    ],
+  },
+  report: {
+    eyebrow: "Report Card",
+    titleLines: ["Continue.", "Your.", "Training."],
+    paragraphs: [
+      "Our report cards are designed to give you complete clarity and confidence in your dog's training. After each session, you'll receive a detailed breakdown of what your dog worked on, how they performed, and exactly how you can continue that progress at home.",
+      "We don't just tell you what happened, we show you how to apply it, with simple, structured homework you can follow step by step. This keeps training consistent between sessions, helps your dog improve faster, and makes sure you understand how to communicate clearly with them.",
+      "Over time, these reports build into a clear journey of progress, so you can see exactly how far your dog has come and what to focus on next.",
+    ],
+  },
+  meetGreet: {
+    eyebrow: "Our Trainers",
+    titleLines: ["Meet & Greet."],
+    paragraphs: [
+      "We offer a free meet and greet before any commitment to make sure your dog feels comfortable and you feel confident in booking. It also gives us the chance to see how your dog responds, understand their needs, and ensure our training is the right fit for them.",
+    ],
+  },
 };
 
 /** FAQ accordion. Each answer is an array of paragraphs. */

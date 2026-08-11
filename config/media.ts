@@ -44,6 +44,14 @@ export const media = {
     background: "/media/what-we-do.jpg",
   },
 
+  /** Walk & Train page photos. Swap the placeholders for real photos. */
+  walkTrain: {
+    hero: "/placeholders/walk-train-hero.svg", // white van in a field
+    van: "/placeholders/walk-train-van.svg", // dog in a transport crate
+    report: "/placeholders/walk-train-report.svg", // phone showing the report card
+    meetGreet: "/media/what-we-do.jpg", // reuses the trainers + dogs photo
+  },
+
   leaveWhenReady: {
     /** Photo card in the "Leave when you're ready" section. Swap for a real
      * photo: drop it in /public/media and point this at it (e.g. "/media/leave.jpg"). */
