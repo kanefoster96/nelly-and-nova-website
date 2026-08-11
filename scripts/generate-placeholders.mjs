@@ -159,6 +159,7 @@ const files = {
   "walk-train-bg.svg": background({ w: 1600, h: 1200, label: "Walk & Train", id: "wt" }),
   "one-to-one-bg.svg": background({ w: 1600, h: 1200, label: "1-1 Training", id: "oto" }),
   "final-cta-bg.svg": background({ w: 1600, h: 900, label: "Book Now", id: "cta" }),
+  "leave-when-ready.svg": photo({ w: 1200, h: 900, label: "Dog Photo", sub: "REPLACE VIA CONFIG/MEDIA", id: "lwr" }),
   "dog-1.svg": photo({ w: 900, h: 900, label: "Dog Photo 1", id: "d1" }),
   "dog-2.svg": photo({ w: 900, h: 900, label: "Dog Photo 2", id: "d2" }),
   "dog-3.svg": photo({ w: 900, h: 900, label: "Dog Photo 3", id: "d3" }),

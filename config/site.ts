@@ -98,6 +98,16 @@ export const services = {
   areaHref: "#areas",
 };
 
+/** "Leave when you're ready" reassurance section. */
+export const leaveWhenReady = {
+  heading: "Leave when you're ready",
+  intro:
+    "Our training works by first teaching the foundations your dog needs, to be able to learn. We will show you how to communicate with them and how to improve the behaviours you feel are impossible to change. You'll start to understand why they act the way they do, and what you need to do to support them.",
+  emphasis:
+    "Most of our dog owners stay with us throughout their dog's journey. There is always something they can learn to give them a better, more confident life. However, once you feel confident enough to take over the training yourself, you can cancel anytime with no fees and no notice period.",
+  caption: "Pay weekly via Direct Debit. Cancel anytime, no fees or notice.",
+};
+
 /** "How it works" steps. `icon` maps to stepIcons in components/ui/Icons.tsx. */
 export type Step = { icon: "handshake" | "calendar" | "paw" | "home"; title: string; body: string };
 

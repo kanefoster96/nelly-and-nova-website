@@ -44,6 +44,12 @@ export const media = {
     background: "/media/what-we-do.jpg",
   },
 
+  leaveWhenReady: {
+    /** Photo card in the "Leave when you're ready" section. Swap for a real
+     * photo: drop it in /public/media and point this at it (e.g. "/media/leave.jpg"). */
+    image: "/placeholders/leave-when-ready.svg",
+  },
+
   walkAndTrain: {
     background: "/placeholders/walk-train-bg.svg",
   },
