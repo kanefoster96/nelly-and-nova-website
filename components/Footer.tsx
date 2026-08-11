@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "./ui/Wordmark";
+import { MonogramBand } from "./ui/MonogramBand";
 import { socialIcons } from "./ui/Icons";
 import { socials, site } from "@/config/site";
 
@@ -44,6 +45,8 @@ export function Footer() {
           </Link>
         </div>
       </div>
+
+      <MonogramBand />
     </footer>
   );
 }

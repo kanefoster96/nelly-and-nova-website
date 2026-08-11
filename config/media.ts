@@ -60,6 +60,11 @@ export const media = {
     meetGreet: "/media/what-we-do.jpg", // reuses the trainers + dogs photo
   },
 
+  footer: {
+    /** Photo masked into the big NN monogram at the foot of every page. */
+    monogramPhoto: "/media/what-we-do.jpg",
+  },
+
   leaveWhenReady: {
     /** Photo card in the "Leave when you're ready" section. Swap for a real
      * photo: drop it in /public/media and point this at it (e.g. "/media/leave.jpg"). */
