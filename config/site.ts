@@ -98,6 +98,35 @@ export const services = {
   areaHref: "#areas",
 };
 
+/** "How it works" steps. `icon` maps to stepIcons in components/ui/Icons.tsx. */
+export type Step = { icon: "handshake" | "calendar" | "van" | "report"; title: string; body: string };
+
+export const howItWorks = {
+  heading: "How it works.",
+  steps: [
+    {
+      icon: "handshake",
+      title: "Free Meet & Greet",
+      body: "We will come out to meet you and your dog for free. Then we can see exactly what your struggles are and tell you how we will help before you pay anything. No commitment if you still need time to think.",
+    },
+    {
+      icon: "calendar",
+      title: "Choose your weekly slot",
+      body: "When you decide to book, you can choose from our available days. There's a short waiver to complete, and payments are made via GoCardless (Direct Debit), cancel anytime.",
+    },
+    {
+      icon: "van",
+      title: "Weekly training sessions",
+      body: "Every week, we will collect your dog between 7:30 and 9:00 am. They'll get a full day of training before coming home between 4:00 and 5:30 pm.",
+    },
+    {
+      icon: "report",
+      title: "Homework & reports",
+      body: "Every session includes a report card that tells you what we covered that day, what your dog did well/not so well, and a breakdown on how to continue the training at home. You'll have 24/7 access to our trainers via WhatsApp for any extra support. When you have the confidence to take over, you can cancel your membership any time with no cancellation fees or notices.",
+    },
+  ] as Step[],
+};
+
 export const contact = {
   phone: "+44 0000 000000",
   phoneLabel: "07000 000000",
