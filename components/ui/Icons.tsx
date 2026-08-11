@@ -223,6 +223,13 @@ export const HelpCircleIcon = (p: IconProps) => (
   </svg>
 );
 
+export const UserIcon = (p: IconProps) => (
+  <svg {...iconBase} {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+  </svg>
+);
+
 export const socialIcons = {
   facebook: FacebookIcon,
   instagram: InstagramIcon,

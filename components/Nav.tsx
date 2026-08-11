@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { MenuIcon, CloseIcon, MessageIcon } from "./ui/Icons";
+import { MenuIcon, CloseIcon, MessageIcon, UserIcon } from "./ui/Icons";
 import { navLinks, site } from "@/config/site";
 import { media } from "@/config/media";
+import { useSession } from "@/lib/auth/session";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const reduce = useReducedMotion();
+  const session = useSession();
 
   // Solidify the bar once the hero has begun to scroll away.
   useEffect(() => {
@@ -60,7 +62,7 @@ export function Nav() {
           />
         </Link>
 
-        {/* Chat + hamburger — top right */}
+        {/* Chat + account + hamburger — top right */}
         <div className="flex items-center gap-2">
           <Link
             href="/messages"
@@ -69,6 +71,31 @@ export function Nav() {
           >
             <MessageIcon width={22} height={22} />
           </Link>
+
+          {/* Account — the dog's photo when signed in, otherwise "Log in". */}
+          {session ? (
+            <Link
+              href="/profile"
+              aria-label={`${session.dogName}'s profile`}
+              className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={session.dogPhoto}
+                alt={`${session.dogName}`}
+                className="h-full w-full object-cover"
+              />
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              aria-label="Log in"
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white/10 px-3 text-sm font-semibold text-paper transition-colors hover:bg-white/20 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <UserIcon width={18} height={18} />
+              Log in
+            </Link>
+          )}
 
           <button
             type="button"
