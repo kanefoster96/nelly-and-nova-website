@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Wordmark } from "./ui/Wordmark";
 import { socialIcons } from "./ui/Icons";
 import { socials, site } from "@/config/site";
@@ -31,8 +32,16 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 text-xs text-paper-dim">
-          © {site.year} {site.name}.
+        <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-paper-dim sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {site.year} {site.name}.
+          </p>
+          <Link
+            href="/terms"
+            className="transition-colors hover:text-accent"
+          >
+            Terms &amp; Conditions
+          </Link>
         </div>
       </div>
     </footer>

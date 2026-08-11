@@ -197,6 +197,123 @@ export const walkTrainPage = {
   },
 };
 
+/** Terms & Conditions page. Blocks render in order: `{ p }` or `{ ul }`. */
+export type TermsBlock = { p: string } | { ul: string[] };
+
+export const terms = {
+  heading: "Terms & Conditions.",
+  updated: "26 Apr 2026",
+  intro:
+    "This website is owned and operated by Charlotte Smallwood (“we,” “our,” or “us”). These Terms set forth the conditions under which you may use our website and the services we provide. By accessing or using this website, you confirm that you have read, understood, and agree to be bound by these Terms.",
+  sections: [
+    {
+      heading: "1. Services and Products",
+      blocks: [
+        { p: "This website offers visitors the ability to purchase dog accessories such as collars and leads, and to book professional dog training services including Walk & Train, Full Day Training, and Puppy Training." },
+        { p: "By completing a booking or purchase, you agree that:" },
+        { ul: [
+          "You are responsible for reading all product or service details before placing an order or making a booking.",
+          "You enter into a legally binding agreement when you confirm your purchase or booking through our checkout or payment process.",
+        ] },
+      ],
+    },
+    {
+      heading: "2. Fees and Payments",
+      blocks: [
+        { p: "Prices for our products and training services are listed on our website. We reserve the right to adjust prices at any time and to correct any errors that may occur." },
+        { p: "Training fees are payable weekly, unless otherwise agreed in writing. Payments are due in advance of your scheduled session to confirm your booking. For recurring weekly sessions, payment will be due on an agreed set day each week." },
+      ],
+    },
+    {
+      heading: "3. Cancellations and Refunds",
+      blocks: [
+        { p: "We understand that plans may change, but to ensure fairness and scheduling availability for all clients:" },
+        { ul: [
+          "Cancellations made with less than 48 hours’ notice may result in the full session fee being charged.",
+          "Refunds or reschedules will be offered at our discretion, depending on notice given and trainer availability.",
+          "We reserve the right to cancel or reschedule sessions due to illness, extreme weather, or other safety concerns. In such cases, an alternative session will be arranged.",
+          "We are entitled to 4 weeks holidays without refunding memberships due to their discounted rate. Our unavailable dates are available on request if you'd like to check them.",
+        ] },
+      ],
+    },
+    {
+      heading: "4. Right to Refuse or Cancel Services",
+      blocks: [
+        { p: "We reserve the right to refuse or cancel services for any reason, including but not limited to:" },
+        { ul: [
+          "Aggressive or unsafe behaviour from a dog or owner.",
+          "Unsafe environments or conditions that may pose a risk.",
+          "Repeated cancellations, late payments, or failure to comply with our training guidance.",
+        ] },
+        { p: "If ongoing services are cancelled by us, we will provide notice where possible and explain the reason for termination." },
+      ],
+    },
+    {
+      heading: "5. Owner Responsibilities",
+      blocks: [
+        { p: "When using our training services, you agree to:" },
+        { ul: [
+          "Provide accurate information about your dog, including medical and behavioural history.",
+          "Ensure your dog is appropriately equipped with safe, suitable training gear such as a lead, harness, or collar.",
+          "Follow training guidance and complete any homework provided to support consistent progress.",
+        ] },
+        { p: "We are not responsible for incidents that occur outside of our sessions or as a result of inconsistent follow-through on training guidance." },
+      ],
+    },
+    {
+      heading: "6. Use of Photos and Videos",
+      blocks: [
+        { p: "During training sessions, we may capture photos and videos of your dog for progress tracking, updates, and marketing purposes. These may be shared on our website and social media channels." },
+        { p: "By booking our training services, you agree that we may use these materials for promotional purposes unless you request otherwise in writing before your session. We always ensure all media is respectful and focused on showcasing your dog’s training journey." },
+      ],
+    },
+    {
+      heading: "7. Product Sales",
+      blocks: [
+        { p: "All products are sold subject to availability." },
+        { ul: [
+          "We make every effort to ensure accurate descriptions and images, but slight variations may occur.",
+          "If a product is defective or damaged, please contact us within 14 days of receiving it for a replacement or refund.",
+          "Shipping times and rates are displayed at checkout. We are not responsible for courier delays once the item has been dispatched.",
+        ] },
+      ],
+    },
+    {
+      heading: "8. Liability Disclaimer",
+      blocks: [
+        { p: "While we take every precaution to ensure safe and effective training, all dogs behave differently and results may vary. We cannot guarantee specific outcomes." },
+        { p: "To the maximum extent permitted by law, we are not liable for any indirect, incidental, or consequential damages, including but not limited to injury, loss, or damage arising from the use of our services or products." },
+        { p: "You agree to indemnify and hold Charlotte Smallwood harmless from any claims, losses, or expenses resulting from your use of our services or website." },
+      ],
+    },
+    {
+      heading: "9. Changes to Services",
+      blocks: [
+        { p: "We may, without prior notice:" },
+        { ul: [
+          "Modify or discontinue parts of our services or products.",
+          "Adjust session structures, timings, or pricing.",
+          "Update these Terms as necessary.",
+        ] },
+        { p: "Any significant changes will be posted on this page. Continued use of our website or services after updates indicates acceptance of the revised Terms." },
+      ],
+    },
+    {
+      heading: "10. Communication",
+      blocks: [
+        { p: "By using our services, you consent to receive booking confirmations, progress updates, and relevant communications about your sessions." },
+        { p: "You may also receive occasional promotional emails or updates, which you can opt out of at any time by contacting us directly." },
+      ],
+    },
+    {
+      heading: "11. Governing Law",
+      blocks: [
+        { p: "These Terms are governed by the laws of England. Any disputes shall be handled exclusively by a court of competent jurisdiction within England." },
+      ],
+    },
+  ] as { heading: string; blocks: TermsBlock[] }[],
+};
+
 /** 1-1 Training page content. */
 export const oneToOnePage = {
   intro: {
