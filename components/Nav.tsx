@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { MenuIcon, CloseIcon, WhatsAppIcon } from "./ui/Icons";
-import { navLinks, contact, site } from "@/config/site";
+import { MenuIcon, CloseIcon, MessageIcon } from "./ui/Icons";
+import { navLinks, site } from "@/config/site";
 import { media } from "@/config/media";
 
 export function Nav() {
@@ -60,17 +60,15 @@ export function Nav() {
           />
         </Link>
 
-        {/* WhatsApp + hamburger — top right */}
+        {/* Chat + hamburger — top right */}
         <div className="flex items-center gap-2">
-          <a
-            href={contact.whatsapp}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Message us on WhatsApp"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          <Link
+            href="/messages"
+            aria-label="Chat with us"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-paper transition-colors hover:bg-white/20 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            <WhatsAppIcon width={22} height={22} />
-          </a>
+            <MessageIcon width={22} height={22} />
+          </Link>
 
           <button
             type="button"
