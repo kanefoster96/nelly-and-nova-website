@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
+import { RichText } from "@/components/ui/RichText";
 import { terms } from "@/config/site";
 
 export const metadata: Metadata = {
@@ -36,7 +37,9 @@ export default function TermsPage() {
                   <div className="mt-3 space-y-4 text-paper/75">
                     {section.blocks.map((block, i) =>
                       "p" in block ? (
-                        <p key={i}>{block.p}</p>
+                        <p key={i}>
+                          <RichText text={block.p} />
+                        </p>
                       ) : (
                         <ul
                           key={i}
@@ -44,7 +47,7 @@ export default function TermsPage() {
                         >
                           {block.ul.map((item, j) => (
                             <li key={j} className="pl-1">
-                              {item}
+                              <RichText text={item} />
                             </li>
                           ))}
                         </ul>

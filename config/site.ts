@@ -197,6 +197,40 @@ export const walkTrainPage = {
   },
 };
 
+/** Holidays / planned closures page. Dates are inclusive ISO (yyyy-mm-dd). */
+export const holidays = {
+  heading: "Holidays.",
+  updated: "27 Apr 2026",
+  intro:
+    "We run dog training year round and may close for up to four weeks per calendar year for holidays or unavoidable reasons. Planned closures will be listed here with at least 30 days notice where possible. If we need to close unexpectedly, we will inform you as soon as possible. All closures count towards the four week annual allowance.",
+  value: {
+    heading: "Membership Value.",
+    lead: "Our memberships are designed to reward commitment. Even with our four-week annual holiday allowance included, members make substantial savings while securing a guaranteed weekly space.",
+    pricingHeading: "Full Day Sessions",
+    pricing: [
+      { label: "Membership", value: "£60 per day" },
+      { label: "One off", value: "£80 per day" },
+    ],
+    savings: {
+      text: "This means full-day members save up to £960 per year based on 48 sessions per year.",
+      highlight: "members save up to £960 per year",
+    },
+    paragraphs: [
+      "Memberships secure ongoing professional training support and a reserved place in our weekly schedule. Even during closure periods, members continue to receive support via chat and email for guidance, troubleshooting, and help with at home training. Members also receive discounts and offers for extra sessions with up to 50% off!",
+      "Because your place is guaranteed year round, sessions are not refunded, credited, or rescheduled during closure dates.",
+      "We encourage all clients to review the listed dates and take them into account when joining us.",
+    ],
+  },
+  scheduled: {
+    heading: "Scheduled Holidays.",
+    year: "2026",
+    periods: [
+      { start: "2026-03-02", end: "2026-03-09" },
+      { start: "2026-06-01", end: "2026-06-04" },
+    ],
+  },
+};
+
 /** Terms & Conditions page. Blocks render in order: `{ p }` or `{ ul }`. */
 export type TermsBlock = { p: string } | { ul: string[] };
 
@@ -232,7 +266,7 @@ export const terms = {
           "Cancellations made with less than 48 hours’ notice may result in the full session fee being charged.",
           "Refunds or reschedules will be offered at our discretion, depending on notice given and trainer availability.",
           "We reserve the right to cancel or reschedule sessions due to illness, extreme weather, or other safety concerns. In such cases, an alternative session will be arranged.",
-          "We are entitled to 4 weeks holidays without refunding memberships due to their discounted rate. Our unavailable dates are available on request if you'd like to check them.",
+          "We are entitled to 4 weeks holidays without refunding memberships due to their discounted rate. Holidays can be found [[here|/holidays]] if you'd like to check our unavailable dates.",
         ] },
       ],
     },
