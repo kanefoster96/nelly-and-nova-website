@@ -99,7 +99,7 @@ export const services = {
 };
 
 /** "How it works" steps. `icon` maps to stepIcons in components/ui/Icons.tsx. */
-export type Step = { icon: "handshake" | "calendar" | "van" | "report"; title: string; body: string };
+export type Step = { icon: "handshake" | "calendar" | "paw" | "home"; title: string; body: string };
 
 export const howItWorks = {
   heading: "How it works.",
@@ -115,12 +115,12 @@ export const howItWorks = {
       body: "When you decide to book, you can choose from our available days. There's a short waiver to complete, and payments are made via GoCardless (Direct Debit), cancel anytime.",
     },
     {
-      icon: "van",
+      icon: "paw",
       title: "Weekly training sessions",
       body: "Every week, we will collect your dog between 7:30 and 9:00 am. They'll get a full day of training before coming home between 4:00 and 5:30 pm.",
     },
     {
-      icon: "report",
+      icon: "home",
       title: "Homework & reports",
       body: "Every session includes a report card that tells you what we covered that day, what your dog did well/not so well, and a breakdown on how to continue the training at home. You'll have 24/7 access to our trainers via WhatsApp for any extra support. When you have the confidence to take over, you can cancel your membership any time with no cancellation fees or notices.",
     },

@@ -163,6 +163,14 @@ export const ReportIcon = (p: IconProps) => (
   </svg>
 );
 
+export const HomeIcon = (p: IconProps) => (
+  <svg {...iconBase} {...p}>
+    <path d="M3 10.5 12 3l9 7.5" />
+    <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+    <path d="M9.5 21v-6h5v6" />
+  </svg>
+);
+
 export const MapPinIcon = (p: IconProps) => (
   <svg {...iconBase} {...p}>
     <path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0z" />
@@ -206,8 +214,8 @@ export type PainIconName = keyof typeof painIcons;
 export const stepIcons = {
   handshake: HandshakeIcon,
   calendar: CalendarIcon,
-  van: VanIcon,
-  report: ReportIcon,
+  paw: PawIcon,
+  home: HomeIcon,
 } as const;
 
 export type StepIconName = keyof typeof stepIcons;
