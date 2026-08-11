@@ -86,6 +86,15 @@ body {
   color: var(--color-accent-ink);
 }
 
+/* Hide scrollbars on horizontal carousels (still scrollable / swipeable) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Scrolling keyword marquee (hero footer band) */
 @keyframes marquee {
   from {

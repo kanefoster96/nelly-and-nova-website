@@ -5,6 +5,7 @@ import { WhatWeDo } from "@/components/WhatWeDo";
 import { HowItWorks } from "@/components/HowItWorks";
 import { LeaveWhenReady } from "@/components/LeaveWhenReady";
 import { Faq } from "@/components/Faq";
+import { Reviews } from "@/components/Reviews";
 import { Footer } from "@/components/Footer";
 
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
         <HowItWorks />
         <LeaveWhenReady />
         <Faq />
+        <Reviews />
         {/* Next sections will be added here, top to bottom. */}
       </main>
       <Footer />

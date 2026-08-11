@@ -98,6 +98,63 @@ export const services = {
   areaHref: "#areas",
 };
 
+/**
+ * Google reviews carousel.
+ * ------------------------
+ * `items` below are PLACEHOLDERS. To connect the real feed, fetch the Google
+ * Places Details API (fields: reviews) for the business `place_id` and map each
+ * returned review to the `Review` shape:
+ *   author       ← review.author_name
+ *   rating       ← review.rating
+ *   text         ← review.text
+ *   date         ← review.relative_time_description  (or format review.time)
+ *   avatar       ← review.profile_photo_url          (optional; NN monogram if absent)
+ * Then pass the mapped array to <Reviews items={...} />. Nothing else changes.
+ */
+export type Review = {
+  author: string;
+  rating: number; // 1–5
+  text: string;
+  date: string;
+  avatar?: string;
+};
+
+export const googleReviews = {
+  heading: "Our reviews.",
+  cta: "Leave us a review on",
+  /** Replace with your Google "write a review" link (g.page/r/… or Maps URL). */
+  reviewUrl: "#",
+  items: [
+    {
+      author: "Sarah M.",
+      rating: 5,
+      date: "8 Sep 2025",
+      avatar: "/placeholders/avatar-1.svg",
+      text: "Our 6 month old bull lurcher has weekly walk & train sessions with Charlotte and she absolutely loves them. So patient and understanding, and we have seen so much progress over the last couple of months. Couldn't recommend them more.",
+    },
+    {
+      author: "Rachel T.",
+      rating: 5,
+      date: "21 Sep 2025",
+      text: "We have been using the weekly package for our Nova and it's been great. They really took the time to get to know our puppy. The updates after each session are so reassuring and detailed.",
+    },
+    {
+      author: "James P.",
+      rating: 5,
+      date: "2 Aug 2025",
+      avatar: "/placeholders/avatar-2.svg",
+      text: "Loose lead walking felt impossible before we started. After a few weeks of Walk & Train our dog is calm and focused on walks. The report cards make it easy to keep it up at home.",
+    },
+    {
+      author: "Emma W.",
+      rating: 5,
+      date: "17 Jul 2025",
+      avatar: "/placeholders/avatar-3.svg",
+      text: "Genuinely life-changing for our rescue. Kind, knowledgeable and always on hand over WhatsApp when we have questions. Our confidence as owners has grown just as much as our dog's.",
+    },
+  ] as Review[],
+};
+
 /** FAQ accordion. Each answer is an array of paragraphs. */
 export type Faq = { q: string; a: string[] };
 
