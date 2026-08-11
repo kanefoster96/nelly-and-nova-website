@@ -7,7 +7,7 @@
  */
 
 export const BOOKING_HREF = "#book";
-export const CONTACT_HREF = "#contact";
+export const CONTACT_HREF = "/contact";
 
 /** "We understand" pain points. `icon` maps to painIcons in components/ui/Icons.tsx. */
 export type PainPoint = { icon: "paw" | "help" | "cross"; title: string; body: string };
@@ -40,6 +40,7 @@ export type NavLink = { label: string; href: string };
 export const navLinks: NavLink[] = [
   { label: "Walk & Train", href: "/walk-and-train" },
   { label: "1-1 Training", href: "/one-to-one" },
+  { label: "Contact", href: "/contact" },
 ];
 
 /** Service areas covered across the North East. */
@@ -637,7 +638,7 @@ export const howItWorks = {
 export const contact = {
   phone: "+44 0000 000000",
   phoneLabel: "07000 000000",
-  email: "hello@nellyandnova.co.uk",
+  email: "charlotte@nellyandnova.co.uk",
   /** WhatsApp click-to-chat link — replace the number (international format, no +). */
   whatsapp: "https://wa.me/440000000000",
 };
