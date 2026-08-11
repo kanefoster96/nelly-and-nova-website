@@ -41,31 +41,39 @@ export function ProfileView({ profile }: { profile: DogProfile }) {
 
   return (
     <div>
-      {/* Dog header — photo is the account picture. */}
-      <div className="flex flex-col items-center text-center">
-        <span className="h-32 w-32 overflow-hidden rounded-full ring-2 ring-accent">
+      {/* Dog header — Instagram-style: photo left, stats right. */}
+      <div className="flex items-center gap-6">
+        <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full ring-2 ring-accent sm:h-24 sm:w-24">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photo} alt={name} className="h-full w-full object-cover" />
         </span>
-        <h1 className="display-heading mt-4 text-4xl text-paper">{name}</h1>
-        <p className="mt-1 text-paper/70">
-          {profile.age} · {profile.sessions} training sessions
-        </p>
-
-        {/* Report card button — badged when a new card is waiting. */}
-        <Link
-          href="/profile/reports"
-          className="relative mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <ReportIcon width={18} height={18} />
-          Report cards
-          {unseen > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-              {unseen}
-            </span>
-          )}
-        </Link>
+        <div className="flex flex-1 items-center justify-around">
+          <Stat value={profile.age} label="Age" />
+          <Stat value={profile.sessions} label="Sessions" />
+          <Stat value={profile.level} label="Level" />
+        </div>
       </div>
+
+      <div className="mt-4">
+        <h1 className="display-heading text-2xl text-paper">{name}</h1>
+        {profile.breed && (
+          <p className="mt-0.5 text-sm text-paper/70">{profile.breed}</p>
+        )}
+      </div>
+
+      {/* Report card button — badged when a new card is waiting. */}
+      <Link
+        href="/profile/reports"
+        className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        <ReportIcon width={18} height={18} />
+        Report cards
+        {unseen > 0 && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+            {unseen}
+          </span>
+        )}
+      </Link>
 
       {/* Training plan */}
       <div className="mt-10">
@@ -146,6 +154,16 @@ export function ProfileView({ profile }: { profile: DogProfile }) {
           <ArrowRightIcon width={18} height={18} className="ml-auto text-paper-dim" />
         </Link>
       </div>
+    </div>
+  );
+}
+
+/** One stat column in the Instagram-style header. */
+function Stat({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="text-xl font-bold text-paper sm:text-2xl">{value}</span>
+      <span className="text-sm text-paper-dim">{label}</span>
     </div>
   );
 }

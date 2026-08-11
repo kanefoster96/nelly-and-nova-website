@@ -8,8 +8,10 @@ import type { DogProfile, ReportCard } from "./types";
 export const sampleDog: DogProfile = {
   name: "Nova",
   photo: "/placeholders/dog-avatar-01.svg",
-  age: "2 years",
+  breed: "Fox Red Labrador",
+  age: "2 yrs",
   sessions: 8,
+  level: 2,
   plan: {
     service: "Walk & Train",
     day: "Thursdays",

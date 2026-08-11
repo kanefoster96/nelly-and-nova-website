@@ -46,9 +46,12 @@ export type TrainingPlan = {
 export type DogProfile = {
   name: string;
   photo: string;
+  breed?: string;
   age: string;
   /** Number of training sessions completed. */
   sessions: number;
+  /** Overall training level (rises as skills progress). */
+  level: number;
   plan: TrainingPlan | null;
   skills: Skill[];
 };
