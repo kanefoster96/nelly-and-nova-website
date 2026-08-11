@@ -23,11 +23,14 @@ import type {
   Notification,
   UnreadCounts,
 } from "./types";
+import type { OnboardingEntry, OnboardingStage } from "./onboarding";
+import { nextStage } from "./onboarding";
 import {
   sampleConversations,
   sampleMessages,
   sampleNotifications,
   sampleRequests,
+  sampleOnboarding,
 } from "./sample";
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -79,6 +82,34 @@ export async function createRequest(input: NewRequest): Promise<void> {
   console.log(
     `[inbox] request received (${input.kind}) from ${input.requesterName} — not persisted (scaffold)`
   );
+}
+
+/**
+ * Onboarding pipeline (admin only). New meet & greet / contact requests land
+ * here and advance stage-by-stage (see lib/inbox/onboarding.ts).
+ */
+export async function getOnboarding(): Promise<OnboardingEntry[]> {
+  // TODO(backend): select * from onboarding order by created_at
+  return sampleOnboarding;
+}
+
+/**
+ * Advance an onboarding entry to the next stage.
+ * Called when an admin taps the stage's action button (set up meet & greet,
+ * send payment info via GoCardless, mark payment set up, confirm onboarding).
+ */
+export async function advanceOnboarding(
+  id: string,
+  from: OnboardingStage
+): Promise<OnboardingStage | null> {
+  // TODO(backend): update onboarding set stage = $next where id = $1
+  // The "Send payment info" step will trigger a GoCardless mandate link that
+  // only staff can send; the customer sets up the Direct Debit themselves.
+  const next = nextStage(from);
+  console.log(
+    `[inbox] onboarding ${id}: ${from} → ${next ?? "(complete)"} — not persisted (scaffold)`
+  );
+  return next;
 }
 
 export async function getUnreadCounts(): Promise<UnreadCounts> {

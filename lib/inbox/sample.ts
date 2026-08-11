@@ -9,6 +9,7 @@ import type {
   Notification,
   InboxRequest,
 } from "./types";
+import type { OnboardingEntry } from "./onboarding";
 
 export const sampleConversations: Conversation[] = [
   {
@@ -147,5 +148,35 @@ export const sampleRequests: InboxRequest[] = [
       { label: "Phone", value: "—" },
       { label: "Message", value: "Hi! Do you cover the Cullercoats area for Walk & Train? We have a 1 year old cocker spaniel who pulls a lot on the lead." },
     ],
+  },
+];
+
+export const sampleOnboarding: OnboardingEntry[] = [
+  {
+    id: "o1",
+    name: "Rachel T.",
+    dogName: "Nova",
+    service: "Walk & Train · Weekly Membership",
+    email: "rachel@example.com",
+    stage: "new",
+    createdAt: "2026-08-11T12:02:00Z",
+  },
+  {
+    id: "o2",
+    name: "James P.",
+    dogName: "Ziggy",
+    service: "Walk & Train · One Off",
+    email: "james@example.com",
+    stage: "booked",
+    createdAt: "2026-08-09T09:00:00Z",
+  },
+  {
+    id: "o3",
+    name: "Emma W.",
+    dogName: "Bo",
+    service: "1-1 Training",
+    email: "emma@example.com",
+    stage: "payment-sent",
+    createdAt: "2026-08-05T14:00:00Z",
   },
 ];
