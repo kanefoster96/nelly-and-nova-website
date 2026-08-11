@@ -39,6 +39,11 @@ export const media = {
     portrait: "/placeholders/founder-portrait.svg",
   },
 
+  services: {
+    /** Background photo behind the "What we do" section. */
+    background: "/media/what-we-do.jpg",
+  },
+
   walkAndTrain: {
     background: "/placeholders/walk-train-bg.svg",
   },

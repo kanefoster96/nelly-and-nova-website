@@ -3,12 +3,18 @@ import type { ComponentPropsWithoutRef } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "frosted";
 type Size = "md" | "lg";
+type Radius = "full" | "xl";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold tracking-wide " +
+  "inline-flex items-center justify-center gap-2 font-semibold tracking-wide " +
   "transition-transform transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] " +
   "active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent " +
   "select-none";
+
+const radii: Record<Radius, string> = {
+  full: "rounded-full",
+  xl: "rounded-2xl",
+};
 
 const variants: Record<Variant, string> = {
   // Accent fill — primary call to action.
@@ -33,6 +39,7 @@ const sizes: Record<Size, string> = {
 type CommonProps = {
   variant?: Variant;
   size?: Size;
+  radius?: Radius;
   className?: string;
 };
 
@@ -47,10 +54,11 @@ export type ButtonProps = ButtonAsLink | ButtonAsButton;
 export function Button({
   variant = "primary",
   size = "md",
+  radius = "full",
   className = "",
   ...props
 }: ButtonProps) {
-  const classes = `${base} ${variants[variant]} ${sizes[size]} ${className}`;
+  const classes = `${base} ${radii[radius]} ${variants[variant]} ${sizes[size]} ${className}`;
 
   if ("href" in props && props.href !== undefined) {
     const { href, ...rest } = props;

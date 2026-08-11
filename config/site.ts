@@ -54,6 +54,50 @@ export const areas: string[] = [
   "Cramlington",
 ];
 
+/** "What we do" — tabbed services. */
+export type ServiceTab = {
+  id: string;
+  label: string;
+  subtitle: string;
+  points: string[];
+  cta: string;
+  ctaHref: string;
+};
+
+export const services = {
+  heading: "What we do.",
+  tabs: [
+    {
+      id: "walk-train",
+      label: "Walk & Train.",
+      subtitle: "Full day training.",
+      points: [
+        "We collect and drop them off from your home",
+        "We build confidence through structured, positive experiences.",
+        "We work around other dogs, people and locations so your training holds up everywhere",
+        "You get report cards with homework to continue the training at home",
+      ],
+      cta: "Book a Visit",
+      ctaHref: BOOKING_HREF,
+    },
+    {
+      id: "one-to-one",
+      label: "1-1 Training.",
+      subtitle: "Learn how to train your dog.",
+      points: [
+        "1 hour of training with you and your dog tailored to your goals",
+        "We look at dog and handler skillsets so you feel confident training",
+        'We cover general obedience explaining the "why" behind everything we teach',
+        "Report card sent out after each session, so you can remember exactly what we covered",
+      ],
+      cta: "Book a Session",
+      ctaHref: BOOKING_HREF,
+    },
+  ] as ServiceTab[],
+  areaCta: "Check if we cover your area",
+  areaHref: "#areas",
+};
+
 export const contact = {
   phone: "+44 0000 000000",
   phoneLabel: "07000 000000",
