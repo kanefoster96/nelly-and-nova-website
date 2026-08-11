@@ -44,6 +44,14 @@ export const media = {
     background: "/media/what-we-do.jpg",
   },
 
+  /** 1-1 Training page photos. Swap the placeholders for real photos. */
+  oneToOne: {
+    hero: "/placeholders/one-to-one-hero.svg", // trainers + dogs
+    understand: "/media/what-we-do.jpg", // reuses the trainer + dog photo
+    report: "/placeholders/walk-train-report.svg", // shared report-card mockup
+    consultation: "/placeholders/one-to-one-consult.svg", // running puppy
+  },
+
   /** Walk & Train page photos. Swap the placeholders for real photos. */
   walkTrain: {
     hero: "/placeholders/walk-train-hero.svg", // white van in a field
@@ -56,18 +64,6 @@ export const media = {
     /** Photo card in the "Leave when you're ready" section. Swap for a real
      * photo: drop it in /public/media and point this at it (e.g. "/media/leave.jpg"). */
     image: "/placeholders/leave-when-ready.svg",
-  },
-
-  walkAndTrain: {
-    background: "/placeholders/walk-train-bg.svg",
-  },
-
-  oneToOne: {
-    background: "/placeholders/one-to-one-bg.svg",
-  },
-
-  finalCta: {
-    background: "/placeholders/final-cta-bg.svg",
   },
 
   dogs: [

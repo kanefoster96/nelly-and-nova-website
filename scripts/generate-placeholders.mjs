@@ -185,6 +185,8 @@ const files = {
   "walk-train-hero.svg": photo({ w: 1600, h: 1000, label: "Van in field", sub: "REPLACE VIA CONFIG/MEDIA", id: "wth" }),
   "walk-train-van.svg": photo({ w: 1200, h: 1100, label: "Dog in crate", sub: "REPLACE VIA CONFIG/MEDIA", id: "wtv" }),
   "walk-train-report.svg": photo({ w: 1000, h: 1500, label: "Report card app", sub: "REPLACE VIA CONFIG/MEDIA", id: "wtr" }),
+  "one-to-one-hero.svg": photo({ w: 1600, h: 1100, label: "Trainers & dogs", sub: "REPLACE VIA CONFIG/MEDIA", id: "o2oh" }),
+  "one-to-one-consult.svg": photo({ w: 1400, h: 1100, label: "Puppy running", sub: "REPLACE VIA CONFIG/MEDIA", id: "o2oc" }),
   "dog-1.svg": photo({ w: 900, h: 900, label: "Dog Photo 1", id: "d1" }),
   "dog-2.svg": photo({ w: 900, h: 900, label: "Dog Photo 2", id: "d2" }),
   "dog-3.svg": photo({ w: 900, h: 900, label: "Dog Photo 3", id: "d3" }),

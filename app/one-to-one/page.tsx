@@ -5,16 +5,16 @@ import { Reviews } from "@/components/Reviews";
 import { Marquee } from "@/components/ui/Marquee";
 import { ContentSection } from "@/components/ContentSection";
 import { media } from "@/config/media";
-import { walkTrainPage } from "@/config/site";
+import { oneToOnePage } from "@/config/site";
 
 export const metadata: Metadata = {
-  title: "Walk & Train",
+  title: "1-1 Training",
   description:
-    "Full-day Walk & Train sessions: real-world training, safe transport, detailed report cards and a free meet & greet across Tynemouth, Backworth and the North East.",
+    "One-to-one dog training sessions across the North East — personalised, in-person coaching that teaches you how to understand and communicate with your dog, plus a free consultation and detailed report cards.",
 };
 
-export default function WalkAndTrainPage() {
-  const { intro, van, report, meetGreet } = walkTrainPage;
+export default function OneToOnePage() {
+  const { intro, understand, report, consultation } = oneToOnePage;
   return (
     <>
       <Nav />
@@ -28,8 +28,8 @@ export default function WalkAndTrainPage() {
           eyebrow={intro.eyebrow}
           titleLines={intro.titleLines}
           paragraphs={intro.paragraphs}
-          imageSrc={media.walkTrain.hero}
-          imageAlt="Nelly & Nova training van in a field"
+          imageSrc={media.oneToOne.hero}
+          imageAlt="Nelly & Nova trainers with their dogs"
           imageAspect="aspect-[16/10]"
           priority
         />
@@ -38,11 +38,12 @@ export default function WalkAndTrainPage() {
 
         <ContentSection
           size="xl"
-          eyebrow={van.eyebrow}
-          titleLines={van.titleLines}
-          paragraphs={van.paragraphs}
-          imageSrc={media.walkTrain.van}
-          imageAlt="A dog travelling safely in a transport crate"
+          eyebrow={understand.eyebrow}
+          titleLines={understand.titleLines}
+          paragraphs={understand.paragraphs}
+          imageSrc={media.oneToOne.understand}
+          imageAlt="A trainer working with a dog on a woodland walk"
+          imageAspect="aspect-[4/5]"
         />
 
         <ContentSection
@@ -50,7 +51,7 @@ export default function WalkAndTrainPage() {
           eyebrow={report.eyebrow}
           titleLines={report.titleLines}
           paragraphs={report.paragraphs}
-          imageSrc={media.walkTrain.report}
+          imageSrc={media.oneToOne.report}
           imageAlt="A phone showing a Nelly & Nova training report card"
           imageAspect="aspect-[4/5]"
           imageMaxWidth="max-w-sm"
@@ -59,11 +60,11 @@ export default function WalkAndTrainPage() {
         <ContentSection
           align="center"
           size="md"
-          eyebrow={meetGreet.eyebrow}
-          titleLines={meetGreet.titleLines}
-          paragraphs={meetGreet.paragraphs}
-          imageSrc={media.walkTrain.meetGreet}
-          imageAlt="Two Nelly & Nova trainers with their dogs on a woodland path"
+          eyebrow={consultation.eyebrow}
+          titleLines={consultation.titleLines}
+          paragraphs={consultation.paragraphs}
+          imageSrc={media.oneToOne.consultation}
+          imageAlt="A puppy running happily on a training walk"
           imageAspect="aspect-[16/11]"
           cta
         />

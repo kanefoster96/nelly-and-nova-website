@@ -39,6 +39,7 @@ export type NavLink = { label: string; href: string };
 
 export const navLinks: NavLink[] = [
   { label: "Walk & Train", href: "/walk-and-train" },
+  { label: "1-1 Training", href: "/one-to-one" },
 ];
 
 /** Service areas covered across the North East. */
@@ -95,6 +96,7 @@ export const services = {
       ],
       cta: "Book a Session",
       ctaHref: BOOKING_HREF,
+      pageHref: "/one-to-one",
     },
   ] as ServiceTab[],
   areaCta: "Check if we cover your area",
@@ -191,6 +193,43 @@ export const walkTrainPage = {
     titleLines: ["Meet & Greet."],
     paragraphs: [
       "We offer a free meet and greet before any commitment to make sure your dog feels comfortable and you feel confident in booking. It also gives us the chance to see how your dog responds, understand their needs, and ensure our training is the right fit for them.",
+    ],
+  },
+};
+
+/** 1-1 Training page content. */
+export const oneToOnePage = {
+  intro: {
+    eyebrow: "Learn How to Train",
+    titleLines: ["1-1 Training."],
+    paragraphs: [
+      "Our 1-1 training sessions are an hour long, designed to give you and your dog personalised support tailored specifically to your goals. Whether you're looking to improve heel work, recall, and engagement, or need help with specific challenges within obedience, each session is adapted to suit both you and your dog's individual needs.",
+      "As part of our approach, we also take a look at your dog's lifestyle. This includes reviewing their day-to-day routine, discussing diet, and considering any potential health factors that could be contributing to unwanted behaviours. This allows us to address the root cause, not just the symptoms.",
+      "Sessions are priced at £90 and can take place at a location of your choice, provided it is within our travelling radius. This allows training to happen in an environment where you feel most comfortable and where your dog can learn effectively.",
+      "Following your session, you will receive a detailed report outlining everything covered, along with clear guidance on how to continue progressing at home. To ensure ongoing support, you'll also have one month of access to your trainer via WhatsApp. During this time, you can send videos, ask questions, and receive personalised feedback to help you stay on track and achieve lasting results.",
+    ],
+  },
+  understand: {
+    eyebrow: "In-person Training",
+    titleLines: ["Understand.", "Your.", "Dog."],
+    paragraphs: [
+      "Our 1-1 sessions are designed to give you complete clarity and control when working with your dog. Rather than just training the dog, we focus on teaching you exactly how to communicate effectively, so you understand why behaviours are happening and how to improve them. We break everything down into clear, practical steps, covering key foundations like engagement, lead handling, timing, and reward placement.",
+    ],
+  },
+  report: {
+    eyebrow: "Report Card",
+    titleLines: ["Continue.", "Your.", "Training."],
+    paragraphs: [
+      "After your in person 1 to 1 session, you'll receive a clear recap of everything we covered so you don't have to rely on memory or guesswork. We break down each exercise step by step, explain why we used it, and show you exactly how to practise it at home.",
+      "You'll get simple, structured instructions for things like handling, timing, rewards, and corrections, so you know exactly what to do and when to do it. This turns the session into something you can repeat confidently on your own, rather than a one off lesson.",
+      "The goal is that you leave not just with a better behaved dog on the day, but with the understanding and tools to continue improving long after the session ends.",
+    ],
+  },
+  consultation: {
+    eyebrow: "Our Trainers",
+    titleLines: ["Free Consultation."],
+    paragraphs: [
+      "Before your 1-1 session, we offer a free consultation where we chat with you on WhatsApp to understand your dog and what you want to achieve. It is a relaxed, light conversation where you can tell us about any struggles, triggers, or how your dog is around people and different situations.",
     ],
   },
 };
