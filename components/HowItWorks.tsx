@@ -1,75 +1,65 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import {
-  AnimatePresence,
-  motion,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { stepIcons } from "./ui/Icons";
 import { howItWorks } from "@/config/site";
 
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-// Distance from a card's top to where the icon sits (matches the card's p-6 padding).
-const ICON_INSET = 24;
+// Travelling marker size (px). The card left-padding reserves this lane.
+const MARKER = 64;
 
 export function HowItWorks() {
   const steps = howItWorks.steps;
-  const reduce = useReducedMotion();
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLElement | null)[]>([]);
-  const ysRef = useRef<number[]>([]);
   const [active, setActive] = useState(0);
+  const [reduced, setReduced] = useState(false);
+  const [markerTop, setMarkerTop] = useState(0);
+  const cardRefs = useRef<(HTMLLIElement | null)[]>([]);
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start center", "end center"],
-  });
-
-  // Measure each card's icon anchor (top + inset) relative to the container.
-  const measure = useCallback(() => {
-    const c = containerRef.current;
-    if (!c) return;
-    const top = c.getBoundingClientRect().top;
-    ysRef.current = cardRefs.current.map((el) =>
-      el ? el.getBoundingClientRect().top - top + ICON_INSET : 0
-    );
+  // Respect prefers-reduced-motion.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduced(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
   }, []);
 
-  useLayoutEffect(() => {
-    measure();
-    // Re-measure after web fonts settle and on resize.
-    const t = setTimeout(measure, 350);
-    window.addEventListener("resize", measure);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", measure);
-    };
-  }, [measure]);
+  // Centre the marker vertically on a given card.
+  const place = useCallback((idx: number) => {
+    const card = cardRefs.current[idx];
+    if (card) setMarkerTop(card.offsetTop + card.offsetHeight / 2 - MARKER / 2);
+  }, []);
 
-  // Icon Y: piecewise-linear across the measured card anchors.
-  const y = useTransform(scrollYProgress, (v) => {
-    const ys = ysRef.current;
-    const n = ys.length;
-    if (n === 0) return 0;
-    if (n === 1) return ys[0];
-    const cv = clamp(v, 0, 1);
-    const seg = 1 / (n - 1);
-    const idx = Math.min(n - 2, Math.floor(cv / seg));
-    const t = (cv - idx * seg) / seg;
-    return ys[idx] + (ys[idx + 1] - ys[idx]) * t;
-  });
+  // Re-place on active change, and again after web fonts settle.
+  useEffect(() => {
+    place(active);
+    const t = setTimeout(() => place(active), 350);
+    return () => clearTimeout(t);
+  }, [active, place]);
 
-  // Swap the glyph to match the nearest card.
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    const n = steps.length;
-    setActive(clamp(Math.round(clamp(v, 0, 1) * (n - 1)), 0, n - 1));
-  });
+  useEffect(() => {
+    const onResize = () => place(active);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [active, place]);
 
+  // Scroll → active step: a card becomes active when it crosses the centre band.
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            setActive(Number((e.target as HTMLElement).dataset.idx));
+          }
+        }),
+      { rootMargin: "-45% 0px -45% 0px", threshold: 0.01 }
+    );
+    cardRefs.current.forEach((el) => el && io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  // A full turn per step, applied while it slides (both share one transition).
+  const spin = active * 360;
   const ActiveIcon = stepIcons[steps[active].icon];
 
   return (
@@ -79,52 +69,61 @@ export function HowItWorks() {
           {howItWorks.heading}
         </h2>
 
-        <div ref={containerRef} className="relative mt-12">
-          {/* Scroll-driven icon that descends the rail and morphs per card */}
-          {!reduce && (
-            <motion.div
-              style={{ y }}
+        <div className="relative mt-12">
+          {/* Travelling marker — moved only via transform, so it never affects layout */}
+          {!reduced && (
+            <div
               aria-hidden="true"
-              className="pointer-events-none absolute left-6 top-0 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-paper text-ink shadow-[0_8px_24px_-6px_rgba(0,0,0,0.7)]"
+              className="pointer-events-none absolute left-2 top-0 z-10 sm:left-3"
+              style={{
+                width: MARKER,
+                height: MARKER,
+                transform: `translateY(${markerTop}px) rotate(${spin}deg)`,
+                transition: "transform 650ms cubic-bezier(0.45,0,0.2,1)",
+              }}
             >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={active}
-                  initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  exit={{ opacity: 0, scale: 0.5, rotate: 10 }}
-                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <ActiveIcon width={24} height={24} />
-                </motion.span>
-              </AnimatePresence>
-            </motion.div>
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-paper text-ink shadow-[0_10px_30px_-8px_rgba(0,0,0,0.75)]">
+                <ActiveIcon width={28} height={28} />
+              </div>
+            </div>
           )}
 
-          <ol className="flex flex-col gap-4">
+          {/* Steps — left padding reserves the marker's lane */}
+          <ol className="space-y-4 pl-24 sm:space-y-5 sm:pl-28">
             {steps.map((step, i) => {
               const Icon = stepIcons[step.icon];
+              const isActive = active === i;
               return (
                 <li
                   key={step.title}
+                  data-idx={i}
                   ref={(el) => {
                     cardRefs.current[i] = el;
                   }}
-                  className="relative rounded-3xl bg-white/[0.04] p-6 pl-20 ring-1 ring-white/5 sm:pl-24"
+                  className={`relative rounded-3xl border p-6 transition-all duration-300 ${
+                    isActive
+                      ? "border-white/20 bg-white/[0.06] opacity-100"
+                      : "border-transparent bg-white/[0.02] opacity-55"
+                  }`}
                 >
-                  {/* Static icon per card when motion is reduced */}
-                  {reduce && (
+                  {/* Static per-card icon when motion is reduced */}
+                  {reduced && (
                     <span
                       aria-hidden="true"
-                      className="absolute left-6 top-6 flex h-12 w-12 items-center justify-center rounded-full bg-paper text-ink"
+                      className="absolute -left-16 top-6 flex h-16 w-16 items-center justify-center rounded-full bg-paper text-ink sm:-left-20"
                     >
-                      <Icon width={24} height={24} />
+                      <Icon width={28} height={28} />
                     </span>
                   )}
-                  <h3 className="display-heading text-lg text-paper sm:text-xl">
-                    {i + 1}. {step.title}
-                  </h3>
-                  <p className="mt-3 text-paper/70">{step.body}</p>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-sm font-semibold text-paper/50">
+                      0{i + 1}
+                    </span>
+                    <h3 className="text-lg font-bold text-paper sm:text-xl">
+                      {step.title}
+                    </h3>
+                  </div>
+                  <p className="mt-2 text-paper/70">{step.body}</p>
                 </li>
               );
             })}
