@@ -1,5 +1,7 @@
 import { contact, site } from "@/config/site";
 import { findService, findBookingType, priceFor } from "@/config/booking";
+import { createRequest } from "@/lib/inbox/data";
+import { bookingToRequest } from "@/lib/inbox/mappers";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -60,6 +62,9 @@ export async function POST(request: Request) {
     line("Lead / tools used", d.tools),
     line("Trusts our guidance", d.trust),
   ].join("\n");
+
+  // Record the booking as an inbox request (scaffold no-op until a backend).
+  await createRequest(bookingToRequest(d));
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {

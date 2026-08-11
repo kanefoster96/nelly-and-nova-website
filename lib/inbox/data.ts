@@ -19,6 +19,7 @@ import type {
   Conversation,
   InboxRequest,
   Message,
+  NewRequest,
   Notification,
   UnreadCounts,
 } from "./types";
@@ -63,6 +64,21 @@ export async function getNotifications(): Promise<Notification[]> {
 export async function getRequests(): Promise<InboxRequest[]> {
   // TODO(backend): select * from requests where status = 'pending'
   return sampleRequests;
+}
+
+/**
+ * Create a request from a form submission (contact / booking).
+ * Called by the /api/contact and /api/booking routes on submit.
+ *
+ * SCAFFOLD: there is no shared store yet, so this only logs — submitted
+ * requests will start appearing in the inbox once this inserts into the
+ * `requests` table (see lib/inbox/schema.sql) behind getRequests().
+ */
+export async function createRequest(input: NewRequest): Promise<void> {
+  // TODO(backend): insert into requests (kind, payload, status='pending', …)
+  console.log(
+    `[inbox] request received (${input.kind}) from ${input.requesterName} — not persisted (scaffold)`
+  );
 }
 
 export async function getUnreadCounts(): Promise<UnreadCounts> {

@@ -5,6 +5,7 @@ import { ChatThread } from "./ChatThread";
 import { ConversationList } from "./ConversationList";
 import { NotificationsList } from "./NotificationsList";
 import { RequestsList } from "./RequestsList";
+import { RequestDetail } from "./RequestDetail";
 import { sendMessage } from "@/lib/inbox/data";
 import type {
   Conversation,
@@ -32,10 +33,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <details
-      open={open}
-      className="rounded-3xl bg-white/[0.03] p-5 ring-1 ring-white/10"
-    >
+    <details open={open} className="rounded-3xl bg-white/[0.03] p-5 ring-1 ring-white/10">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
         <span className="font-semibold text-paper">{title}</span>
         <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-white/10 px-2 text-xs font-semibold text-paper">
@@ -48,15 +46,54 @@ function Panel({
 }
 
 export function InboxApp({
-  conversations,
-  messagesByConversation,
+  conversations: initialConversations,
+  messagesByConversation: initialMessages,
   notifications,
-  requests,
+  requests: initialRequests,
 }: InboxAppProps) {
+  const [conversations, setConversations] = useState(initialConversations);
+  const [messagesByConversation, setMessagesByConversation] = useState(initialMessages);
+  const [requests, setRequests] = useState(initialRequests);
   const [selectedId, setSelectedId] = useState<string | null>(
-    conversations[0]?.id ?? null
+    initialConversations[0]?.id ?? null
   );
+  const [openRequestId, setOpenRequestId] = useState<string | null>(null);
+
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
+  const openRequest = requests.find((r) => r.id === openRequestId) ?? null;
+
+  function resolveRequest(id: string) {
+    // TODO(backend): update requests.status and, on approve, notify the requester.
+    setRequests((rs) => rs.filter((r) => r.id !== id));
+    setOpenRequestId(null);
+  }
+
+  /** Open (or start) a chat with the person who submitted the request. */
+  function replyViaChat(request: InboxRequest) {
+    const existing = conversations.find(
+      (c) => c.user.name.toLowerCase() === request.requesterName.toLowerCase()
+    );
+    if (existing) {
+      setSelectedId(existing.id);
+    } else {
+      const conv: Conversation = {
+        id: `req-${request.id}`,
+        user: {
+          id: `u-${request.id}`,
+          name: request.requesterName,
+          isGuest: request.kind === "contact",
+        },
+        lastMessageAt: request.createdAt,
+        lastMessagePreview: request.summary,
+        unread: false,
+        status: "new",
+      };
+      setConversations((cs) => [conv, ...cs]);
+      setMessagesByConversation((m) => ({ ...m, [conv.id]: [] }));
+      setSelectedId(conv.id);
+    }
+    setOpenRequestId(null);
+  }
 
   return (
     <div className="space-y-4">
@@ -64,8 +101,8 @@ export function InboxApp({
         <Panel title="Notifications" count={notifications.filter((n) => !n.readAt).length}>
           <NotificationsList initial={notifications} />
         </Panel>
-        <Panel title="Requests" count={requests.filter((r) => r.status === "pending").length}>
-          <RequestsList initial={requests} />
+        <Panel title="Requests" count={requests.filter((r) => r.status === "pending").length} open>
+          <RequestsList items={requests} onOpen={(r) => setOpenRequestId(r.id)} />
         </Panel>
       </div>
 
@@ -94,6 +131,16 @@ export function InboxApp({
           )}
         </div>
       </div>
+
+      {openRequest && (
+        <RequestDetail
+          request={openRequest}
+          onClose={() => setOpenRequestId(null)}
+          onApprove={() => resolveRequest(openRequest.id)}
+          onReject={() => resolveRequest(openRequest.id)}
+          onReplyChat={() => replyViaChat(openRequest)}
+        />
+      )}
     </div>
   );
 }

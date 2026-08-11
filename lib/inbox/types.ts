@@ -51,17 +51,27 @@ export type Notification = {
 
 export type RequestStatus = "pending" | "approved" | "rejected";
 
-/** Structured form submission awaiting approve/reject (e.g. a booking). */
+/** One submitted field, shown in the request detail view. */
+export type RequestDetail = { label: string; value: string };
+
+/** Structured form submission (contact / booking) awaiting review. */
 export type InboxRequest = {
   id: string;
-  /** Discriminator: "booking" | "meet-greet" | … picks the payload shape. */
+  /** Discriminator: "contact" | "booking" | "meet-greet" — picks the shape. */
   kind: string;
   requesterName: string;
   summary: string;
   createdAt: string; // ISO
   status: RequestStatus;
-  payload?: Record<string, unknown>;
+  /** Used by the reply actions. */
+  email?: string;
+  phone?: string;
+  /** Ordered list of what the customer entered into the form. */
+  details: RequestDetail[];
 };
+
+/** Everything needed to create a request, minus server-assigned fields. */
+export type NewRequest = Omit<InboxRequest, "id" | "createdAt" | "status">;
 
 export type UnreadCounts = {
   chat: number;

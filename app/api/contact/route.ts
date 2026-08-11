@@ -1,4 +1,6 @@
 import { contact, site } from "@/config/site";
+import { createRequest } from "@/lib/inbox/data";
+import { contactToRequest } from "@/lib/inbox/mappers";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -31,6 +33,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  // Record the submission as an inbox request (scaffold no-op until a backend).
+  await createRequest(contactToRequest(body));
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
