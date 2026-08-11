@@ -24,6 +24,13 @@ export const booking = {
   /** Discount (£) applied to each additional dog from the same household. */
   secondDogDiscount: 5,
 
+  /** Number of dogs — a drop-down so the estimated price updates live. */
+  dogCounts: [
+    { value: "1", label: "1 dog" },
+    { value: "2", label: "2 dogs" },
+    { value: "3", label: "3 dogs" },
+  ],
+
   services: [
     {
       value: "walk-train",

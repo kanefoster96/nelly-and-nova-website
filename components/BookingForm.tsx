@@ -16,7 +16,7 @@ type Data = Record<string, string>;
 
 const INITIAL: Data = {
   firstName: "", lastName: "", email: "", phone: "", address: "", findUs: "",
-  service: "", bookingType: "", dogs: "",
+  service: "", bookingType: "", dogs: "1",
   dogName: "", breed: "", gender: "", age: "", withDogs: "", withPeople: "",
   needHelp: "", allergies: "", tools: "", trust: "",
   company: "", // honeypot
@@ -248,7 +248,7 @@ export function BookingForm() {
             )}
 
             <div>
-              <Field label="How many dogs?" name="dogs" type="number" inputMode="numeric" required value={data.dogs} onChange={set("dogs")} error={errors.dogs} placeholder="1" />
+              <Field label="How many dogs?" name="dogs" required value={data.dogs} onChange={set("dogs")} error={errors.dogs} options={booking.dogCounts} />
               <p className="mt-2 text-sm text-paper-dim">{booking.copy.dogsNote}</p>
             </div>
 
