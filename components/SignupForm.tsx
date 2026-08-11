@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
-import { CheckCircleIcon, PlusIcon } from "./ui/Icons";
+import { AvatarUpload } from "./ui/AvatarUpload";
+import { CheckCircleIcon } from "./ui/Icons";
+import { DOG_PHOTO_HANDOFF_KEY } from "@/lib/storage/photos";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const STEPS = ["Your details", "Your dog"];
@@ -28,11 +30,19 @@ export function SignupForm() {
   const [breed, setBreed] = useState(params.get("breed") ?? "");
   const [age, setAge] = useState(params.get("age") ?? "");
   const [dogNotes, setDogNotes] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  // Prefill the photo if one was chosen during the booking form (handed off
+  // via sessionStorage, since a file can't ride along in the URL).
+  const [photo, setPhoto] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return sessionStorage.getItem(DOG_PHOTO_HANDOFF_KEY);
+    } catch {
+      return null;
+    }
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
-  const fileRef = useRef<HTMLInputElement>(null);
 
   function next() {
     const e: Record<string, string> = {};
@@ -48,11 +58,6 @@ export function SignupForm() {
     setStep(1);
   }
 
-  function onPhoto(ev: React.ChangeEvent<HTMLInputElement>) {
-    const file = ev.target.files?.[0];
-    if (file) setPhoto(URL.createObjectURL(file));
-  }
-
   function create() {
     if (!dogName.trim()) {
       setErrors({ dogName: "Please add your dog's name." });
@@ -62,7 +67,13 @@ export function SignupForm() {
     setStatus("submitting");
     // TODO(backend): supabase.auth.signUp({ email, password, options: { data:
     //   { first_name: firstName } } }), then create the dog profile (name,
-    //   breed, age, notes) and upload the photo to storage as the account image.
+    //   breed, age, notes) and, if `photo` is set, uploadDogPhoto(photo, userId)
+    //   from lib/storage/photos.ts to set the account image.
+    try {
+      sessionStorage.removeItem(DOG_PHOTO_HANDOFF_KEY);
+    } catch {
+      /* ignore */
+    }
     setStatus("success");
   }
 
@@ -143,33 +154,7 @@ export function SignupForm() {
             </p>
 
             {/* Dog photo avatar */}
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                aria-label="Add a photo of your dog"
-                className="group relative h-28 w-28 overflow-hidden rounded-full ring-2 ring-white/15 transition-colors hover:ring-accent"
-              >
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photo} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="flex h-full w-full flex-col items-center justify-center gap-1 bg-white/[0.04] text-paper-dim">
-                    <PlusIcon width={22} height={22} />
-                    <span className="text-[11px] font-medium uppercase tracking-wide">
-                      Add photo
-                    </span>
-                  </span>
-                )}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={onPhoto}
-                className="hidden"
-              />
-            </div>
+            <AvatarUpload value={photo} onSelect={setPhoto} size={112} />
 
             <Field label="Dog's name" name="dogName" required value={dogName} onChange={setDogName} error={errors.dogName} />
             <div className="grid gap-5 sm:grid-cols-2">

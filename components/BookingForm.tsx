@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
 import { SelectCards } from "./ui/SelectCards";
+import { AvatarUpload } from "./ui/AvatarUpload";
 import { CheckCircleIcon } from "./ui/Icons";
 import { booking, findService, priceFor } from "@/config/booking";
 import { areas } from "@/config/site";
+import { DOG_PHOTO_HANDOFF_KEY } from "@/lib/storage/photos";
 
 const STEPS = ["About you", "Your booking", "About your dog", "Meet & greet"];
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -25,6 +27,9 @@ const INITIAL: Data = {
 export function BookingForm() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Data>(INITIAL);
+  // Optional dog photo — kept out of the POST body (data URLs are large) and
+  // handed to create-account via sessionStorage so it becomes the account image.
+  const [photo, setPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "error" | "success">("idle");
   const [submitError, setSubmitError] = useState("");
@@ -118,6 +123,13 @@ export function BookingForm() {
       }
       // Request sent — take them to create an account, prefilled from the form.
       setStatus("success");
+      // Hand the chosen photo to create-account (files can't ride in the URL).
+      try {
+        if (photo) sessionStorage.setItem(DOG_PHOTO_HANDOFF_KEY, photo);
+        else sessionStorage.removeItem(DOG_PHOTO_HANDOFF_KEY);
+      } catch {
+        /* ignore */
+      }
       const params = new URLSearchParams();
       const prefill: Record<string, string> = {
         name: data.firstName,
@@ -280,6 +292,16 @@ export function BookingForm() {
         {step === 2 && (
           <div className="grid gap-5">
             <p className="text-paper/70">{booking.copy.dogIntro}</p>
+
+            {/* Optional dog photo — becomes their account picture. */}
+            <div>
+              <AvatarUpload value={photo} onSelect={setPhoto} size={104} />
+              <p className="mt-2 text-center text-sm text-paper-dim">
+                Add a photo of your dog{" "}
+                <span className="text-paper/50">(optional)</span>
+              </p>
+            </div>
+
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Dog's name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
               <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
