@@ -72,7 +72,7 @@ export function Hero() {
 
         {/* Trust badges + reviews */}
         <div className="mx-auto w-full max-w-md">
-          <ul className="grid grid-cols-2 gap-x-4 gap-y-3">
+          <ul className="mx-auto grid w-fit grid-cols-2 gap-x-8 gap-y-3">
             {heroBenefits.map((b, i) => {
               const Icon = benefitIcons[b.icon];
               const last = i === heroBenefits.length - 1;
