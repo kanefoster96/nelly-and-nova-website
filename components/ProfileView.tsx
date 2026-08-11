@@ -1,23 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "./ui/Button";
-import { PawIcon, CalendarIcon, ReportIcon } from "./ui/Icons";
-import { useSession, signOut } from "@/lib/auth/session";
+import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
+import { useSession } from "@/lib/auth/session";
+import { useUnseenReportCount } from "@/lib/reports/seen";
+import type { DogProfile } from "@/lib/reports/types";
 
 /**
- * The account profile — centred on the dog. Today it shows the account picture
- * (their dog's photo) and owner. The sections below are placeholders for what
- * Kane wants next: skill levels, the day they train and report cards.
+ * The account profile — centred on the dog. Shows their photo, name, age and
+ * number of training sessions; a report-card button (badged when a new card is
+ * waiting); their training plan (the Walk & Train day they do); a placeholder
+ * for stats/skills; and an "Account holder information" button at the bottom
+ * for the owner's own details and password.
  */
-export function ProfileView() {
-  const router = useRouter();
+export function ProfileView({ profile }: { profile: DogProfile }) {
   const session = useSession();
-
-  function logout() {
-    signOut();
-    router.push("/");
-  }
+  const unseen = useUnseenReportCount();
 
   if (!session) {
     return (
@@ -37,74 +36,115 @@ export function ProfileView() {
     );
   }
 
+  const name = session.dogName || profile.name;
+  const photo = session.dogPhoto || profile.photo;
+
   return (
     <div>
-      {/* Account header — the dog's photo is the account picture. */}
+      {/* Dog header — photo is the account picture. */}
       <div className="flex flex-col items-center text-center">
-        <span className="h-28 w-28 overflow-hidden rounded-full ring-2 ring-accent">
+        <span className="h-32 w-32 overflow-hidden rounded-full ring-2 ring-accent">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={session.dogPhoto}
-            alt={session.dogName}
-            className="h-full w-full object-cover"
-          />
+          <img src={photo} alt={name} className="h-full w-full object-cover" />
         </span>
-        <h1 className="display-heading mt-4 text-3xl text-paper sm:text-4xl">
-          {session.dogName}
-        </h1>
-        <p className="mt-1 text-paper/70">{session.ownerName}&apos;s account</p>
+        <h1 className="display-heading mt-4 text-4xl text-paper">{name}</h1>
+        <p className="mt-1 text-paper/70">
+          {profile.age} · {profile.sessions} training sessions
+        </p>
+
+        {/* Report card button — badged when a new card is waiting. */}
+        <Link
+          href="/profile/reports"
+          className="relative mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <ReportIcon width={18} height={18} />
+          Report cards
+          {unseen > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+              {unseen}
+            </span>
+          )}
+        </Link>
       </div>
 
-      {/* Future: training progress. Placeholder cards for now. */}
-      <div className="mt-10 grid gap-4">
-        <ProfileCard
-          icon={<PawIcon width={22} height={22} />}
-          title="Skill levels"
-          body="Track engagement, recall, loose lead and more as your dog progresses."
-        />
-        <ProfileCard
-          icon={<CalendarIcon width={22} height={22} />}
-          title="Training day"
-          body="Your weekly Walk & Train day will show here once your onboarding is confirmed."
-        />
-        <ProfileCard
-          icon={<ReportIcon width={22} height={22} />}
-          title="Report cards"
-          body="After each session you'll find your dog's report card and homework here."
-        />
+      {/* Training plan */}
+      <div className="mt-10">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          Training plan
+        </h2>
+        {profile.plan ? (
+          <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
+                <CalendarIcon width={22} height={22} />
+              </span>
+              <div>
+                <p className="font-semibold text-paper">
+                  {profile.plan.service} · {profile.plan.day}
+                </p>
+                {profile.plan.note && (
+                  <p className="mt-1 text-sm text-paper/70">{profile.plan.note}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-white/[0.04] p-5 text-sm text-paper/70 ring-1 ring-white/10">
+            No training day set yet — we&apos;ll confirm this once you&apos;re
+            onboarded.
+          </div>
+        )}
       </div>
 
-      <div className="mt-10 flex justify-center">
-        <Button variant="secondary" radius="xl" onClick={logout}>
-          Log out
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ProfileCard({
-  icon,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
-          {icon}
-        </span>
-        <div>
-          <p className="font-semibold text-paper">{title}</p>
-          <p className="mt-1 text-sm text-paper/70">{body}</p>
-          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-paper-dim">
-            Coming soon
+      {/* Stats & skills — placeholder */}
+      <div className="mt-8">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          Stats &amp; skills
+        </h2>
+        <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
+          <div className="space-y-3">
+            {profile.skills.map((s) => (
+              <div key={s.label}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-paper/80">{s.label}</span>
+                  <span className="text-paper-dim">
+                    {s.level}/{s.of}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-accent"
+                    style={{ width: `${(s.level / s.of) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs font-medium uppercase tracking-wide text-paper-dim">
+            Preview · full skills tracking coming soon
           </p>
         </div>
+      </div>
+
+      {/* Account holder information */}
+      <div className="mt-10">
+        <Link
+          href="/profile/account"
+          className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-4 transition-colors hover:border-white/35"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-paper">
+            <UserIcon width={20} height={20} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-paper">
+              Account holder information
+            </span>
+            <span className="block text-sm text-paper-dim">
+              Your details, contact info and password
+            </span>
+          </span>
+          <ArrowRightIcon width={18} height={18} className="ml-auto text-paper-dim" />
+        </Link>
       </div>
     </div>
   );

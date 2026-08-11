@@ -56,7 +56,8 @@ export function signOut() {
 
 // --- store wiring for useSyncExternalStore -------------------------------
 let cache: Session | null = null;
-let cacheRaw: string | null = null;
+// `undefined` = not yet computed (distinct from localStorage's string | null).
+let cacheRaw: string | null | undefined = undefined;
 
 function subscribe(cb: () => void) {
   window.addEventListener(EVENT, cb);

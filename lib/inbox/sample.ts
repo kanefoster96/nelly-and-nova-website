@@ -84,6 +84,24 @@ export const sampleMessages: Record<string, Message[]> = {
 
 export const sampleNotifications: Notification[] = [
   {
+    id: "n0",
+    title: "New report card",
+    body: "Nova's Thursday session report card is ready — with new homework.",
+    createdAt: "2026-08-06T16:35:00Z",
+    actionHref: "/profile/reports",
+    sentByName: "Nelly & Nova",
+    readAt: null,
+  },
+  {
+    id: "n-admin",
+    title: "New comment on a report card",
+    body: "Rachel T. asked a question about Nova's homework — tap to reply.",
+    createdAt: "2026-07-31T09:12:00Z",
+    actionHref: "/profile/reports",
+    sentByName: "Rachel T.",
+    readAt: null,
+  },
+  {
     id: "n1",
     title: "New booking request",
     body: "Rachel T. requested a Walk & Train weekly membership for Nova.",

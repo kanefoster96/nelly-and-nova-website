@@ -16,3 +16,9 @@ export function formatTime(iso: string): string {
   const mm = String(d.getUTCMinutes()).padStart(2, "0");
   return `${day} ${mon} · ${hh}:${mm}`;
 }
+
+/** Deterministic date only — "11 Aug 2026" (UTC). */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}

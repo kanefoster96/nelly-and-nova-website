@@ -8,12 +8,14 @@ import { MenuIcon, CloseIcon, MessageIcon, UserIcon } from "./ui/Icons";
 import { navLinks, site } from "@/config/site";
 import { media } from "@/config/media";
 import { useSession } from "@/lib/auth/session";
+import { useUnseenReportCount } from "@/lib/reports/seen";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const reduce = useReducedMotion();
   const session = useSession();
+  const unseenReports = useUnseenReportCount();
 
   // Solidify the bar once the hero has begun to scroll away.
   useEffect(() => {
@@ -76,8 +78,12 @@ export function Nav() {
           {session ? (
             <Link
               href="/profile"
-              aria-label={`${session.dogName}'s profile`}
-              className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              aria-label={
+                unseenReports > 0
+                  ? `${session.dogName}'s profile — ${unseenReports} new report card${unseenReports > 1 ? "s" : ""}`
+                  : `${session.dogName}'s profile`
+              }
+              className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -85,6 +91,9 @@ export function Nav() {
                 alt={`${session.dogName}`}
                 className="h-full w-full object-cover"
               />
+              {unseenReports > 0 && (
+                <span className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-ink bg-red-500" />
+              )}
             </Link>
           ) : (
             <Link
