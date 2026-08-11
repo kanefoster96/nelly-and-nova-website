@@ -6,7 +6,7 @@
  * CTAs point at "#" for now — wire them to the real booking flow later.
  */
 
-export const BOOKING_HREF = "#book";
+export const BOOKING_HREF = "/book";
 export const CONTACT_HREF = "/contact";
 
 /** "We understand" pain points. `icon` maps to painIcons in components/ui/Icons.tsx. */
