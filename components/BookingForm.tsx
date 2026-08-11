@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
 import { SelectCards } from "./ui/SelectCards";
@@ -28,6 +29,7 @@ export function BookingForm() {
   const [status, setStatus] = useState<"idle" | "submitting" | "error" | "success">("idle");
   const [submitError, setSubmitError] = useState("");
   const topRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const set = (key: string) => (value: string) => {
     setData((d) => ({ ...d, [key]: value }));
@@ -114,8 +116,12 @@ export function BookingForm() {
         setStatus("error");
         return;
       }
+      // Request sent — take them to create an account (prefilled).
       setStatus("success");
-      scrollTop();
+      const params = new URLSearchParams();
+      if (data.firstName) params.set("name", data.firstName);
+      if (data.email) params.set("email", data.email);
+      router.push(`/create-account?${params.toString()}`);
     } catch {
       setSubmitError("Couldn’t reach the server. Please try again.");
       setStatus("error");
@@ -128,9 +134,8 @@ export function BookingForm() {
         <CheckCircleIcon width={44} height={44} className="mx-auto text-accent" />
         <h2 className="display-heading mt-4 text-3xl text-paper">Request sent</h2>
         <p className="mx-auto mt-3 max-w-md text-paper/75">
-          Thanks {data.firstName || "there"} — we&apos;ve got your details and
-          we&apos;ll be in touch as soon as we can to arrange your free meet &amp;
-          greet.
+          Thanks {data.firstName || "there"} — taking you to create your
+          account…
         </p>
       </div>
     );

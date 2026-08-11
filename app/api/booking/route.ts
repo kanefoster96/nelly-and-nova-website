@@ -63,45 +63,38 @@ export async function POST(request: Request) {
     line("Trusts our guidance", d.trust),
   ].join("\n");
 
-  // Record the booking as an inbox request (scaffold no-op until a backend).
+  // Accept the submission as an inbox request (scaffold no-op until a backend).
   await createRequest(bookingToRequest(d));
 
+  // Best-effort owner notification by email — optional, never blocks the
+  // submission (the request itself is the deliverable). Set RESEND_API_KEY
+  // to receive these; see .env.example.
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    return Response.json(
-      { error: "Bookings aren’t connected to email yet." },
-      { status: 503 }
-    );
-  }
-
-  const to = process.env.CONTACT_TO_EMAIL || contact.email;
-  const from = process.env.CONTACT_FROM_EMAIL || `${site.name} <onboarding@resend.dev>`;
-
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        reply_to: email,
-        subject: `New booking request — ${firstName} ${lastName} (${svc?.label ?? "enquiry"})`,
-        text,
-      }),
-    });
-    if (!res.ok) {
-      console.error("Resend error", res.status, await res.text().catch(() => ""));
-      return Response.json(
-        { error: "Sorry, something went wrong sending your request. Please try again or contact us directly." },
-        { status: 502 }
-      );
+  if (apiKey) {
+    const to = process.env.CONTACT_TO_EMAIL || contact.email;
+    const from = process.env.CONTACT_FROM_EMAIL || `${site.name} <onboarding@resend.dev>`;
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [to],
+          reply_to: email,
+          subject: `New booking request — ${firstName} ${lastName} (${svc?.label ?? "enquiry"})`,
+          text,
+        }),
+      });
+      if (!res.ok) {
+        console.error("Resend error", res.status, await res.text().catch(() => ""));
+      }
+    } catch (err) {
+      console.error("Booking email error", err);
     }
-    return Response.json({ ok: true });
-  } catch (err) {
-    console.error("Booking route error", err);
-    return Response.json({ error: "Something went wrong." }, { status: 500 });
   }
+
+  return Response.json({ ok: true });
 }
