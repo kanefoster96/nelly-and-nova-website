@@ -8,7 +8,7 @@ export function Footer() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Wordmark href="#top" height={36} />
+            <Wordmark href="/" height={36} />
             <p className="mt-4 max-w-xs text-sm text-paper-dim">
               {site.tagline}.
             </p>

@@ -108,10 +108,17 @@ export function WhatWeDo() {
                 <Button href={active.ctaHref} radius="xl" size="lg">
                   {active.cta}
                 </Button>
-                <Button href={CONTACT_HREF} variant="ghost">
-                  Contact us
-                  <ArrowRightIcon width={18} height={18} />
-                </Button>
+                {active.pageHref ? (
+                  <Button href={active.pageHref} variant="ghost">
+                    Learn more
+                    <ArrowRightIcon width={18} height={18} />
+                  </Button>
+                ) : (
+                  <Button href={CONTACT_HREF} variant="ghost">
+                    Contact us
+                    <ArrowRightIcon width={18} height={18} />
+                  </Button>
+                )}
               </div>
             </motion.div>
           </AnimatePresence>

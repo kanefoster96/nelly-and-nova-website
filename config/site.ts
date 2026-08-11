@@ -62,6 +62,8 @@ export type ServiceTab = {
   points: string[];
   cta: string;
   ctaHref: string;
+  /** Optional dedicated page for this service. */
+  pageHref?: string;
 };
 
 export const services = {
@@ -79,6 +81,7 @@ export const services = {
       ],
       cta: "Book a Visit",
       ctaHref: BOOKING_HREF,
+      pageHref: "/walk-and-train",
     },
     {
       id: "one-to-one",
