@@ -150,7 +150,12 @@ export function ChatCenter({
           <NotificationsList initial={notifications} />
         )}
 
-        {activeTab === "onboarding" && <OnboardingList initial={onboarding} />}
+        {activeTab === "onboarding" && (
+          <OnboardingList
+            initial={onboarding}
+            onOpenChat={() => setTab("chat")}
+          />
+        )}
       </div>
     </div>
   );

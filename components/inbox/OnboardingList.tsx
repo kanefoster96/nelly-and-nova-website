@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ONBOARDING_FLOW, stageIndex, nextStage } from "@/lib/inbox/onboarding";
 import type { OnboardingEntry, OnboardingStage } from "@/lib/inbox/onboarding";
 import { formatTime } from "@/lib/inbox/format";
+import { MessageIcon, UserIcon } from "@/components/ui/Icons";
 
 /**
  * Admin-only onboarding pipeline. Each new customer (from a meet & greet /
@@ -11,8 +13,17 @@ import { formatTime } from "@/lib/inbox/format";
  * "Send payment info" step will become a GoCardless mandate link that only
  * staff can send — the customer sets up the Direct Debit themselves and
  * contacts us, then we confirm the onboarding and the day they're on.
+ *
+ * `onOpenChat` lets the parent (ChatCenter) jump to the Live Chat tab for a
+ * customer; each card also links to that customer's account.
  */
-export function OnboardingList({ initial }: { initial: OnboardingEntry[] }) {
+export function OnboardingList({
+  initial,
+  onOpenChat,
+}: {
+  initial: OnboardingEntry[];
+  onOpenChat?: (entry: OnboardingEntry) => void;
+}) {
   const [items, setItems] = useState(initial);
 
   function advance(id: string, from: OnboardingStage) {
@@ -86,8 +97,8 @@ export function OnboardingList({ initial }: { initial: OnboardingEntry[] }) {
               </p>
             )}
 
-            {/* Advance action */}
-            <div className="mt-4">
+            {/* Actions */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               {done ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-accent/15 px-3 py-1.5 text-xs font-semibold text-accent">
                   Onboarded
@@ -101,6 +112,25 @@ export function OnboardingList({ initial }: { initial: OnboardingEntry[] }) {
                   {step.action}
                 </button>
               )}
+
+              {/* Open chat — jumps to the Live Chat tab for this customer. */}
+              <button
+                type="button"
+                onClick={() => onOpenChat?.(entry)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-3.5 py-2 text-sm font-medium text-paper transition-colors hover:border-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <MessageIcon width={16} height={16} />
+                Open chat
+              </button>
+
+              {/* Go to account — TODO(backend): link to /profile/{customerId}. */}
+              <Link
+                href="/profile"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-3.5 py-2 text-sm font-medium text-paper transition-colors hover:border-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <UserIcon width={16} height={16} />
+                Go to account
+              </Link>
             </div>
           </li>
         );
