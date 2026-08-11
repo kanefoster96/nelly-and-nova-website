@@ -119,6 +119,28 @@ function wordmark({ ink = INK } = {}) {
 </svg>`;
 }
 
+/** Small circular-friendly avatar placeholder (paw + index). */
+function avatarTile(n) {
+  const s = 160;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" role="img" aria-label="Customer dog avatar placeholder ${n}">
+  <defs>
+    <radialGradient id="ag${n}" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#1c1c1c"/>
+      <stop offset="100%" stop-color="#0d0d0d"/>
+    </radialGradient>
+  </defs>
+  <rect width="${s}" height="${s}" fill="url(#ag${n})"/>
+  <g transform="translate(${s / 2}, ${s / 2 - 8})" fill="${ACCENT}" fill-opacity="0.45">
+    <circle cx="-26" cy="-10" r="9"/>
+    <circle cx="-9" cy="-20" r="9"/>
+    <circle cx="9" cy="-20" r="9"/>
+    <circle cx="26" cy="-10" r="9"/>
+    <path d="M0 -8 C 18 -8 30 6 30 20 C 30 34 16 40 0 40 C -16 40 -30 34 -30 20 C -30 6 -18 -8 0 -8 Z"/>
+  </g>
+  <text x="${s / 2}" y="${s - 24}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="${MUTED}">${n}</text>
+</svg>`;
+}
+
 /** Compact " NN " monogram lockup (thin strokes) for the header. */
 function monogram() {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="44" viewBox="0 0 64 44" role="img" aria-label="Nelly and Nova monogram">
@@ -167,6 +189,11 @@ const files = {
   "avatar-2.svg": photo({ w: 200, h: 200, label: "B", sub: "AVATAR", id: "a2" }),
   "avatar-3.svg": photo({ w: 200, h: 200, label: "C", sub: "AVATAR", id: "a3" }),
 };
+
+// 20 customer-dog avatar placeholders for the reviews marquee.
+for (let i = 1; i <= 20; i++) {
+  files[`dog-avatar-${String(i).padStart(2, "0")}.svg`] = avatarTile(i);
+}
 
 for (const [name, contents] of Object.entries(files)) {
   writeFileSync(join(OUT, name), contents.trim() + "\n", "utf8");

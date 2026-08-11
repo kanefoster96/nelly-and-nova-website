@@ -73,6 +73,12 @@ export const media = {
     "/placeholders/avatar-2.svg",
     "/placeholders/avatar-3.svg",
   ],
+
+  /** Small avatars for the reviews marquee — swap for real customer-dog photos. */
+  customerAvatars: Array.from(
+    { length: 20 },
+    (_, i) => `/placeholders/dog-avatar-${String(i + 1).padStart(2, "0")}.svg`
+  ),
 } as const;
 
 export type Media = typeof media;

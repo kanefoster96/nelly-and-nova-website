@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { GoogleGIcon, StarIcon } from "./ui/Icons";
+import { AvatarMarquee } from "./ui/AvatarMarquee";
 import { media } from "@/config/media";
 import { googleReviews, type Review } from "@/config/site";
 
@@ -86,6 +87,9 @@ export function Reviews({
           </li>
         ))}
       </ul>
+
+      {/* Customer-dog avatars — swap placeholders for real photos later */}
+      <AvatarMarquee className="mt-8" />
 
       <div className="mx-auto mt-8 flex max-w-6xl justify-center px-4 sm:px-6">
         <a

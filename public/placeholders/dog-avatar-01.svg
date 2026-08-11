@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" role="img" aria-label="Customer dog avatar placeholder 1">
+  <defs>
+    <radialGradient id="ag1" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#1c1c1c"/>
+      <stop offset="100%" stop-color="#0d0d0d"/>
+    </radialGradient>
+  </defs>
+  <rect width="160" height="160" fill="url(#ag1)"/>
+  <g transform="translate(80, 72)" fill="#ffffff" fill-opacity="0.45">
+    <circle cx="-26" cy="-10" r="9"/>
+    <circle cx="-9" cy="-20" r="9"/>
+    <circle cx="9" cy="-20" r="9"/>
+    <circle cx="26" cy="-10" r="9"/>
+    <path d="M0 -8 C 18 -8 30 6 30 20 C 30 34 16 40 0 40 C -16 40 -30 34 -30 20 C -30 6 -18 -8 0 -8 Z"/>
+  </g>
+  <text x="80" y="136" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#8a8a8a">1</text>
+</svg>
