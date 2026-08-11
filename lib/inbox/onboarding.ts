@@ -22,6 +22,9 @@ export type OnboardingEntry = {
   dogName: string;
   service: string;
   email?: string;
+  phone?: string;
+  /** GoCardless mandate link, once sent (for the payment stages). */
+  paymentLink?: string;
   stage: OnboardingStage;
   createdAt: string; // ISO
 };
