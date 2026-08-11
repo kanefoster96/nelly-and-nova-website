@@ -74,27 +74,43 @@ export function Nav() {
             <MessageIcon width={22} height={22} />
           </Link>
 
-          {/* Account — the dog's photo when signed in, otherwise "Log in". */}
+          {/* Account — admins go to the coach dashboard; members to their dog's
+              profile. Signed out shows "Log in". */}
           {session ? (
-            <Link
-              href="/profile"
-              aria-label={
-                unseenReports > 0
-                  ? `${session.dogName}'s profile — ${unseenReports} new report card${unseenReports > 1 ? "s" : ""}`
-                  : `${session.dogName}'s profile`
-              }
-              className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={session.dogPhoto}
-                alt={`${session.dogName}`}
-                className="h-full w-full object-cover"
-              />
-              {unseenReports > 0 && (
-                <span className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-ink bg-red-500" />
-              )}
-            </Link>
+            session.role === "admin" ? (
+              <Link
+                href="/admin"
+                aria-label="Coach dashboard"
+                className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/10 p-2 ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={session.dogPhoto}
+                  alt="Coach dashboard"
+                  className="h-full w-full object-contain"
+                />
+              </Link>
+            ) : (
+              <Link
+                href="/profile"
+                aria-label={
+                  unseenReports > 0
+                    ? `${session.dogName}'s profile — ${unseenReports} new report card${unseenReports > 1 ? "s" : ""}`
+                    : `${session.dogName}'s profile`
+                }
+                className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={session.dogPhoto}
+                  alt={`${session.dogName}`}
+                  className="h-full w-full object-cover"
+                />
+                {unseenReports > 0 && (
+                  <span className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-ink bg-red-500" />
+                )}
+              </Link>
+            )
           ) : (
             <Link
               href="/login"

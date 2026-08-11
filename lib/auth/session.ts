@@ -35,6 +35,14 @@ export const SAMPLE_SESSION: Session = {
   role: "member",
 };
 
+/** Sample signed-in coach/admin. `ownerName` doubles as the coach's name. */
+export const SAMPLE_ADMIN: Session = {
+  ownerName: "Charlotte",
+  dogName: "Coach",
+  dogPhoto: "/placeholders/icon-mark.svg",
+  role: "admin",
+};
+
 function read(): Session | null {
   try {
     const raw = localStorage.getItem(KEY);

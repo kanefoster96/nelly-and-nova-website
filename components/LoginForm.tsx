@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
-import { signIn } from "@/lib/auth/session";
+import { signIn, SAMPLE_ADMIN } from "@/lib/auth/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -26,10 +26,21 @@ export function LoginForm() {
     }
     setErrors({});
     setStatus("submitting");
-    // TODO(backend): supabase.auth.signInWithPassword({ email, password }).
-    // Scaffold: sign in as the sample member and go to their profile.
-    signIn();
-    router.push("/profile");
+    // TODO(backend): supabase.auth.signInWithPassword({ email, password }), then
+    // route by role (is_staff() → /admin, otherwise /profile).
+    // Scaffold: a coach/admin email signs in as staff; anyone else as a member.
+    if (/coach|admin|charlotte/i.test(email)) {
+      signIn(SAMPLE_ADMIN);
+      router.push("/admin");
+    } else {
+      signIn();
+      router.push("/profile");
+    }
+  }
+
+  function loginAsCoach() {
+    signIn(SAMPLE_ADMIN);
+    router.push("/admin");
   }
 
   return (
@@ -73,6 +84,14 @@ export function LoginForm() {
             Create an account
           </Link>
         </p>
+        {/* Scaffold shortcut — remove once real staff auth is wired. */}
+        <button
+          type="button"
+          onClick={loginAsCoach}
+          className="text-center text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
+        >
+          Log in as coach (demo)
+        </button>
       </div>
     </div>
   );
