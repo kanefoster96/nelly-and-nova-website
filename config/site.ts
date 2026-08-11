@@ -197,6 +197,65 @@ export const walkTrainPage = {
   },
 };
 
+/** Cookie Policy page. Same block structure as the Terms page. */
+export const cookies = {
+  heading: "Cookie Policy.",
+  updated: "27 Apr 2026",
+  intro:
+    "This Cookie Policy explains how Charlotte Smallwood (“we,” “our,” or “us”) uses cookies and similar technologies on this website. It should be read alongside our [[Terms & Conditions|/terms]]. By using our website, you agree to our use of cookies as described below, except where your consent is required and not given.",
+  sections: [
+    {
+      heading: "1. What Are Cookies",
+      blocks: [
+        { p: "Cookies are small text files placed on your device when you visit a website. They are widely used to make websites work, to improve your experience, and to provide information to the site owner." },
+        { p: "Similar technologies such as local storage and pixels may also be used. In this policy, we refer to all of these as “cookies”." },
+      ],
+    },
+    {
+      heading: "2. How We Use Cookies",
+      blocks: [
+        { p: "We use cookies to keep the website working correctly, to remember your preferences, and to understand how the site is used so we can improve it. We may also use them to support bookings and payments." },
+      ],
+    },
+    {
+      heading: "3. Types of Cookies We Use",
+      blocks: [
+        { ul: [
+          "Essential cookies — required for the website and core features such as bookings and checkout to function. These cannot be switched off.",
+          "Functional cookies — remember your choices and preferences to give you a better experience.",
+          "Analytics cookies — help us understand how visitors use the site so we can improve it. These are only set with your consent.",
+          "Marketing cookies — used to measure the effectiveness of our advertising and social content. These are only set with your consent.",
+        ] },
+      ],
+    },
+    {
+      heading: "4. Third-Party Cookies",
+      blocks: [
+        { p: "Some cookies are set by third-party services we use, such as our payment and booking providers, embedded content, reviews, and social media platforms. These providers set their own cookies, which are governed by their own privacy and cookie policies." },
+      ],
+    },
+    {
+      heading: "5. Managing Your Cookies",
+      blocks: [
+        { p: "You can control and delete cookies through your browser settings at any time. Most browsers let you refuse or remove cookies, though blocking essential cookies may affect how the website works." },
+        { p: "Where required, we will ask for your consent before setting non-essential cookies, and you can change your choice at any time by contacting us or updating your browser settings." },
+      ],
+    },
+    {
+      heading: "6. Changes to This Policy",
+      blocks: [
+        { p: "We may update this Cookie Policy from time to time. Any changes will be posted on this page, and continued use of our website indicates acceptance of the revised policy." },
+      ],
+    },
+    {
+      heading: "7. Contact Us",
+      blocks: [
+        { p: "If you have any questions about how we use cookies, please contact us and we will be happy to help." },
+      ],
+    },
+  ] as { heading: string; blocks: TermsBlock[] }[],
+};
+
 /** Holidays / planned closures page. Dates are inclusive ISO (yyyy-mm-dd). */
 export const holidays = {
   heading: "Holidays.",

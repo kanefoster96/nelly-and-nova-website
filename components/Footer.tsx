@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Wordmark } from "./ui/Wordmark";
-import { MonogramBand } from "./ui/MonogramBand";
 import { socialIcons } from "./ui/Icons";
 import { socials, site } from "@/config/site";
 
@@ -37,16 +36,19 @@ export function Footer() {
           <p>
             © {site.year} {site.name}.
           </p>
-          <Link
-            href="/terms"
-            className="transition-colors hover:text-accent"
-          >
-            Terms &amp; Conditions
-          </Link>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Policies">
+            <Link href="/terms" className="transition-colors hover:text-accent">
+              Terms &amp; Conditions
+            </Link>
+            <Link href="/cookies" className="transition-colors hover:text-accent">
+              Cookie Policy
+            </Link>
+            <Link href="/holidays" className="transition-colors hover:text-accent">
+              Holidays
+            </Link>
+          </nav>
         </div>
       </div>
-
-      <MonogramBand />
     </footer>
   );
 }
