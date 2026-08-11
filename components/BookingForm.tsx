@@ -116,11 +116,22 @@ export function BookingForm() {
         setStatus("error");
         return;
       }
-      // Request sent — take them to create an account (prefilled).
+      // Request sent — take them to create an account, prefilled from the form.
       setStatus("success");
       const params = new URLSearchParams();
-      if (data.firstName) params.set("name", data.firstName);
-      if (data.email) params.set("email", data.email);
+      const prefill: Record<string, string> = {
+        name: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        dogName: data.dogName,
+        breed: data.breed,
+        age: data.age,
+      };
+      for (const [k, v] of Object.entries(prefill)) {
+        if (v?.trim()) params.set(k, v.trim());
+      }
       router.push(`/create-account?${params.toString()}`);
     } catch {
       setSubmitError("Couldn’t reach the server. Please try again.");
