@@ -122,10 +122,37 @@ export const StarIcon = (p: IconProps) => (
   </svg>
 );
 
+export const PawIcon = (p: IconProps) => (
+  <svg {...iconBase} fill="currentColor" stroke="none" {...p}>
+    <circle cx="5.6" cy="11" r="2" />
+    <circle cx="9.6" cy="7" r="2" />
+    <circle cx="14.4" cy="7" r="2" />
+    <circle cx="18.4" cy="11" r="2" />
+    <path d="M12 11.2c3 0 5.3 2.3 5.3 4.9 0 2.2-2.1 3.5-5.3 3.5s-5.3-1.3-5.3-3.5c0-2.6 2.3-4.9 5.3-4.9z" />
+  </svg>
+);
+
+export const HelpCircleIcon = (p: IconProps) => (
+  <svg {...iconBase} {...p}>
+    <circle cx="12" cy="12" r="9.5" />
+    <path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.9-2.8 2.9" />
+    <line x1="12" y1="17.4" x2="12.01" y2="17.4" />
+  </svg>
+);
+
 export const socialIcons = {
   facebook: FacebookIcon,
   instagram: InstagramIcon,
 } as const;
+
+/** Icons used by the "We understand" pain-point cards. */
+export const painIcons = {
+  paw: PawIcon,
+  help: HelpCircleIcon,
+  cross: CloseIcon,
+} as const;
+
+export type PainIconName = keyof typeof painIcons;
 
 export const benefitIcons = {
   message: MessageIcon,

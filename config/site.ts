@@ -7,6 +7,33 @@
  */
 
 export const BOOKING_HREF = "#book";
+export const CONTACT_HREF = "#contact";
+
+/** "We understand" pain points. `icon` maps to painIcons in components/ui/Icons.tsx. */
+export type PainPoint = { icon: "paw" | "help" | "cross"; title: string; body: string };
+
+export const understand = {
+  heading: "We understand.",
+  points: [
+    {
+      icon: "paw",
+      title: "Walks aren't enjoyable.",
+      body: "You get anxious or stressed taking your dog out, thinking about the challenge.",
+    },
+    {
+      icon: "help",
+      title: "Nothing seems to work.",
+      body: "You've got a cupboard full of different leads you thought might give you more control, but nothing is changing.",
+    },
+    {
+      icon: "cross",
+      title: "You're stuck.",
+      body: "You've heard conflicting advice, and now you're stuck in a loop.",
+    },
+  ] as PainPoint[],
+  footer: "Tell us what you'd like help with, and we will show you exactly how to get there.",
+  cta: "Contact Us",
+};
 
 export type NavLink = { label: string; href: string };
 
