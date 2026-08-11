@@ -197,6 +197,112 @@ export const walkTrainPage = {
   },
 };
 
+/** Privacy Policy page. Same block structure as the Terms page. */
+export const privacy = {
+  heading: "Privacy Policy.",
+  updated: "26 Apr 2026",
+  intro:
+    "This Privacy Policy explains how Nelly & Nova collects, uses, and protects personal information provided by visitors, customers, and training clients. By using our website or services, you agree to the collection and use of information in accordance with this policy.",
+  sections: [
+    {
+      heading: "What Type of Information We Collect",
+      blocks: [
+        { p: "We receive, collect, and store any information you enter on our website or provide in other ways. This may include:" },
+        { ul: [
+          "Personal details such as your name, address, email address, and contact number.",
+          "Information about your dog, including name, age, breed, behaviour history, and health information — collected only to help us tailor training sessions to your dog’s individual needs.",
+          "Information related to your bookings, purchases, or payment details (including credit or debit card information, processed securely via our payment provider).",
+          "Internet Protocol (IP) address, device information, and browsing activity for website analytics.",
+          "Communications, messages, feedback, or reviews you provide.",
+        ] },
+      ],
+    },
+    {
+      heading: "How We Collect Information",
+      blocks: [
+        { p: "We collect information when you:" },
+        { ul: [
+          "Complete a booking or purchase through our website.",
+          "Fill out a contact form, questionnaire, or sign-up form.",
+          "Provide information directly through messages, email, or in person.",
+        ] },
+        { p: "Your personal information is used only for the purposes outlined below." },
+      ],
+    },
+    {
+      heading: "Why We Collect Personal Information",
+      blocks: [
+        { p: "We collect personal and dog-related information to:" },
+        { ul: [
+          "Provide, manage, and improve our dog training services.",
+          "Understand your dog’s background, behaviour, and needs to tailor training sessions effectively.",
+          "Communicate with you regarding bookings, reports, updates, and account information.",
+          "Provide customer support and respond to enquiries.",
+          "Send important service updates or promotional messages (you can opt out at any time).",
+          "Comply with UK laws and regulations, including record keeping and tax purposes.",
+        ] },
+      ],
+    },
+    {
+      heading: "How We Store, Use, and Protect Your Information",
+      blocks: [
+        { p: "Our website is hosted on a secure platform that provides the infrastructure to deliver our products and services. Your data may be stored in secure databases and applications on servers protected by firewalls." },
+        { p: "All payment gateways we use comply with PCI-DSS standards, ensuring the secure handling of payment details." },
+        { p: "Personal and dog-related data collected for training purposes is used only by Nelly & Nova and is never shared with third parties without your consent, unless required by law." },
+      ],
+    },
+    {
+      heading: "How We Communicate With You",
+      blocks: [
+        { p: "We may contact you to:" },
+        { ul: [
+          "Confirm or update bookings and payments.",
+          "Provide training reports, homework, or progress updates.",
+          "Resolve issues, request feedback, or share important service information.",
+          "Send occasional promotional offers or updates.",
+        ] },
+        { p: "You may be contacted via email, phone, text, or post, depending on your preferred method of communication." },
+      ],
+    },
+    {
+      heading: "Cookies and Tracking Tools",
+      blocks: [
+        { p: "We only use essential cookies to operate our website effectively." },
+        { p: "You can control or delete cookies through your browser settings at any time:" },
+        { ul: [
+          "[[Cookie settings in Chrome|https://support.google.com/chrome/answer/95647]]",
+          "[[Cookie settings in Safari|https://support.apple.com/en-gb/guide/safari/sfri11471/mac]]",
+          "[[Cookie settings in Firefox|https://support.mozilla.org/en-US/kb/cookies-information-websites-store-on-your-computer]]",
+        ] },
+        { p: "To opt out of Google Analytics tracking across all websites, visit: [[tools.google.com/dlpage/gaoptout|https://tools.google.com/dlpage/gaoptout]]" },
+      ],
+    },
+    {
+      heading: "How to Withdraw Consent",
+      blocks: [
+        { p: "If you no longer want us to process your data, or if you would like to access, correct, or delete any personal information we hold, please contact us via our contact details or email us directly." },
+        { p: "We will respond within a reasonable timeframe and comply with all applicable data protection laws." },
+      ],
+    },
+    {
+      heading: "Privacy Policy Updates",
+      blocks: [
+        { p: "We reserve the right to modify this policy at any time. Updates take effect as soon as they are posted on this page." },
+        { p: "Any major changes will be clearly noted so you understand what information we collect and how we use it." },
+      ],
+    },
+    {
+      heading: "Contact Information",
+      blocks: [
+        { p: "If you have questions, requests, or concerns regarding this policy or your personal data, please contact:" },
+        { p: "Nelly & Nova" },
+        { p: "Email: [[charlotte@nellyandnova.co.uk|mailto:charlotte@nellyandnova.co.uk]]" },
+        { p: "Website: [[nellyandnova.co.uk|https://www.nellyandnova.co.uk]]" },
+      ],
+    },
+  ] as { heading: string; blocks: TermsBlock[] }[],
+};
+
 /** Cookie Policy page. Same block structure as the Terms page. */
 export const cookies = {
   heading: "Cookie Policy.",

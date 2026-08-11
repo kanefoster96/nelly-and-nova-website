@@ -40,6 +40,9 @@ export function Footer() {
             <Link href="/terms" className="transition-colors hover:text-accent">
               Terms &amp; Conditions
             </Link>
+            <Link href="/privacy" className="transition-colors hover:text-accent">
+              Privacy Policy
+            </Link>
             <Link href="/cookies" className="transition-colors hover:text-accent">
               Cookie Policy
             </Link>
