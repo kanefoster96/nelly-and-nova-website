@@ -6,11 +6,21 @@
  * questions about homework in a thread only they and staff can see.
  */
 
-export type Homework = {
+/** One drill the owner ticks off. Unnamed drills save as "Drill 1", "Drill 2"… */
+export type HomeworkDrill = {
   id: string;
-  title: string;
-  detail?: string;
+  name: string;
   done: boolean;
+};
+
+/**
+ * Homework is grouped by category (e.g. "Luring", "Marker words", "Recall").
+ * The report card is titled from its categories, and each category holds drills.
+ */
+export type HomeworkCategory = {
+  id: string;
+  name: string;
+  drills: HomeworkDrill[];
 };
 
 /** A message on a report card. Visible only to the owner and staff. */
@@ -27,10 +37,10 @@ export type ReportCard = {
   /** Which dog this card belongs to — lets a multi-dog account filter per dog. */
   dogId?: string;
   date: string; // ISO — the session date
-  focus: string; // headline, e.g. "Loose lead & recall"
+  focus: string; // title — derived from the homework categories
   summary: string; // what they worked on
   wins: string[]; // what went well
-  homework: Homework[];
+  homework: HomeworkCategory[]; // categories, each with drills
   comments: ReportComment[];
   /** Unseen by the owner → shows as a notification with a badge. */
   isNew: boolean;

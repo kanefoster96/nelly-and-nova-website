@@ -50,7 +50,10 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
       if (!e) return c;
       return {
         ...c,
-        homework: c.homework.map((h) => (h.id in e.hw ? { ...h, done: e.hw[h.id] } : h)),
+        homework: c.homework.map((cat) => ({
+          ...cat,
+          drills: cat.drills.map((d) => (d.id in e.hw ? { ...d, done: e.hw[d.id] } : d)),
+        })),
         comments: e.comments.length ? [...c.comments, ...e.comments] : c.comments,
       };
     });
@@ -116,7 +119,10 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
     <div className="space-y-4">
       {cards.map((card) => {
         const open = openCardId === card.id;
-        const remaining = card.homework.filter((h) => !h.done).length;
+        const remaining = card.homework.reduce(
+          (n, cat) => n + cat.drills.filter((d) => !d.done).length,
+          0
+        );
         return (
           <div
             key={card.id}
@@ -176,50 +182,50 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
                   </div>
                 )}
 
-                {/* Homework */}
+                {/* Homework — grouped by category, each with its drills */}
                 <div className="mt-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-accent">
                     Homework
                   </p>
-                  <ul className="mt-2 space-y-2">
-                    {card.homework.map((h) => (
-                      <li key={h.id}>
-                        <button
-                          type="button"
-                          onClick={() => toggleHw(card.id, h.id, !h.done)}
-                          disabled={isStaff}
-                          aria-pressed={h.done}
-                          className="flex w-full items-start gap-3 rounded-xl bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.05] disabled:cursor-default disabled:hover:bg-white/[0.03]"
-                        >
-                          <span
-                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                              h.done
-                                ? "border-accent bg-accent text-accent-ink"
-                                : "border-white/30"
-                            }`}
-                          >
-                            {h.done && <CheckIcon width={13} height={13} />}
-                          </span>
-                          <span className="min-w-0">
-                            <span
-                              className={`block text-sm font-medium ${
-                                h.done ? "text-paper/50 line-through" : "text-paper"
-                              }`}
-                            >
-                              {h.title}
-                            </span>
-                            {h.detail && (
-                              <span className="mt-0.5 block text-sm text-paper/60">
-                                {h.detail}
-                              </span>
-                            )}
-                          </span>
-                        </button>
-                      </li>
+                  <div className="mt-2 space-y-4">
+                    {card.homework.map((cat) => (
+                      <div key={cat.id}>
+                        <p className="mb-1.5 text-sm font-semibold text-paper">{cat.name}</p>
+                        <ul className="space-y-2">
+                          {cat.drills.map((d) => (
+                            <li key={d.id}>
+                              <button
+                                type="button"
+                                onClick={() => toggleHw(card.id, d.id, !d.done)}
+                                disabled={isStaff}
+                                aria-pressed={d.done}
+                                className="flex w-full items-start gap-3 rounded-xl bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.05] disabled:cursor-default disabled:hover:bg-white/[0.03]"
+                              >
+                                <span
+                                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                                    d.done
+                                      ? "border-accent bg-accent text-accent-ink"
+                                      : "border-white/30"
+                                  }`}
+                                >
+                                  {d.done && <CheckIcon width={13} height={13} />}
+                                </span>
+                                <span
+                                  className={`min-w-0 text-sm font-medium ${
+                                    d.done ? "text-paper/50 line-through" : "text-paper"
+                                  }`}
+                                >
+                                  {d.name}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                   {remaining === 0 && (
-                    <p className="mt-2 text-sm font-medium text-accent">
+                    <p className="mt-3 text-sm font-medium text-accent">
                       All homework complete — great work! 🐾
                     </p>
                   )}

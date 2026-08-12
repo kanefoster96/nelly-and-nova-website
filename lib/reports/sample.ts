@@ -32,7 +32,7 @@ export const sampleReportCards: ReportCard[] = [
     id: "rc3",
     dogId: "d-nova",
     date: "2026-08-06T16:30:00Z",
-    focus: "Loose lead & recall",
+    focus: "Loose lead · Recall · Settle",
     summary:
       "Nova had a brilliant day. We worked around other dogs in the park and built up her recall with distractions. She's starting to check in with the handler on her own.",
     wins: [
@@ -41,9 +41,24 @@ export const sampleReportCards: ReportCard[] = [
       "Settled calmly on the mat during lunch",
     ],
     homework: [
-      { id: "hw3a", title: "10 min loose-lead practice", detail: "On your normal route, reward every time she's at your side.", done: false },
-      { id: "hw3b", title: "3 recalls in the garden daily", detail: "Use a happy voice and a high-value treat.", done: false },
-      { id: "hw3c", title: "Place/settle for 5 mins each evening", done: false },
+      {
+        id: "rc3-loose-lead",
+        name: "Loose lead",
+        drills: [
+          { id: "rc3-ll-1", name: "10 min loose-lead practice on your route", done: false },
+          { id: "rc3-ll-2", name: "Reward every time she's at your side", done: false },
+        ],
+      },
+      {
+        id: "rc3-recall",
+        name: "Recall",
+        drills: [{ id: "rc3-rc-1", name: "3 recalls in the garden daily", done: false }],
+      },
+      {
+        id: "rc3-settle",
+        name: "Settle",
+        drills: [{ id: "rc3-st-1", name: "Place/settle for 5 mins each evening", done: false }],
+      },
     ],
     comments: [],
     isNew: true,
@@ -52,13 +67,19 @@ export const sampleReportCards: ReportCard[] = [
     id: "rc2",
     dogId: "d-nova",
     date: "2026-07-30T16:30:00Z",
-    focus: "Engagement & focus",
+    focus: "Engagement",
     summary:
       "We focused on engagement today — getting Nova to offer attention before we ask. Lots of progress with the 'watch me' cue.",
     wins: ["Offered eye contact without a cue", "Walked past the cafe without pulling"],
     homework: [
-      { id: "hw2a", title: "'Watch me' 5 reps before each meal", done: true },
-      { id: "hw2b", title: "Practice engagement on your street", detail: "Reward any check-in.", done: true },
+      {
+        id: "rc2-engagement",
+        name: "Engagement",
+        drills: [
+          { id: "rc2-en-1", name: "'Watch me' 5 reps before each meal", done: true },
+          { id: "rc2-en-2", name: "Practice engagement on your street", done: true },
+        ],
+      },
     ],
     comments: [
       {
@@ -82,11 +103,17 @@ export const sampleReportCards: ReportCard[] = [
     id: "rc1",
     dogId: "d-nova",
     date: "2026-07-23T16:30:00Z",
-    focus: "Settling in",
+    focus: "Settling",
     summary:
       "First full day! Nova travelled well and got comfortable with the routine. We kept things calm and positive.",
     wins: ["Great in the van", "Made a new dog friend"],
-    homework: [{ id: "hw1a", title: "Short settle sessions at home", done: true }],
+    homework: [
+      {
+        id: "rc1-settling",
+        name: "Settling",
+        drills: [{ id: "rc1-se-1", name: "Short settle sessions at home", done: true }],
+      },
+    ],
     comments: [],
     isNew: false,
   },
@@ -95,13 +122,24 @@ export const sampleReportCards: ReportCard[] = [
     id: "rcr2",
     dogId: "d-rex",
     date: "2026-08-04T16:30:00Z",
-    focus: "Impulse control",
+    focus: "Door manners · Leave it",
     summary:
       "Rex worked hard on waiting at thresholds and leaving food on the floor. Lots of focus once he settled in.",
     wins: ["Waited at the gate", "Left a dropped treat on cue", "Calm in the van"],
     homework: [
-      { id: "hwr2a", title: "Door manners — wait before going out", done: false },
-      { id: "hwr2b", title: "'Leave it' 5 reps daily", done: false },
+      {
+        id: "rcr2-doors",
+        name: "Door manners",
+        drills: [{ id: "rcr2-dr-1", name: "Wait before going out each time", done: false }],
+      },
+      {
+        id: "rcr2-leaveit",
+        name: "Leave it",
+        drills: [
+          { id: "rcr2-li-1", name: "'Leave it' 5 reps daily", done: false },
+          { id: "rcr2-li-2", name: "Drill 2", done: false },
+        ],
+      },
     ],
     comments: [],
     isNew: true,
@@ -110,10 +148,16 @@ export const sampleReportCards: ReportCard[] = [
     id: "rcr1",
     dogId: "d-rex",
     date: "2026-07-28T16:30:00Z",
-    focus: "Settling in",
+    focus: "Settling",
     summary: "Rex's first sessions — building routine and engagement. A confident, keen boy.",
     wins: ["Travelled well", "Offered focus for treats"],
-    homework: [{ id: "hwr1a", title: "Short engagement games at home", done: true }],
+    homework: [
+      {
+        id: "rcr1-settling",
+        name: "Settling",
+        drills: [{ id: "rcr1-se-1", name: "Short engagement games at home", done: true }],
+      },
+    ],
     comments: [],
     isNew: false,
   },

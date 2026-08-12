@@ -8,18 +8,22 @@
  * when every dog's entry is ready they're sent to the owners as the report cards
  * they read, comment on and mark homework complete (lib/reports/types.ts).
  */
-import type { Homework, ReportCard } from "./types";
+import type { HomeworkCategory, ReportCard } from "./types";
 
 export type ReportEntryStatus = "todo" | "draft" | "ready" | "sent";
+
+/** A drill as the coach types it — blank name means it saves as "Drill N". */
+export type EntryDrill = { name: string };
+/** A homework category the coach adds, e.g. "Recall", with its drills. */
+export type EntryCategory = { name: string; drills: EntryDrill[] };
 
 export type ReportEntry = {
   dogId: string;
   coach: string;
   date: string; // ISO — the session date (today)
-  focus: string; // headline the owner sees, e.g. "Loose lead & recall"
   summary: string;
   wins: string[]; // three things they did well
-  homework: string[]; // homework for the week
+  homework: EntryCategory[]; // categories (the card is titled from these)
   status: ReportEntryStatus;
 };
 
@@ -29,19 +33,25 @@ export function blankEntry(dogId: string, coach: string, date: string): ReportEn
     dogId,
     coach,
     date,
-    focus: "",
     summary: "",
     wins: ["", "", ""],
-    homework: [""],
+    homework: [{ name: "", drills: [{ name: "" }] }],
     status: "todo",
   };
 }
 
-/** Has the coach filled in enough to send? (summary + at least one win.) */
+/** The card's title — the names of its homework categories. */
+export function entryTitle(entry: ReportEntry): string {
+  const names = entry.homework.map((c) => c.name.trim()).filter(Boolean);
+  return names.join(" · ");
+}
+
+/** Enough to send? A summary, a win, and at least one named category. */
 export function isComplete(entry: ReportEntry): boolean {
   return (
     entry.summary.trim().length > 0 &&
-    entry.wins.some((w) => w.trim().length > 0)
+    entry.wins.some((w) => w.trim().length > 0) &&
+    entry.homework.some((c) => c.name.trim().length > 0)
   );
 }
 
@@ -53,17 +63,26 @@ export function isComplete(entry: ReportEntry): boolean {
 export function entryToReportCard(entry: ReportEntry): ReportCard {
   const id = `sent-${entry.dogId}-${entry.date.slice(0, 10)}`;
   const wins = entry.wins.map((w) => w.trim()).filter(Boolean);
-  const homework: Homework[] = entry.homework
-    .map((h) => h.trim())
-    .filter(Boolean)
-    .map((title, i) => ({ id: `${id}-hw${i}`, title, done: false }));
+  // Keep only named categories; within each, every drill is kept — an unnamed
+  // one saves as "Drill 1", "Drill 2"… in order.
+  const homework: HomeworkCategory[] = entry.homework
+    .filter((c) => c.name.trim())
+    .map((c, ci) => ({
+      id: `${id}-cat${ci}`,
+      name: c.name.trim(),
+      drills: c.drills.map((d, di) => ({
+        id: `${id}-cat${ci}-d${di}`,
+        name: d.name.trim() || `Drill ${di + 1}`,
+        done: false,
+      })),
+    }));
 
   return {
     id,
     dogId: entry.dogId,
     date: entry.date,
-    // A headline is required; fall back to the first win, then a default.
-    focus: entry.focus.trim() || wins[0] || "Training session",
+    // Titled from the categories; fall back to the first win, then a default.
+    focus: entryTitle(entry) || wins[0] || "Training session",
     summary: entry.summary.trim(),
     wins,
     homework,

@@ -21,6 +21,7 @@ import {
   isComplete,
   saveReportEntry,
   type ReportEntryStatus,
+  type EntryCategory,
 } from "@/lib/reports/entry";
 import { sendReportCards } from "@/lib/reports/data";
 import { sendToOutbox } from "@/lib/reports/outbox";
@@ -36,18 +37,16 @@ import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 
 type Form = {
-  focus: string;
   summary: string;
   wins: string[];
-  homework: string[];
+  homework: EntryCategory[];
   status: ReportEntryStatus;
 };
 
 const blankForm = (): Form => ({
-  focus: "",
   summary: "",
   wins: ["", "", ""],
-  homework: [""],
+  homework: [{ name: "", drills: [{ name: "" }] }],
   status: "todo",
 });
 
@@ -426,6 +425,33 @@ function ReportEntryModal({
   const inputCls =
     "w-full rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
 
+  // The card's title is the names of its homework categories.
+  const titlePreview = form.homework.map((c) => c.name.trim()).filter(Boolean).join(" · ");
+  const updateCat = (ci: number, patch: Partial<EntryCategory>) =>
+    onChange({ homework: form.homework.map((c, i) => (i === ci ? { ...c, ...patch } : c)) });
+  const setDrill = (ci: number, di: number, name: string) =>
+    onChange({
+      homework: form.homework.map((c, i) =>
+        i === ci ? { ...c, drills: c.drills.map((d, j) => (j === di ? { name } : d)) } : c
+      ),
+    });
+  const addDrill = (ci: number) =>
+    onChange({
+      homework: form.homework.map((c, i) =>
+        i === ci ? { ...c, drills: [...c.drills, { name: "" }] } : c
+      ),
+    });
+  const removeDrill = (ci: number, di: number) =>
+    onChange({
+      homework: form.homework.map((c, i) =>
+        i === ci ? { ...c, drills: c.drills.filter((_, j) => j !== di) } : c
+      ),
+    });
+  const removeCat = (ci: number) =>
+    onChange({ homework: form.homework.filter((_, j) => j !== ci) });
+  const addCat = () =>
+    onChange({ homework: [...form.homework, { name: "", drills: [{ name: "" }] }] });
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
       <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-ink ring-1 ring-white/15 sm:rounded-3xl">
@@ -452,17 +478,18 @@ function ReportEntryModal({
         </div>
 
         <div className="grid gap-5 px-5 py-5">
-          {/* Headline — the card title the owner sees. */}
+          {/* Title — set automatically from the homework categories below. */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-paper/90">
-              Headline
+              Title
             </label>
-            <input
-              value={form.focus}
-              onChange={(e) => onChange({ focus: e.target.value })}
-              placeholder="e.g. Loose lead &amp; recall"
-              className={inputCls}
-            />
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm">
+              {titlePreview ? (
+                <span className="text-paper">{titlePreview}</span>
+              ) : (
+                <span className="text-paper-dim">Set from your homework categories below</span>
+              )}
+            </div>
           </div>
 
           {/* 1. Summary */}
@@ -501,45 +528,74 @@ function ReportEntryModal({
             </div>
           </div>
 
-          {/* 3. Homework */}
+          {/* 3. Homework — categories, each with drills. The card is titled
+              from the category names; unnamed drills save as "Drill 1", "Drill 2". */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-paper/90">
-              3 · Homework for the week
+            <label className="mb-1 block text-sm font-medium text-paper/90">
+              3 · Homework
             </label>
-            <div className="grid gap-2">
-              {form.homework.map((h, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={h}
-                    onChange={(e) => {
-                      const homework = [...form.homework];
-                      homework[i] = e.target.value;
-                      onChange({ homework });
-                    }}
-                    placeholder={`Homework ${i + 1}`}
-                    className={inputCls}
-                  />
-                  {form.homework.length > 1 && (
+            <p className="mb-2 text-xs text-paper-dim">
+              Add a category (e.g. Luring, Marker words, Recall), then drills under it.
+            </p>
+            <div className="grid gap-3">
+              {form.homework.map((cat, ci) => (
+                <div key={ci} className="rounded-xl bg-white/[0.03] p-3 ring-1 ring-white/10">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={cat.name}
+                      onChange={(e) => updateCat(ci, { name: e.target.value })}
+                      placeholder={`Category ${ci + 1} · e.g. Recall`}
+                      className={`${inputCls} font-medium`}
+                    />
+                    {form.homework.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeCat(ci)}
+                        aria-label="Remove category"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
+                      >
+                        <CloseIcon width={16} height={16} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 grid gap-2 border-l border-white/10 pl-3">
+                    {cat.drills.map((d, di) => (
+                      <div key={di} className="flex items-center gap-2">
+                        <input
+                          value={d.name}
+                          onChange={(e) => setDrill(ci, di, e.target.value)}
+                          placeholder={`Drill ${di + 1}`}
+                          className={inputCls}
+                        />
+                        {cat.drills.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeDrill(ci, di)}
+                            aria-label="Remove drill"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
+                          >
+                            <CloseIcon width={14} height={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                     <button
                       type="button"
-                      onClick={() =>
-                        onChange({ homework: form.homework.filter((_, j) => j !== i) })
-                      }
-                      aria-label="Remove homework"
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
+                      onClick={() => addDrill(ci)}
+                      className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-accent"
                     >
-                      <CloseIcon width={16} height={16} />
+                      <PlusIcon width={14} height={14} /> Add drill
                     </button>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
             <button
               type="button"
-              onClick={() => onChange({ homework: [...form.homework, ""] })}
+              onClick={addCat}
               className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent"
             >
-              <PlusIcon width={16} height={16} /> Add homework
+              <PlusIcon width={16} height={16} /> Add category
             </button>
           </div>
         </div>
