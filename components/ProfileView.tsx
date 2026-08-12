@@ -14,7 +14,6 @@ import { useHomeworkProgress } from "@/lib/reports/progress";
 import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
 import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
 import { HolidayReminder } from "./profile/HolidayReminder";
-import { HomeworkSummary } from "./profile/HomeworkSummary";
 import { LatestCommunityPost } from "./profile/LatestCommunityPost";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
@@ -107,28 +106,6 @@ export function ProfileView({
         )}
       </div>
 
-      {/* Dog switcher — a half-size avatar per other dog on the account. */}
-      {otherDogs.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-start gap-4">
-          {otherDogs.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => setActiveDog(d.id)}
-              className="group flex w-16 flex-col items-center gap-1 text-center"
-            >
-              <span className="h-11 w-11 overflow-hidden rounded-full opacity-80 ring-1 ring-white/25 transition group-hover:opacity-100 group-hover:ring-accent">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={d.photo} alt={d.name} className="h-full w-full object-cover" />
-              </span>
-              <span className="text-[11px] leading-tight text-paper-dim group-hover:text-paper">
-                Switch to {d.name}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Report card button — badged when a new card is waiting. */}
       <Link
         href="/profile/reports"
@@ -142,9 +119,6 @@ export function ProfileView({
           </span>
         )}
       </Link>
-
-      {/* Missed-homework nudge (the % itself lives in the header stats) */}
-      <HomeworkSummary percent={homeworkPercent} />
 
       {/* Holiday reminder — session-off notice, or a heads-up a week before */}
       <HolidayReminder
@@ -238,6 +212,34 @@ export function ProfileView({
           </p>
         </div>
       </div>
+
+      {/* Dog switcher — other dogs on the account, grouped with account controls. */}
+      {otherDogs.length > 0 && (
+        <div className="mt-10">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+            Your other dogs
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {otherDogs.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setActiveDog(d.id)}
+                className="group flex flex-1 items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-white/35"
+              >
+                <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/25 transition group-hover:ring-accent">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={d.photo} alt={d.name} className="h-full w-full object-cover" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-paper">{d.name}</span>
+                  <span className="block text-xs text-paper-dim">Switch to this profile</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Account holder information */}
       <div className="mt-10">
