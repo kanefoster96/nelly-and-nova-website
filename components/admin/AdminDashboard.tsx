@@ -23,7 +23,8 @@ import {
 } from "@/lib/reports/entry";
 import { sendReportCards } from "@/lib/reports/data";
 import { sendToOutbox } from "@/lib/reports/outbox";
-import type { ScheduledDog } from "@/lib/schedule/types";
+import { SessionCalendar } from "./SessionCalendar";
+import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 
 type Form = {
   focus: string;
@@ -58,10 +59,12 @@ export function AdminDashboard({
   todayLabel,
   todayISO,
   dogs,
+  week,
 }: {
   todayLabel: string;
   todayISO: string;
   dogs: ScheduledDog[];
+  week: DaySchedule[];
 }) {
   const session = useSession();
   const router = useRouter();
@@ -214,6 +217,14 @@ export function AdminDashboard({
             {sent && <span className="text-sm font-medium text-emerald-300">Sent to owners ✓</span>}
           </div>
         )}
+      </section>
+
+      {/* Calendar — browse any day and move a dog's session as a one-off */}
+      <section className="mt-10">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          Calendar
+        </h2>
+        <SessionCalendar todayISO={todayISO} week={week} />
       </section>
 
       {/* Navigation cards */}

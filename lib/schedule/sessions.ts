@@ -8,8 +8,9 @@
  * Pure + deterministic: pass `todayISO` in (computed once on the server) so the
  * same input always yields the same list — safe to run on server or client.
  */
-import type { Cadence, DayId, DaySchedule } from "./types";
-import { DAYS, dayLabel, spacesLeft } from "./types";
+import type { Cadence, DayId, DaySchedule, ScheduledDog } from "./types";
+import { DAYS, dayIdFromDate, dayLabel, spacesLeft } from "./types";
+import type { RescheduleRequest } from "@/lib/reschedule/types";
 
 export type SessionDate = { date: string; day: DayId }; // date = YYYY-MM-DD
 
@@ -69,4 +70,100 @@ export function dateForDayInWeek(sessionISO: string, day: DayId): string {
   const diff = JS_DAY[day] - base.getUTCDay();
   base.setUTCDate(base.getUTCDate() + diff);
   return base.toISOString().slice(0, 10);
+}
+
+export function dayIdFromISO(iso: string): DayId {
+  return dayIdFromDate(new Date(`${iso}T00:00:00Z`));
+}
+
+// --- calendar (month grid) ------------------------------------------------
+
+export type CalendarCell = { iso: string; day: number; inMonth: boolean; dayId: DayId };
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function monthName(year: number, month: number): string {
+  return `${MONTHS[month]} ${year}`;
+}
+
+/** Weeks (Mon–Sun) of dates covering `month`, with leading/trailing days. */
+export function monthGrid(year: number, month: number): CalendarCell[][] {
+  const first = new Date(Date.UTC(year, month, 1));
+  const lead = (first.getUTCDay() + 6) % 7; // days before the 1st (Mon=0)
+  const gridStart = new Date(Date.UTC(year, month, 1 - lead));
+  const weeks: CalendarCell[][] = [];
+  const cur = new Date(gridStart);
+  for (let w = 0; w < 6; w++) {
+    const week: CalendarCell[] = [];
+    for (let i = 0; i < 7; i++) {
+      week.push({
+        iso: cur.toISOString().slice(0, 10),
+        day: cur.getUTCDate(),
+        inMonth: cur.getUTCMonth() === month,
+        dayId: dayIdFromDate(cur),
+      });
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    weeks.push(week);
+    // Stop after we've covered the month (avoid a trailing all-next-month row).
+    if (cur.getUTCMonth() !== month && week.some((c) => c.inMonth) === false && w >= 4) break;
+  }
+  return weeks;
+}
+
+// --- dogs on a specific date (recurring + one-off moves) ------------------
+
+export type DogOnDate = { dog: ScheduledDog; movedInFrom?: string };
+
+const approvedMoves = (reschedules: RescheduleRequest[]) =>
+  reschedules.filter((r) => r.status === "approved");
+
+/**
+ * The dogs training on `dateISO`: the recurring dogs for that weekday, minus any
+ * moved away that day, plus any moved onto it. (Alternating-week parity is
+ * simplified — every matching weekday is treated as a session.)
+ */
+export function dogsForDate(
+  dateISO: string,
+  week: DaySchedule[],
+  reschedules: RescheduleRequest[]
+): DogOnDate[] {
+  const day = dayIdFromISO(dateISO);
+  const base = week.find((d) => d.day === day)?.dogs ?? [];
+  const moves = approvedMoves(reschedules);
+  const movedAway = new Set(moves.filter((r) => r.sessionDate === dateISO).map((r) => r.dogId));
+  const dogById = new Map(week.flatMap((d) => d.dogs).map((dg) => [dg.id, dg]));
+
+  const staying: DogOnDate[] = base.filter((dg) => !movedAway.has(dg.id)).map((dog) => ({ dog }));
+  const movedIn: DogOnDate[] = moves
+    .filter((r) => r.toDate === dateISO)
+    .map((r) => ({
+      dog:
+        dogById.get(r.dogId) ??
+        ({
+          id: r.dogId,
+          name: r.dogName,
+          ownerName: r.ownerName,
+          photo: "/placeholders/dog-avatar-01.svg",
+          cadence: "weekly",
+          status: "permanent",
+        } as ScheduledDog),
+      movedInFrom: r.sessionDate,
+    }));
+
+  return [...staying, ...movedIn];
+}
+
+export function spacesOnDate(
+  dateISO: string,
+  week: DaySchedule[],
+  reschedules: RescheduleRequest[]
+): number {
+  const day = dayIdFromISO(dateISO);
+  const daySched = week.find((d) => d.day === day);
+  if (!daySched || daySched.capacity === 0) return 0;
+  return Math.max(0, daySched.capacity - dogsForDate(dateISO, week, reschedules).length);
 }

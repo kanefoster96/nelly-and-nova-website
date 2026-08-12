@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
-import { getDaySchedule } from "@/lib/schedule/data";
+import { getDaySchedule, getWeekSchedule } from "@/lib/schedule/data";
 import { dayIdFromDate, dayLabel } from "@/lib/schedule/types";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default async function AdminPage() {
   // "Today" is computed on the server so the client renders deterministically.
   const now = new Date();
   const todayId = dayIdFromDate(now);
-  const today = await getDaySchedule(todayId);
+  const [today, week] = await Promise.all([getDaySchedule(todayId), getWeekSchedule()]);
   const todayISO = now.toISOString();
 
   return (
@@ -30,6 +30,7 @@ export default async function AdminPage() {
               todayLabel={dayLabel(todayId)}
               todayISO={todayISO}
               dogs={today.dogs}
+              week={week}
             />
           </div>
         </section>

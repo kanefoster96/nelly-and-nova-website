@@ -11,6 +11,7 @@
 import { useSyncExternalStore } from "react";
 import { submitReschedule, decideReschedule } from "./data";
 import type { RescheduleRequest, RescheduleStatus } from "./types";
+import type { DayId } from "@/lib/schedule/types";
 
 const EMPTY: RescheduleRequest[] = [];
 const KEY = "nn-reschedule";
@@ -31,6 +32,37 @@ function write(list: RescheduleRequest[]) {
 
 /** Member submits a request (upserts by session — one pending move per session). */
 export function createReschedule(req: RescheduleRequest) {
+  const list = read().filter((r) => !(r.dogId === req.dogId && r.sessionDate === req.sessionDate));
+  write([req, ...list]);
+  void submitReschedule(req);
+}
+
+/**
+ * Coach one-off move from the calendar — records an already-approved move so it
+ * shows on the member's sessions and the day view immediately (no request step).
+ */
+export function moveSession(move: {
+  dogId: string;
+  dogName: string;
+  ownerName: string;
+  fromDate: string;
+  fromDay: DayId;
+  toDate: string;
+  toDay: DayId;
+}) {
+  const req: RescheduleRequest = {
+    id: `mv-${move.dogId}-${move.fromDate}`,
+    dogId: move.dogId,
+    dogName: move.dogName,
+    ownerName: move.ownerName,
+    sessionDate: move.fromDate,
+    fromDay: move.fromDay,
+    toDay: move.toDay,
+    toDate: move.toDate,
+    note: "Moved by coach",
+    status: "approved",
+    createdAt: new Date().toISOString(),
+  };
   const list = read().filter((r) => !(r.dogId === req.dogId && r.sessionDate === req.sessionDate));
   write([req, ...list]);
   void submitReschedule(req);
