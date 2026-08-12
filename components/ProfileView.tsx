@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
-import { useSession, signOut } from "@/lib/auth/session";
+import { useSession, signOut, setActiveDog } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
+import { accountDogProfile } from "@/lib/dogs/account";
 import { HolidayReminder } from "./profile/HolidayReminder";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
@@ -27,7 +28,7 @@ export function ProfileView({
   sessionLabel?: string;
 }) {
   const session = useSession();
-  const unseen = useUnseenReportCount();
+  const unseen = useUnseenReportCount(session?.dogId);
   const router = useRouter();
 
   function logout() {
@@ -53,8 +54,11 @@ export function ProfileView({
     );
   }
 
-  const name = session.dogName || profile.name;
-  const photo = session.dogPhoto || profile.photo;
+  // The account can hold several dogs; show the active one, and offer a switch.
+  const active = accountDogProfile(session.dogId, profile);
+  const name = session.dogName || active.name;
+  const photo = session.dogPhoto || active.photo;
+  const otherDogs = (session.dogs ?? []).filter((d) => d.id !== session.dogId);
 
   return (
     <div>
@@ -65,18 +69,40 @@ export function ProfileView({
           <img src={photo} alt={name} className="h-full w-full object-cover" />
         </span>
         <div className="flex flex-1 items-center justify-around">
-          <Stat value={profile.age} label="Age" />
-          <Stat value={profile.sessions} label="Sessions" />
-          <Stat value={profile.level} label="Level" />
+          <Stat value={active.age} label="Age" />
+          <Stat value={active.sessions} label="Sessions" />
+          <Stat value={active.level} label="Level" />
         </div>
       </div>
 
       <div className="mt-4">
         <h1 className="display-heading text-2xl text-paper">{name}</h1>
-        {profile.breed && (
-          <p className="mt-0.5 text-sm text-paper/70">{profile.breed}</p>
+        {active.breed && (
+          <p className="mt-0.5 text-sm text-paper/70">{active.breed}</p>
         )}
       </div>
+
+      {/* Dog switcher — a half-size avatar per other dog on the account. */}
+      {otherDogs.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-start gap-4">
+          {otherDogs.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => setActiveDog(d.id)}
+              className="group flex w-16 flex-col items-center gap-1 text-center"
+            >
+              <span className="h-11 w-11 overflow-hidden rounded-full opacity-80 ring-1 ring-white/25 transition group-hover:opacity-100 group-hover:ring-accent">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={d.photo} alt={d.name} className="h-full w-full object-cover" />
+              </span>
+              <span className="text-[11px] leading-tight text-paper-dim group-hover:text-paper">
+                Switch to {d.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Report card button — badged when a new card is waiting. */}
       <Link
@@ -94,8 +120,8 @@ export function ProfileView({
 
       {/* Holiday reminder — session-off notice, or a heads-up a week before */}
       <HolidayReminder
-        dayId={profile.plan?.dayId}
-        cadence={profile.plan?.cadence}
+        dayId={active.plan?.dayId}
+        cadence={active.plan?.cadence}
         dogName={name}
       />
 
@@ -106,7 +132,7 @@ export function ProfileView({
           <p className="text-sm text-paper/85">
             <span className="font-semibold text-paper">{weather.label}</span> for{" "}
             {sessionLabel || "your next session"} — remember to pack a coat for{" "}
-            {profile.name}. {weather.emoji}
+            {name}. {weather.emoji}
           </p>
         </div>
       )}
@@ -116,7 +142,7 @@ export function ProfileView({
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
           Training plan
         </h2>
-        {profile.plan ? (
+        {active.plan ? (
           <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
@@ -124,10 +150,10 @@ export function ProfileView({
               </span>
               <div>
                 <p className="font-semibold text-paper">
-                  {profile.plan.service} · {profile.plan.day}
+                  {active.plan.service} · {active.plan.day}
                 </p>
-                {profile.plan.note && (
-                  <p className="mt-1 text-sm text-paper/70">{profile.plan.note}</p>
+                {active.plan.note && (
+                  <p className="mt-1 text-sm text-paper/70">{active.plan.note}</p>
                 )}
               </div>
             </div>
@@ -159,7 +185,7 @@ export function ProfileView({
         </h2>
         <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
           <div className="space-y-3">
-            {profile.skills.map((s) => (
+            {active.skills.map((s) => (
               <div key={s.label}>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-paper/80">{s.label}</span>

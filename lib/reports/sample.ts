@@ -30,6 +30,7 @@ export const sampleDog: DogProfile = {
 export const sampleReportCards: ReportCard[] = [
   {
     id: "rc3",
+    dogId: "d-nova",
     date: "2026-08-06T16:30:00Z",
     focus: "Loose lead & recall",
     summary:
@@ -49,6 +50,7 @@ export const sampleReportCards: ReportCard[] = [
   },
   {
     id: "rc2",
+    dogId: "d-nova",
     date: "2026-07-30T16:30:00Z",
     focus: "Engagement & focus",
     summary:
@@ -78,6 +80,7 @@ export const sampleReportCards: ReportCard[] = [
   },
   {
     id: "rc1",
+    dogId: "d-nova",
     date: "2026-07-23T16:30:00Z",
     focus: "Settling in",
     summary:
@@ -87,9 +90,41 @@ export const sampleReportCards: ReportCard[] = [
     comments: [],
     isNew: false,
   },
+  // Rex — the account's second dog, with his own cards.
+  {
+    id: "rcr2",
+    dogId: "d-rex",
+    date: "2026-08-04T16:30:00Z",
+    focus: "Impulse control",
+    summary:
+      "Rex worked hard on waiting at thresholds and leaving food on the floor. Lots of focus once he settled in.",
+    wins: ["Waited at the gate", "Left a dropped treat on cue", "Calm in the van"],
+    homework: [
+      { id: "hwr2a", title: "Door manners — wait before going out", done: false },
+      { id: "hwr2b", title: "'Leave it' 5 reps daily", done: false },
+    ],
+    comments: [],
+    isNew: true,
+  },
+  {
+    id: "rcr1",
+    dogId: "d-rex",
+    date: "2026-07-28T16:30:00Z",
+    focus: "Settling in",
+    summary: "Rex's first sessions — building routine and engagement. A confident, keen boy.",
+    wins: ["Travelled well", "Offered focus for treats"],
+    homework: [{ id: "hwr1a", title: "Short engagement games at home", done: true }],
+    comments: [],
+    isNew: false,
+  },
 ];
 
 /** Report cards the owner hasn't seen yet — drives the header notification dot. */
 export const newReportIds = sampleReportCards
   .filter((r) => r.isNew)
   .map((r) => r.id);
+
+/** New-card ids for one dog — drives the per-dog badge on the profile. */
+export function newReportIdsForDog(dogId: string): string[] {
+  return sampleReportCards.filter((r) => r.isNew && r.dogId === dogId).map((r) => r.id);
+}

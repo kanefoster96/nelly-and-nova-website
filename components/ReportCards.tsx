@@ -36,10 +36,16 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
 
   // Base list: sample cards plus any a coach has just sent (scaffold outbox),
   // newest first. Then apply the owner's local edits over the top.
+  const activeDogId = session?.dogId;
   const cards = useMemo(() => {
     const byId = new Map<string, ReportCard>();
     for (const c of [...outbox, ...initial]) if (!byId.has(c.id)) byId.set(c.id, c);
-    return [...byId.values()].sort(byDateDesc).map((c) => {
+    // A member sees only the active dog's cards (untagged cards show for all);
+    // staff (admin) see every dog's cards.
+    const list = [...byId.values()].filter(
+      (c) => isStaff || !activeDogId || !c.dogId || c.dogId === activeDogId
+    );
+    return list.sort(byDateDesc).map((c) => {
       const e = edits[c.id];
       if (!e) return c;
       return {
@@ -48,7 +54,7 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
         comments: e.comments.length ? [...c.comments, ...e.comments] : c.comments,
       };
     });
-  }, [outbox, initial, edits]);
+  }, [outbox, initial, edits, isStaff, activeDogId]);
 
   const openCardId = openId === undefined ? cards[0]?.id ?? null : openId;
 

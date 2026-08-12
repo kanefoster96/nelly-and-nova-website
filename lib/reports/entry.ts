@@ -60,6 +60,7 @@ export function entryToReportCard(entry: ReportEntry): ReportCard {
 
   return {
     id,
+    dogId: entry.dogId,
     date: entry.date,
     // A headline is required; fall back to the first win, then a default.
     focus: entry.focus.trim() || wins[0] || "Training session",

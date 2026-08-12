@@ -35,10 +35,11 @@ export function sendToOutbox(cards: ReportCard[]) {
   window.dispatchEvent(new Event(OUTBOX_EVENT));
 }
 
-/** Ids of sent cards still marked new — feeds the unseen badge count. */
-export function readOutboxNewIds(): string[] {
+/** Ids of sent cards still marked new — feeds the unseen badge count.
+ *  Pass a dogId to count only that dog's cards. */
+export function readOutboxNewIds(dogId?: string): string[] {
   return read()
-    .filter((c) => c.isNew)
+    .filter((c) => c.isNew && (!dogId || c.dogId === dogId))
     .map((c) => c.id);
 }
 

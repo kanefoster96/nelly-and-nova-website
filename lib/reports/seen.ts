@@ -9,8 +9,8 @@
  * so a newly published card lights the badge live.
  */
 import { useSyncExternalStore } from "react";
-import { newReportIds } from "./sample";
-import { OUTBOX_EVENT, OUTBOX_KEY, readOutboxNewIds } from "./outbox";
+import { newReportIds, newReportIdsForDog } from "./sample";
+import { OUTBOX_EVENT, readOutboxNewIds } from "./outbox";
 
 const KEY = "nn-reports-seen";
 const EVENT = "nn-reports-seen-change";
@@ -30,10 +30,6 @@ export function markReportsSeen(ids: string[]) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-let cache = 0;
-// `undefined` = not yet computed (distinct from localStorage's string | null).
-let cacheRaw: string | null | undefined = undefined;
-
 function subscribe(cb: () => void) {
   window.addEventListener(EVENT, cb);
   window.addEventListener(OUTBOX_EVENT, cb);
@@ -45,31 +41,25 @@ function subscribe(cb: () => void) {
   };
 }
 
-function getSnapshot(): number {
-  // Recompute when either the seen set or the sent-cards outbox changes.
-  const raw = (() => {
-    try {
-      return `${localStorage.getItem(KEY)}|${localStorage.getItem(OUTBOX_KEY)}`;
-    } catch {
-      return null;
-    }
-  })();
-  if (raw !== cacheRaw) {
-    cacheRaw = raw;
-    const seen = new Set(readSeen());
-    // Sample "new" cards plus any freshly-sent ones the owner hasn't seen.
-    const newIds = [...newReportIds, ...readOutboxNewIds()];
-    cache = newIds.filter((id) => !seen.has(id)).length;
+/** Count unseen cards — for one dog if `dogId` is given, else across the account. */
+function computeUnseen(dogId?: string): number {
+  let seen: Set<string>;
+  try {
+    seen = new Set(readSeen());
+  } catch {
+    seen = new Set();
   }
-  return cache;
+  // Sample "new" cards plus any freshly-sent ones the owner hasn't seen.
+  const sampleNew = dogId ? newReportIdsForDog(dogId) : newReportIds;
+  const newIds = [...sampleNew, ...readOutboxNewIds(dogId)];
+  return newIds.filter((id) => !seen.has(id)).length;
 }
 
-/** Server (and first hydration render) show no badge; it lights after mount. */
-function getServerSnapshot(): number {
-  return 0;
-}
-
-/** Number of unseen report cards. */
-export function useUnseenReportCount(): number {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+/** Number of unseen report cards (the snapshot is a stable-by-value number). */
+export function useUnseenReportCount(dogId?: string): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => computeUnseen(dogId),
+    () => 0
+  );
 }

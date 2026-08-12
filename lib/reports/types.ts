@@ -24,6 +24,8 @@ export type ReportComment = {
 
 export type ReportCard = {
   id: string;
+  /** Which dog this card belongs to — lets a multi-dog account filter per dog. */
+  dogId?: string;
   date: string; // ISO — the session date
   focus: string; // headline, e.g. "Loose lead & recall"
   summary: string; // what they worked on

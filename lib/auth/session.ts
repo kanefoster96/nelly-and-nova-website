@@ -16,6 +16,9 @@ import { useSyncExternalStore } from "react";
 
 export type Role = "member" | "admin";
 
+/** One dog on the account (the profile can switch between them). */
+export type SessionDog = { id: string; name: string; photo: string };
+
 export type Session = {
   ownerName: string;
   dogName: string;
@@ -23,6 +26,8 @@ export type Session = {
   dogPhoto: string;
   /** The dog's id — links the account to its onboarding record + schedule slot. */
   dogId?: string;
+  /** All dogs on the account. The active one is mirrored into dogName/Photo/Id. */
+  dogs?: SessionDog[];
   role: Role;
 };
 
@@ -35,6 +40,11 @@ export const SAMPLE_SESSION: Session = {
   dogName: "Nova",
   dogPhoto: "/placeholders/dog-avatar-01.svg",
   dogId: "d-nova",
+  // A two-dog account so the profile's dog-switcher is demonstrable.
+  dogs: [
+    { id: "d-nova", name: "Nova", photo: "/placeholders/dog-avatar-01.svg" },
+    { id: "d-rex", name: "Rex", photo: "/placeholders/dog-avatar-02.svg" },
+  ],
   role: "member",
 };
 
@@ -62,6 +72,18 @@ export function signIn(session: Session = SAMPLE_SESSION) {
 
 export function signOut() {
   localStorage.removeItem(KEY);
+  window.dispatchEvent(new Event(EVENT));
+}
+
+/** Switch the account's active dog — mirrors it into dogName/dogPhoto/dogId. */
+export function setActiveDog(dogId: string) {
+  const s = read();
+  const dog = s?.dogs?.find((d) => d.id === dogId);
+  if (!s || !dog) return;
+  localStorage.setItem(
+    KEY,
+    JSON.stringify({ ...s, dogId: dog.id, dogName: dog.name, dogPhoto: dog.photo })
+  );
   window.dispatchEvent(new Event(EVENT));
 }
 
