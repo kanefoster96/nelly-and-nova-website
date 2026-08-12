@@ -118,7 +118,10 @@ export function WaiverForm() {
         req("country"); req("address"); req("city"); req("postcode");
         break;
       case 2: // Dog basics
-        req("dogName"); req("breed"); req("age"); req("gender"); req("microchip");
+        req("dogName"); req("breed"); req("dob"); req("gender"); req("microchip");
+        if (data.dob && data.dob > new Date().toISOString().slice(0, 10)) {
+          e.dob = "Date of birth can't be in the future.";
+        }
         break;
       case 3: // Vaccinations
         if (!data.vaccFile) e.vaccFile = "Please upload the vaccination record.";
@@ -467,7 +470,7 @@ function DogBasicsStep({ data, set, errors }: { data: WaiverData; set: SetFn; er
       <Field label="Full Name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
-        <Field label="Age" name="age" required value={data.age} onChange={set("age")} error={errors.age} placeholder="e.g. 2 yrs" />
+        <Field label="Date of birth" name="dob" type="date" required value={data.dob} onChange={set("dob")} error={errors.dob} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Gender" name="gender" required value={data.gender} onChange={set("gender")} error={errors.gender} options={genderOptions} />

@@ -25,6 +25,7 @@ export type WaiverData = {
   dogName: string;
   breed: string;
   age: string;
+  dob: string; // date of birth (YYYY-MM-DD) — captured on the waiver
   gender: string;
   microchip: string;
   vaccFile: string;
@@ -48,7 +49,7 @@ export type WaiverData = {
 export const emptyWaiver: WaiverData = {
   firstName: "", lastName: "", email: "", em1Code: "+44", em1: "", em2Code: "+44", em2: "",
   country: "", address: "", city: "", postcode: "",
-  dogName: "", breed: "", age: "", gender: "", microchip: "", vaccFile: "", vaccConfirmed: false,
+  dogName: "", breed: "", age: "", dob: "", gender: "", microchip: "", vaccFile: "", vaccConfirmed: false,
   kennelCough: "", medical: "", medicalDetails: "", allergies: "", allergyDetails: "",
   vetName: "", vetCode: "+44", vetPhone: "", vetAddress: "",
   agreed: false, clientName: "", signDate: "", signature: "",
