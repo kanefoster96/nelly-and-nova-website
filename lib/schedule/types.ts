@@ -36,6 +36,8 @@ export type ScheduledDog = {
   status: SlotStatus;
   /** The recurring slot starts from this date (YYYY-MM-DD) — no sessions before it. */
   startDate?: string;
+  /** Owner's email — used for payment / session emails. */
+  email?: string;
 };
 
 export type DaySchedule = {

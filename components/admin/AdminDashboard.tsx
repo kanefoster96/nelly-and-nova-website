@@ -23,6 +23,9 @@ import {
 } from "@/lib/reports/entry";
 import { sendReportCards } from "@/lib/reports/data";
 import { sendToOutbox } from "@/lib/reports/outbox";
+import { usePayments, getStatus, retryPayment } from "@/lib/payments/store";
+import { PAYMENT_LABEL, type PaymentStatus } from "@/lib/payments/types";
+import { formatSessionDate } from "@/lib/schedule/sessions";
 import { SessionCalendar } from "./SessionCalendar";
 import { AddCustomer } from "./AddCustomer";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
@@ -84,6 +87,27 @@ export function AdminDashboard({
   );
   const [openId, setOpenId] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [payToast, setPayToast] = useState<string | null>(null);
+  const payments = usePayments();
+  const todayDate = todayISO.slice(0, 10);
+
+  function resendPayment(dog: ScheduledDog) {
+    retryPayment(dog.id, todayDate);
+    if (dog.email) {
+      void fetch("/api/payments/failed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: dog.email,
+          ownerName: dog.ownerName,
+          dogName: dog.name,
+          dateLabel: formatSessionDate(todayDate),
+        }),
+      });
+    }
+    setPayToast(`Payment request sent to ${dog.name}'s owner.`);
+    window.setTimeout(() => setPayToast(null), 3000);
+  }
 
   if (!session || session.role !== "admin") {
     return (
@@ -189,11 +213,17 @@ export function AdminDashboard({
                     <p className="truncate font-semibold text-paper">{d.name}</p>
                     <p className="truncate text-xs text-paper-dim">{d.ownerName}</p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[status]}`}
-                  >
-                    {STATUS_LABEL[status]}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <PaymentPill
+                      status={getStatus(payments, d.id, todayDate)}
+                      onResend={() => resendPayment(d)}
+                    />
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[status]}`}
+                    >
+                      {STATUS_LABEL[status]}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setOpenId(d.id)}
@@ -220,6 +250,9 @@ export function AdminDashboard({
             )}
             {sent && <span className="text-sm font-medium text-emerald-300">Sent to owners ✓</span>}
           </div>
+        )}
+        {payToast && (
+          <p className="mt-2 text-sm font-medium text-emerald-300">{payToast}</p>
         )}
       </section>
 
@@ -285,6 +318,30 @@ export function AdminDashboard({
         />
       )}
     </div>
+  );
+}
+
+const PAY_STYLE: Record<PaymentStatus, string> = {
+  paid: "bg-emerald-400/15 text-emerald-300",
+  pending: "bg-amber-400/15 text-amber-300",
+  failed: "bg-red-500/15 text-red-300",
+};
+
+/** Paid/unpaid/failed chip. Unpaid + failed are tappable to re-request payment. */
+function PaymentPill({ status, onResend }: { status: PaymentStatus; onResend: () => void }) {
+  const cls = `rounded-full px-2.5 py-1 text-xs font-semibold ${PAY_STYLE[status]}`;
+  if (status === "paid") {
+    return <span className={cls}>{PAYMENT_LABEL.paid}</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onResend}
+      title="Send payment request"
+      className={`${cls} inline-flex items-center gap-1 transition-opacity hover:opacity-80`}
+    >
+      {PAYMENT_LABEL[status]} · Chase
+    </button>
   );
 }
 

@@ -85,6 +85,40 @@ export function bookingOwnerNotification(d: {
   };
 }
 
+// --- Customer: session payment failed (please resubmit) --------------------
+
+export function paymentFailed(d: {
+  ownerName: string;
+  email: string;
+  dogName: string;
+  dateLabel: string; // e.g. "Thursday 21 August"
+  retryUrl?: string; // GoCardless resubmit link
+}): EmailMessage {
+  const name = (d.ownerName || "there").split(" ")[0];
+  const cta = d.retryUrl
+    ? `<p style="margin:18px 0;"><a href="${escape(d.retryUrl)}" style="display:inline-block;background:${ACCENT};color:#1b1b1b;text-decoration:none;font-weight:600;padding:11px 20px;border-radius:999px;">Resubmit payment</a></p>`
+    : `<p style="margin:18px 0;">Please reply to this email and we'll send you a secure link to resubmit.</p>`;
+  const html = layout("Your payment didn't go through", `
+    <p>Hi ${escape(name)},</p>
+    <p>The payment for ${escape(d.dogName || "your dog")}'s session on <strong>${escape(d.dateLabel)}</strong> didn't go through. This is usually a temporary issue with the bank.</p>
+    ${cta}
+    <p>Your session is safe for now — resubmitting keeps everything on track. Any questions, just reply.</p>
+    <p style="margin-top:20px;">Thanks,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${name},`,
+    "",
+    `The payment for ${d.dogName || "your dog"}'s session on ${d.dateLabel} didn't go through. This is usually a temporary bank issue.`,
+    "",
+    d.retryUrl ? `Resubmit payment: ${d.retryUrl}` : "Reply to this email and we'll send a secure link to resubmit.",
+    "",
+    "Your session is safe for now — resubmitting keeps everything on track.",
+    "",
+    `Thanks, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Action needed: payment for ${d.dogName || "your dog"}'s session — ${BRAND}`, html, text };
+}
+
 // --- Customer: placement confirmed (day + first start date) ----------------
 
 export function placementConfirmed(d: {

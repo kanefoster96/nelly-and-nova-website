@@ -7,6 +7,9 @@ import type { DaySchedule, ScheduledDog } from "./types";
 const av = (n: number) =>
   `/placeholders/dog-avatar-${String(n).padStart(2, "0")}.svg`;
 
+const emailFor = (name: string) =>
+  `${name.toLowerCase().replace(/[^a-z]/g, "")}@example.com`;
+
 const dog = (
   id: string,
   name: string,
@@ -20,6 +23,7 @@ const dog = (
   photo: av(n),
   cadence: "weekly",
   status: "permanent",
+  email: emailFor(name),
   ...extra,
 });
 
