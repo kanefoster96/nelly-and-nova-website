@@ -10,6 +10,9 @@ import { createClient } from "@/lib/supabase/client";
 /** Key used to hand a chosen photo from the booking form to create-account. */
 export const DOG_PHOTO_HANDOFF_KEY = "nn-dog-photo";
 
+/** Key used to hand any additional dogs from the booking form to create-account. */
+export const EXTRA_DOGS_HANDOFF_KEY = "nn-extra-dogs";
+
 /**
  * Upload a dog photo and return its public URL.
  * @param dataUrl a `data:` URL from AvatarUpload

@@ -8,7 +8,7 @@ import { bookingConfirmation, bookingOwnerNotification } from "@/lib/email/templ
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(request: Request) {
-  let d: Record<string, string>;
+  let d: Record<string, string> & { extraDogs?: unknown };
   try {
     d = await request.json();
   } catch {
@@ -36,6 +36,29 @@ export async function POST(request: Request) {
 
   const line = (k: string, v?: string) => `${k}: ${v && v.trim() ? v.trim() : "—"}`;
 
+  // Additional dogs (each captured on its own step of the booking form).
+  const extraDogs = Array.isArray(d.extraDogs)
+    ? (d.extraDogs as Record<string, string>[])
+    : [];
+  const extraDogsText = extraDogs
+    .map((dog, i) =>
+      [
+        "",
+        `— DOG ${i + 2} —`,
+        line("Name", dog.name),
+        line("Breed", dog.breed),
+        line("Gender", dog.gender),
+        line("Age", dog.age),
+        line("With other dogs", dog.withDogs),
+        line("With other people", dog.withPeople),
+        line("Needs help with", dog.needHelp),
+        line("Allergies", dog.allergies),
+        line("Lead / tools used", dog.tools),
+        line("Trusts our guidance", dog.trust),
+      ].join("\n")
+    )
+    .join("\n");
+
   const text = [
     `New meet & greet request from the ${site.name} website`,
     "",
@@ -52,7 +75,7 @@ export async function POST(request: Request) {
     line("Address", d.address),
     line("Found us via", d.findUs),
     "",
-    "— DOG —",
+    extraDogs.length ? "— DOG 1 —" : "— DOG —",
     line("Name", d.dogName),
     line("Breed", d.breed),
     line("Gender", d.gender),
@@ -63,6 +86,7 @@ export async function POST(request: Request) {
     line("Allergies", d.allergies),
     line("Lead / tools used", d.tools),
     line("Trusts our guidance", d.trust),
+    ...(extraDogsText ? [extraDogsText] : []),
   ].join("\n");
 
   // Accept the submission as an inbox request (scaffold no-op until a backend).

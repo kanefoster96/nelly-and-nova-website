@@ -8,19 +8,20 @@ import { SelectCards } from "./ui/SelectCards";
 import { AvatarUpload } from "./ui/AvatarUpload";
 import { CheckCircleIcon } from "./ui/Icons";
 import { booking, findService, priceFor } from "@/config/booking";
-import { DOG_PHOTO_HANDOFF_KEY } from "@/lib/storage/photos";
+import { DOG_PHOTO_HANDOFF_KEY, EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 
-// Short steps so each fits a phone screen without scrolling — the long "about
-// your dog" section is split into your dog / behaviour / care & handling.
-const STEPS = [
+// The owner-facing steps never repeat; only the dog steps do. Dog 1 lives in
+// the flat fields below; any additional dogs (chosen on "How many dogs?") each
+// get their own step, capturing the same details as the first.
+const BASE_STEPS = [
   "About you",
   "Choose a service",
   "Booking options",
   "Your dog",
   "Behaviour",
   "Care & handling",
-  "Meet & greet",
 ];
+const FIRST_EXTRA = BASE_STEPS.length; // index of the first additional-dog step
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 type Data = Record<string, string>;
@@ -33,9 +34,23 @@ const INITIAL: Data = {
   company: "", // honeypot
 };
 
+/** One additional dog — the same fields collected for the first dog. */
+type DogInput = {
+  name: string; breed: string; gender: string; age: string;
+  withDogs: string; withPeople: string; needHelp: string;
+  allergies: string; tools: string; trust: string;
+};
+const blankDog = (): DogInput => ({
+  name: "", breed: "", gender: "", age: "",
+  withDogs: "", withPeople: "", needHelp: "",
+  allergies: "", tools: "", trust: "",
+});
+
 export function BookingForm() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Data>(INITIAL);
+  // Additional dogs (dog 2, dog 3…). Length is kept in sync with "How many dogs?".
+  const [extraDogs, setExtraDogs] = useState<DogInput[]>([]);
   // Optional dog photo — kept out of the POST body (data URLs are large) and
   // handed to create-account via sessionStorage so it becomes the account image.
   const [photo, setPhoto] = useState<string | null>(null);
@@ -61,14 +76,56 @@ export function BookingForm() {
   };
 
   const service = findService(data.service);
-  const dogsNum = parseInt(data.dogs, 10);
+  const dogsNum = parseInt(data.dogs, 10) || 1;
   const price = priceFor(data.service, data.bookingType, dogsNum);
+
+  // Steps grow with the dog count: base steps, then one step per extra dog,
+  // then Meet & greet last.
+  const extraCount = Math.max(0, dogsNum - 1);
+  const steps = [
+    ...BASE_STEPS,
+    ...Array.from({ length: extraCount }, (_, i) => `Dog ${i + 2}`),
+    "Meet & greet",
+  ];
+  const meetStep = steps.length - 1;
+  const isExtraStep = (s: number) => s >= FIRST_EXTRA && s < meetStep;
+  const extraIndex = (s: number) => s - FIRST_EXTRA;
+
+  // Keep the additional-dog list the same length as the chosen count.
+  const onDogsChange = (value: string) => {
+    setData((d) => ({ ...d, dogs: value }));
+    setErrors((e) => (e.dogs ? { ...e, dogs: "" } : e));
+    const n = Math.max(0, (parseInt(value, 10) || 1) - 1);
+    setExtraDogs((cur) => {
+      const next = cur.slice(0, n);
+      while (next.length < n) next.push(blankDog());
+      return next;
+    });
+  };
+
+  const setExtra = (idx: number, key: keyof DogInput) => (value: string) => {
+    setExtraDogs((cur) => cur.map((d, i) => (i === idx ? { ...d, [key]: value } : d)));
+    setErrors((e) => (e[`d${idx}_${key}`] ? { ...e, [`d${idx}_${key}`]: "" } : e));
+  };
 
   function validate(s: number) {
     const e: Record<string, string> = {};
     const req = (k: string) => {
       if (!data[k]?.trim()) e[k] = "Please fill this in.";
     };
+    if (isExtraStep(s)) {
+      const idx = extraIndex(s);
+      const dog = extraDogs[idx];
+      const rq = (k: keyof DogInput) => {
+        if (!dog?.[k]?.trim()) e[`d${idx}_${k}`] = "Please fill this in.";
+      };
+      rq("name"); rq("breed"); rq("age");
+      rq("withDogs"); rq("withPeople"); rq("needHelp");
+      rq("allergies"); rq("tools");
+      if (!dog?.gender) e[`d${idx}_gender`] = "Please choose.";
+      if (!dog?.trust) e[`d${idx}_trust`] = "Please choose.";
+      return e;
+    }
     switch (s) {
       case 0: // About you
         req("firstName"); req("lastName"); req("email"); req("phone"); req("address");
@@ -100,8 +157,7 @@ export function BookingForm() {
   // lets React swap in the new step first; then we move focus to the top of
   // the form BEFORE scrolling — this clears focus from the "Next" button,
   // whose retained focus would otherwise anchor the page part-way down as the
-  // taller/shorter step renders (the "I had to scroll up myself" bug), and it
-  // announces the new step to screen readers.
+  // taller/shorter step renders, and it announces the new step to screen readers.
   const scrollTop = () =>
     requestAnimationFrame(() => {
       topRef.current?.focus({ preventScroll: true });
@@ -115,7 +171,7 @@ export function BookingForm() {
       return;
     }
     setErrors({});
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    setStep((s) => Math.min(s + 1, steps.length - 1));
     scrollTop();
   }
 
@@ -126,7 +182,7 @@ export function BookingForm() {
   }
 
   async function submit() {
-    for (let s = 0; s < STEPS.length - 1; s++) {
+    for (let s = 0; s < steps.length - 1; s++) {
       const e = validate(s);
       if (Object.keys(e).length) {
         setErrors(e);
@@ -141,7 +197,7 @@ export function BookingForm() {
       const res = await fetch("/api/booking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, extraDogs }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -151,10 +207,13 @@ export function BookingForm() {
       }
       // Request sent — take them to create an account, prefilled from the form.
       setStatus("success");
-      // Hand the chosen photo to create-account (files can't ride in the URL).
+      // Hand the chosen photo + any extra dogs to create-account (files and
+      // arrays can't ride in the URL).
       try {
         if (photo) sessionStorage.setItem(DOG_PHOTO_HANDOFF_KEY, photo);
         else sessionStorage.removeItem(DOG_PHOTO_HANDOFF_KEY);
+        if (extraDogs.length) sessionStorage.setItem(EXTRA_DOGS_HANDOFF_KEY, JSON.stringify(extraDogs));
+        else sessionStorage.removeItem(EXTRA_DOGS_HANDOFF_KEY);
       } catch {
         /* ignore */
       }
@@ -192,26 +251,28 @@ export function BookingForm() {
     );
   }
 
+  const dogNames = [data.dogName, ...extraDogs.map((d) => d.name)].filter((n) => n?.trim());
+
   return (
     <div ref={topRef} tabIndex={-1} className="outline-none">
       {/* Progress */}
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
-        Step {step + 1} of {STEPS.length}
+        Step {step + 1} of {steps.length}
       </p>
       <div
         className="mt-3 grid gap-1.5"
-        style={{ gridTemplateColumns: `repeat(${STEPS.length}, 1fr)` }}
+        style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}
         aria-hidden="true"
       >
-        {STEPS.map((label, i) => (
+        {steps.map((label, i) => (
           <div
-            key={label}
+            key={`${label}-${i}`}
             className={`h-1.5 rounded-full ${i <= step ? "bg-paper" : "bg-white/15"}`}
           />
         ))}
       </div>
       <h2 className="display-heading mt-5 text-2xl text-paper sm:text-3xl">
-        {STEPS[step]}
+        {steps[step]}
       </h2>
 
       {/* Honeypot */}
@@ -280,8 +341,14 @@ export function BookingForm() {
             )}
 
             <div>
-              <Field label="How many dogs?" name="dogs" required value={data.dogs} onChange={set("dogs")} error={errors.dogs} options={booking.dogCounts} />
+              <Field label="How many dogs?" name="dogs" required value={data.dogs} onChange={onDogsChange} error={errors.dogs} options={booking.dogCounts} />
               <p className="mt-2 text-sm text-paper-dim">{booking.copy.dogsNote}</p>
+              {dogsNum > 1 && (
+                <p className="mt-1 text-sm text-accent">
+                  You&apos;ll add {dogsNum === 2 ? "your second dog" : `each of your ${dogsNum} dogs`}
+                  &apos; details on their own step after your first.
+                </p>
+              )}
             </div>
 
             {price && (
@@ -303,11 +370,18 @@ export function BookingForm() {
 
         {step === 3 && (
           <div className="grid gap-5">
+            {dogsNum > 1 && (
+              <p className="rounded-xl bg-white/[0.04] px-4 py-2.5 text-sm text-paper/80 ring-1 ring-white/5">
+                This is your <b className="text-paper">first dog</b>. You&apos;ll add your
+                other {dogsNum === 2 ? "dog" : `${dogsNum - 1} dogs`} on the next step
+                {dogsNum === 2 ? "" : "s"} — same questions each time.
+              </p>
+            )}
             {/* Optional dog photo — becomes their account picture. */}
             <div>
               <AvatarUpload value={photo} onSelect={setPhoto} size={104} />
               <p className="mt-2 text-center text-sm text-paper-dim">
-                Add a photo of your dog{" "}
+                Add a photo of {dogsNum > 1 ? "your first dog" : "your dog"}{" "}
                 <span className="text-paper/50">(optional)</span>
               </p>
             </div>
@@ -355,7 +429,46 @@ export function BookingForm() {
           </div>
         )}
 
-        {step === 6 && (
+        {isExtraStep(step) && (() => {
+          const idx = extraIndex(step);
+          const dog = extraDogs[idx] ?? blankDog();
+          const err = (k: string) => errors[`d${idx}_${k}`];
+          return (
+            <div className="grid gap-5">
+              <p className="text-paper/70">
+                Dog {idx + 2} — the same details as your first, for their own profile.
+              </p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Dog's name" name={`d${idx}_name`} required value={dog.name} onChange={setExtra(idx, "name")} error={err("name")} />
+                <Field label="Breed" name={`d${idx}_breed`} required value={dog.breed} onChange={setExtra(idx, "breed")} error={err("breed")} />
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <p className="mb-2 block text-sm font-medium text-paper/90">
+                    Gender <span className="text-paper-dim">*</span>
+                  </p>
+                  <SelectCards ariaLabel={`Gender (dog ${idx + 2})`} options={booking.genders} value={dog.gender} onChange={setExtra(idx, "gender")} />
+                  {err("gender") && <p className="mt-1.5 text-sm text-red-400">{err("gender")}</p>}
+                </div>
+                <Field label="Age" name={`d${idx}_age`} required value={dog.age} onChange={setExtra(idx, "age")} error={err("age")} placeholder="e.g. 2 years" />
+              </div>
+              <Field label="How are they with other dogs?" name={`d${idx}_withDogs`} required textarea rows={2} value={dog.withDogs} onChange={setExtra(idx, "withDogs")} error={err("withDogs")} placeholder={booking.placeholders.withDogs} />
+              <Field label="How are they with other people?" name={`d${idx}_withPeople`} required textarea rows={2} value={dog.withPeople} onChange={setExtra(idx, "withPeople")} error={err("withPeople")} placeholder={booking.placeholders.withPeople} />
+              <Field label="What do you need help with?" name={`d${idx}_needHelp`} required textarea rows={2} value={dog.needHelp} onChange={setExtra(idx, "needHelp")} error={err("needHelp")} placeholder={booking.placeholders.needHelp} />
+              <Field label="Any allergies?" name={`d${idx}_allergies`} required value={dog.allergies} onChange={setExtra(idx, "allergies")} error={err("allergies")} placeholder={booking.placeholders.allergies} />
+              <Field label="What lead / tools do you use during walks?" name={`d${idx}_tools`} required value={dog.tools} onChange={setExtra(idx, "tools")} error={err("tools")} placeholder={booking.placeholders.tools} />
+              <div>
+                <p className="mb-2 block text-sm font-medium text-paper/90">
+                  {booking.copy.trustQuestion} <span className="text-paper-dim">*</span>
+                </p>
+                <SelectCards ariaLabel={`Trust our guidance (dog ${idx + 2})`} options={booking.yesNo} value={dog.trust} onChange={setExtra(idx, "trust")} />
+                {err("trust") && <p className="mt-1.5 text-sm text-red-400">{err("trust")}</p>}
+              </div>
+            </div>
+          );
+        })()}
+
+        {step === meetStep && (
           <div className="grid gap-4 text-paper/75">
             {booking.copy.meetGreet.map((p, i) => (
               <p key={i}>{p}</p>
@@ -366,7 +479,7 @@ export function BookingForm() {
                 {service?.label}
                 {data.bookingType && service ? ` · ${service.bookingTypes.find((b) => b.value === data.bookingType)?.label}` : ""}
                 {price ? ` · £${price.total} per ${price.unit}` : ""}
-                {data.dogName ? ` · ${data.dogName}` : ""}
+                {dogNames.length ? ` · ${dogNames.join(", ")}` : ""}
               </p>
             </div>
           </div>
@@ -388,7 +501,7 @@ export function BookingForm() {
         ) : (
           <span />
         )}
-        {step < STEPS.length - 1 ? (
+        {step < steps.length - 1 ? (
           <Button radius="xl" onClick={next}>
             Next
           </Button>
