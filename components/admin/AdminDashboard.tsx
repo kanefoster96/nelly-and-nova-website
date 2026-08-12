@@ -30,6 +30,7 @@ import { formatSessionDate } from "@/lib/schedule/sessions";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { SessionCalendar } from "./SessionCalendar";
 import { AddCustomer } from "./AddCustomer";
+import { HolidayManager } from "./HolidayManager";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 
@@ -284,6 +285,9 @@ export function AdminDashboard({
         </h2>
         <SessionCalendar todayISO={todayISO} week={week} />
       </section>
+
+      {/* Holidays — add a closure, mark members, publish + notify */}
+      <HolidayManager week={week} todayISO={todayISO} />
 
       {/* Navigation cards */}
       <section className="mt-10 grid gap-3 sm:grid-cols-2">

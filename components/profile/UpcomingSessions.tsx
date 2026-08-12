@@ -27,6 +27,8 @@ import {
   acceptSuggestion,
 } from "@/lib/reschedule/store";
 import type { Cadence, DayId, DaySchedule } from "@/lib/schedule/types";
+import { useHolidays, holidayCoveringDate } from "@/lib/holidays/store";
+import { formatRange } from "@/lib/holidays/dates";
 
 type Plan = { dayId: DayId; cadence: Cadence; service: string; day: string };
 const EXTRA_SERVICES = ["Walk & Train", "1-1 Training"];
@@ -42,6 +44,7 @@ export function UpcomingSessions({
 }) {
   const session = useSession();
   const reschedules = useReschedules();
+  const holidays = useHolidays();
   const overrides = useScheduleOverrides();
   const { confirm, dialog } = useConfirm();
   // Availability reflects live moves + allocations so a full day is never offered.
@@ -181,6 +184,31 @@ export function UpcomingSessions({
           const moved = approved[s.date];
           const req = pending[s.date];
           const sugg = suggested[s.date];
+          // A closure on the effective session date means it isn't running.
+          const holiday = holidayCoveringDate(holidays, moved ? moved.toDate : s.date);
+          if (holiday) {
+            return (
+              <li
+                key={s.date}
+                className="flex items-center gap-3 rounded-2xl bg-white/[0.03] p-4 ring-1 ring-white/5"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-paper-dim">
+                  <CalendarIcon width={20} height={20} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-paper-dim line-through">
+                    {formatSessionDate(s.date)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-paper-dim">
+                    No session — we&apos;re closed ({formatRange(holiday)})
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-paper-dim">
+                  Holiday
+                </span>
+              </li>
+            );
+          }
           return (
             <li
               key={s.date}

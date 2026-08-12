@@ -164,3 +164,86 @@ export function placementConfirmed(d: {
   ].join("\n");
   return { to: d.email, subject: `You're all booked in — ${BRAND}`, html, text };
 }
+
+// --- Customer: holiday closure notice (sent to everyone when a holiday is set)
+
+export function holidayClosureNotice(d: {
+  ownerName?: string;
+  email: string;
+  rangeLabel: string; // e.g. "2–9 March 2026"
+  daysLabel: string; // e.g. "8 days"
+}): EmailMessage {
+  const name = (d.ownerName || "there").split(" ")[0];
+  const html = layout("We're closed for a short break", `
+    <p>Hi ${escape(name)},</p>
+    <p>A quick heads-up: ${escape(BRAND)} will be closed for <strong>${escape(d.rangeLabel)}</strong> (${escape(d.daysLabel)}). There won't be any sessions or collections that week.</p>
+    <p>Your weekly place is safe and picks up as normal afterwards. As a member this counts as one of the four holiday weeks included in your membership, so there's nothing to pay or reschedule.</p>
+    <p>We'll send a reminder the week before, and again the day before your session. Any questions, just reply.</p>
+    <p style="margin-top:20px;">Thanks,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${name},`,
+    "",
+    `A quick heads-up: ${BRAND} will be closed for ${d.rangeLabel} (${d.daysLabel}). There won't be any sessions or collections that week.`,
+    "",
+    "Your weekly place is safe and picks up as normal afterwards. As a member this counts as one of the four holiday weeks included in your membership, so there's nothing to pay or reschedule.",
+    "",
+    "We'll send a reminder the week before, and again the day before your session.",
+    "",
+    `Thanks, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `We're closed ${d.rangeLabel} — ${BRAND}`, html, text };
+}
+
+// --- Customer: reminder one week before a closure --------------------------
+
+export function holidayWeekBeforeReminder(d: {
+  ownerName?: string;
+  email: string;
+  rangeLabel: string;
+}): EmailMessage {
+  const name = (d.ownerName || "there").split(" ")[0];
+  const html = layout("One week to go — we're closed soon", `
+    <p>Hi ${escape(name)},</p>
+    <p>Just a reminder that ${escape(BRAND)} is closed from next week — <strong>${escape(d.rangeLabel)}</strong>. No sessions or collections will run during that time.</p>
+    <p>Everything resumes as normal the following week. See you then!</p>
+    <p style="margin-top:20px;">Thanks,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${name},`,
+    "",
+    `Just a reminder that ${BRAND} is closed from next week — ${d.rangeLabel}. No sessions or collections will run during that time.`,
+    "",
+    "Everything resumes as normal the following week. See you then!",
+    "",
+    `Thanks, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Reminder: we're closed ${d.rangeLabel} — ${BRAND}`, html, text };
+}
+
+// --- Customer: day-before reminder that this session isn't on --------------
+
+export function holidaySessionSkipped(d: {
+  ownerName?: string;
+  email: string;
+  dogName: string;
+  dateLabel: string; // e.g. "Thursday 5 March"
+}): EmailMessage {
+  const name = (d.ownerName || "there").split(" ")[0];
+  const html = layout("No session tomorrow — we're closed", `
+    <p>Hi ${escape(name)},</p>
+    <p>A reminder that ${escape(d.dogName || "your dog")}'s usual session on <strong>${escape(d.dateLabel)}</strong> <strong>isn't on</strong> — we're closed for our holiday this week.</p>
+    <p>Your place is safe and your normal session returns next week. Enjoy the week off!</p>
+    <p style="margin-top:20px;">Thanks,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${name},`,
+    "",
+    `A reminder that ${d.dogName || "your dog"}'s usual session on ${d.dateLabel} isn't on — we're closed for our holiday this week.`,
+    "",
+    "Your place is safe and your normal session returns next week. Enjoy the week off!",
+    "",
+    `Thanks, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `No session ${d.dateLabel} — we're closed — ${BRAND}`, html, text };
+}

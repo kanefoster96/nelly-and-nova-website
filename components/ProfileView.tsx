@@ -6,6 +6,7 @@ import { Button } from "./ui/Button";
 import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
 import { useSession, signOut } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
+import { HolidayReminder } from "./profile/HolidayReminder";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
 
@@ -90,6 +91,13 @@ export function ProfileView({
           </span>
         )}
       </Link>
+
+      {/* Holiday reminder — session-off notice, or a heads-up a week before */}
+      <HolidayReminder
+        dayId={profile.plan?.dayId}
+        cadence={profile.plan?.cadence}
+        dogName={name}
+      />
 
       {/* Weather reminder — only when the session day looks wet/icy/snowy */}
       {weather && (
