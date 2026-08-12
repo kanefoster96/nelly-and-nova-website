@@ -43,6 +43,11 @@ export function LoginForm() {
     router.push("/admin");
   }
 
+  function loginAsOwner() {
+    signIn(); // defaults to the sample member (dog owner)
+    router.push("/profile");
+  }
+
   return (
     <div className="rounded-3xl bg-white/[0.04] p-6 ring-1 ring-white/10 sm:p-8">
       <div className="grid gap-5">
@@ -84,14 +89,24 @@ export function LoginForm() {
             Create an account
           </Link>
         </p>
-        {/* Scaffold shortcut — remove once real staff auth is wired. */}
-        <button
-          type="button"
-          onClick={loginAsTrainer}
-          className="text-center text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
-        >
-          Log in as trainer (demo)
-        </button>
+        {/* Scaffold shortcuts — remove once real auth is wired. */}
+        <div className="flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={loginAsOwner}
+            className="text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
+          >
+            Log in as dog owner (demo)
+          </button>
+          <span aria-hidden className="text-paper-dim/50">·</span>
+          <button
+            type="button"
+            onClick={loginAsTrainer}
+            className="text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
+          >
+            Log in as trainer (demo)
+          </button>
+        </div>
       </div>
     </div>
   );
