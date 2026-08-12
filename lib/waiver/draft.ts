@@ -54,7 +54,8 @@ export const emptyWaiver: WaiverData = {
   agreed: false, clientName: "", signDate: "", signature: "",
 };
 
-const KEY = "nn-waiver-draft";
+// v2: step layout changed (long steps split into shorter parts).
+const KEY = "nn-waiver-draft-v2";
 
 export type WaiverDraft = { step: number; completed: number[]; data: WaiverData };
 

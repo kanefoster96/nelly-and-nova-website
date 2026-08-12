@@ -25,7 +25,18 @@ import {
 } from "@/config/waiver";
 import { SignaturePad } from "./SignaturePad";
 
-const STEPS = ["Owner details", "Dog's details", "Consent & waiver"];
+// Kept short so each screen fits a phone without scrolling — long sections are
+// split into parts (e.g. dog details across basics / vaccinations / health / vet).
+const STEPS = [
+  "About you",
+  "Your address",
+  "Dog’s details · basics",
+  "Dog’s details · vaccinations",
+  "Dog’s details · health",
+  "Dog’s details · vet",
+  "Consent & waiver",
+  "Sign & submit",
+];
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export function WaiverForm() {
@@ -87,24 +98,38 @@ export function WaiverForm() {
     const req = (k: keyof WaiverData) => {
       if (!String(data[k] ?? "").trim()) e[k] = "Please fill this in.";
     };
-    if (s === 0) {
-      req("firstName"); req("lastName"); req("email"); req("em1"); req("em2");
-      req("country"); req("address"); req("city"); req("postcode");
-      if (data.email && !EMAIL_RE.test(data.email)) e.email = "Enter a valid email address.";
-    } else if (s === 1) {
-      req("dogName"); req("breed"); req("age"); req("gender"); req("microchip");
-      req("vetName"); req("vetPhone"); req("vetAddress");
-      if (!data.vaccFile) e.vaccFile = "Please upload the vaccination record.";
-      if (!data.vaccConfirmed) e.vaccConfirmed = "Please confirm.";
-      if (!data.kennelCough) e.kennelCough = "Please choose one.";
-      if (!data.medical) e.medical = "Please choose one.";
-      if (data.medical === "yes") req("medicalDetails");
-      if (!data.allergies) e.allergies = "Please choose one.";
-      if (data.allergies === "yes") req("allergyDetails");
-    } else if (s === 2) {
-      if (!data.agreed) e.agreed = "Please confirm you agree to the terms.";
-      req("clientName"); req("signDate");
-      if (!data.signature) e.signature = "Please add your signature.";
+    switch (s) {
+      case 0: // About you
+        req("firstName"); req("lastName"); req("email"); req("em1"); req("em2");
+        if (data.email && !EMAIL_RE.test(data.email)) e.email = "Enter a valid email address.";
+        break;
+      case 1: // Address
+        req("country"); req("address"); req("city"); req("postcode");
+        break;
+      case 2: // Dog basics
+        req("dogName"); req("breed"); req("age"); req("gender"); req("microchip");
+        break;
+      case 3: // Vaccinations
+        if (!data.vaccFile) e.vaccFile = "Please upload the vaccination record.";
+        if (!data.vaccConfirmed) e.vaccConfirmed = "Please confirm.";
+        if (!data.kennelCough) e.kennelCough = "Please choose one.";
+        break;
+      case 4: // Health
+        if (!data.medical) e.medical = "Please choose one.";
+        if (data.medical === "yes") req("medicalDetails");
+        if (!data.allergies) e.allergies = "Please choose one.";
+        if (data.allergies === "yes") req("allergyDetails");
+        break;
+      case 5: // Vet
+        req("vetName"); req("vetPhone"); req("vetAddress");
+        break;
+      case 6: // Agreement
+        if (!data.agreed) e.agreed = "Please confirm you agree to the terms.";
+        break;
+      case 7: // Sign
+        req("clientName"); req("signDate");
+        if (!data.signature) e.signature = "Please add your signature.";
+        break;
     }
     return e;
   }
@@ -193,7 +218,11 @@ export function WaiverForm() {
         </p>
         {saved && <span className="text-xs font-medium text-emerald-300">Draft saved ✓</span>}
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2" aria-hidden="true">
+      <div
+        className="mt-3 grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${STEPS.length}, 1fr)` }}
+        aria-hidden="true"
+      >
         {STEPS.map((label, i) => (
           <div
             key={label}
@@ -201,7 +230,7 @@ export function WaiverForm() {
           />
         ))}
       </div>
-      <h2 className="display-heading mt-6 text-3xl text-paper sm:text-4xl">{STEPS[step]}</h2>
+      <h2 className="display-heading mt-6 text-2xl text-paper sm:text-3xl">{STEPS[step]}</h2>
 
       {restored && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/[0.05] p-4 text-sm ring-1 ring-white/10">
@@ -216,18 +245,15 @@ export function WaiverForm() {
         </div>
       )}
 
-      <div className="mt-8">
-        {step === 0 && <OwnerStep data={data} set={set} errors={errors} />}
-        {step === 1 && <DogStep data={data} set={set} toggle={toggle} setData={setData} errors={errors} />}
-        {step === 2 && (
-          <ConsentStep
-            data={data}
-            set={set}
-            toggle={toggle}
-            errors={errors}
-            onSign={() => setSigning(true)}
-          />
-        )}
+      <div className="mt-5">
+        {step === 0 && <AboutStep data={data} set={set} errors={errors} />}
+        {step === 1 && <AddressStep data={data} set={set} errors={errors} />}
+        {step === 2 && <DogBasicsStep data={data} set={set} errors={errors} />}
+        {step === 3 && <VaccStep data={data} set={set} toggle={toggle} setData={setData} errors={errors} />}
+        {step === 4 && <HealthStep data={data} set={set} errors={errors} />}
+        {step === 5 && <VetStep data={data} set={set} errors={errors} />}
+        {step === 6 && <AgreementStep data={data} toggle={toggle} errors={errors} />}
+        {step === 7 && <SignStep data={data} set={set} errors={errors} onSign={() => setSigning(true)} />}
       </div>
 
       {/* Navigation */}
@@ -382,10 +408,10 @@ function Checkbox({
 
 // --- steps ----------------------------------------------------------------
 
-function OwnerStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+function AboutStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
   return (
-    <div className="grid gap-5">
-      <div className="grid gap-5 sm:grid-cols-2">
+    <div className="grid gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="First name" name="firstName" required value={data.firstName} onChange={set("firstName")} error={errors.firstName} />
         <Field label="Last name" name="lastName" required value={data.lastName} onChange={set("lastName")} error={errors.lastName} />
       </div>
@@ -393,11 +419,18 @@ function OwnerStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors
       <PhoneRow label="Emergency Contact 1" codeKey="em1Code" numberKey="em1" data={data} set={set} error={errors.em1} />
       <PhoneRow label="Emergency Contact 2" codeKey="em2Code" numberKey="em2" data={data} set={set} error={errors.em2} />
       <p className="-mt-1 text-sm text-paper-dim">
-        Please give us two emergency contact numbers we can use during our services, if required.
+        Two emergency contact numbers we can use during our services, if required.
       </p>
+    </div>
+  );
+}
+
+function AddressStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+  return (
+    <div className="grid gap-4">
       <Field label="Country/Region" name="country" required value={data.country} onChange={set("country")} error={errors.country} options={countryOptions} />
       <Field label="Address" name="address" required value={data.address} onChange={set("address")} error={errors.address} placeholder="Street address" />
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="City" name="city" required value={data.city} onChange={set("city")} error={errors.city} />
         <Field label="Zip / Postal code" name="postcode" required value={data.postcode} onChange={set("postcode")} error={errors.postcode} />
       </div>
@@ -405,7 +438,23 @@ function OwnerStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors
   );
 }
 
-function DogStep({
+function DogBasicsStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+  return (
+    <div className="grid gap-4">
+      <Field label="Full Name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
+        <Field label="Age" name="age" required value={data.age} onChange={set("age")} error={errors.age} placeholder="e.g. 2 yrs" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Gender" name="gender" required value={data.gender} onChange={set("gender")} error={errors.gender} options={genderOptions} />
+        <Field label="Microchip Number" name="microchip" required value={data.microchip} onChange={set("microchip")} error={errors.microchip} />
+      </div>
+    </div>
+  );
+}
+
+function VaccStep({
   data,
   set,
   toggle,
@@ -419,18 +468,7 @@ function DogStep({
   errors: Record<string, string>;
 }) {
   return (
-    <div className="grid gap-5">
-      <Field label="Full Name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
-        <Field label="Age" name="age" required value={data.age} onChange={set("age")} error={errors.age} placeholder="e.g. 2 yrs" />
-      </div>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Gender" name="gender" required value={data.gender} onChange={set("gender")} error={errors.gender} options={genderOptions} />
-        <Field label="Microchip Number" name="microchip" required value={data.microchip} onChange={set("microchip")} error={errors.microchip} />
-      </div>
-
-      {/* Vaccination record upload */}
+    <div className="grid gap-4">
       <div>
         <p className="mb-2 block text-sm font-medium text-paper/90">
           Upload Vaccination Record <span className="text-paper-dim">*</span>
@@ -453,6 +491,13 @@ function DogStep({
       </Checkbox>
 
       <YesNo label="Does your dog receive Kennel Cough vaccinations?" field="kennelCough" data={data} set={set} error={errors.kennelCough} />
+    </div>
+  );
+}
+
+function HealthStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+  return (
+    <div className="grid gap-4">
       <YesNo label="Medical Conditions" field="medical" data={data} set={set} error={errors.medical} />
       {data.medical === "yes" && (
         <Field label="Please give details" name="medicalDetails" required textarea rows={2} value={data.medicalDetails} onChange={set("medicalDetails")} error={errors.medicalDetails} />
@@ -461,7 +506,13 @@ function DogStep({
       {data.allergies === "yes" && (
         <Field label="Please give details" name="allergyDetails" required textarea rows={2} value={data.allergyDetails} onChange={set("allergyDetails")} error={errors.allergyDetails} />
       )}
+    </div>
+  );
+}
 
+function VetStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+  return (
+    <div className="grid gap-4">
       <Field label="Vet's Name" name="vetName" required value={data.vetName} onChange={set("vetName")} error={errors.vetName} />
       <PhoneRow label="Vet's Contact Number" codeKey="vetCode" numberKey="vetPhone" data={data} set={set} error={errors.vetPhone} />
       <Field label="Vet's Address" name="vetAddress" required value={data.vetAddress} onChange={set("vetAddress")} error={errors.vetAddress} />
@@ -469,25 +520,19 @@ function DogStep({
   );
 }
 
-function ConsentStep({
+function AgreementStep({
   data,
-  set,
   toggle,
   errors,
-  onSign,
 }: {
   data: WaiverData;
-  set: SetFn;
   toggle: (key: keyof WaiverData) => void;
   errors: Record<string, string>;
-  onSign: () => void;
 }) {
   return (
     <div>
-      <h3 className="display-heading text-2xl text-paper">{waiverTitle}</h3>
-
-      {/* Scrollable terms */}
-      <div className="mt-4 max-h-80 overflow-y-auto rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10">
+      <h3 className="display-heading text-xl text-paper">{waiverTitle}</h3>
+      <div className="mt-4 max-h-[46vh] overflow-y-auto rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10">
         <div className="space-y-5">
           {waiverClauses.map((c) => (
             <div key={c.heading}>
@@ -506,41 +551,54 @@ function ConsentStep({
           ))}
         </div>
       </div>
-
-      <div className="mt-6 grid gap-5">
+      <div className="mt-5">
         <Checkbox checked={data.agreed} onToggle={() => toggle("agreed")} error={errors.agreed}>
           {waiverAgreement}
         </Checkbox>
+      </div>
+    </div>
+  );
+}
 
-        <Field label="The Client (Full Name)" name="clientName" required value={data.clientName} onChange={set("clientName")} error={errors.clientName} />
-        <Field label="Date" name="signDate" type="date" required value={data.signDate} onChange={set("signDate")} error={errors.signDate} />
-
-        {/* Signature */}
-        <div>
-          <p className="mb-2 block text-sm font-medium text-paper/90">
-            Client Signature <span className="text-paper-dim">*</span>
-          </p>
-          {data.signature ? (
-            <div className="rounded-2xl border border-white/15 bg-white/[0.06] p-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={data.signature} alt="Your signature" className="mx-auto h-24 object-contain" />
-              <div className="mt-2 text-center">
-                <button type="button" onClick={onSign} className="text-sm font-medium text-accent underline underline-offset-2">
-                  Sign again
-                </button>
-              </div>
+function SignStep({
+  data,
+  set,
+  errors,
+  onSign,
+}: {
+  data: WaiverData;
+  set: SetFn;
+  errors: Record<string, string>;
+  onSign: () => void;
+}) {
+  return (
+    <div className="grid gap-4">
+      <Field label="The Client (Full Name)" name="clientName" required value={data.clientName} onChange={set("clientName")} error={errors.clientName} />
+      <Field label="Date" name="signDate" type="date" required value={data.signDate} onChange={set("signDate")} error={errors.signDate} />
+      <div>
+        <p className="mb-2 block text-sm font-medium text-paper/90">
+          Client Signature <span className="text-paper-dim">*</span>
+        </p>
+        {data.signature ? (
+          <div className="rounded-2xl border border-white/15 bg-white/[0.06] p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.signature} alt="Your signature" className="mx-auto h-24 object-contain" />
+            <div className="mt-2 text-center">
+              <button type="button" onClick={onSign} className="text-sm font-medium text-accent underline underline-offset-2">
+                Sign again
+              </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={onSign}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:border-white/40"
-            >
-              ✎ Click to Sign
-            </button>
-          )}
-          {errors.signature && <p className="mt-1.5 text-sm text-red-400">{errors.signature}</p>}
-        </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onSign}
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:border-white/40"
+          >
+            ✎ Click to Sign
+          </button>
+        )}
+        {errors.signature && <p className="mt-1.5 text-sm text-red-400">{errors.signature}</p>}
       </div>
     </div>
   );
