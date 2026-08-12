@@ -90,11 +90,13 @@ export function SignupForm() {
         )}
         <h2 className="display-heading mt-4 text-2xl text-paper">You&apos;re all set</h2>
         <p className="mx-auto mt-3 max-w-sm text-paper/75">
-          Your request has already been sent — we&apos;ll be in touch soon.
-          Accounts aren&apos;t switched on just yet, so there&apos;s nothing more
-          you need to do for now.
+          One last step to finish onboarding — complete your consent &amp; waiver.
+          It saves as you go, so you can come back any time.
         </p>
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Button href="/waiver" radius="xl">
+            Complete consent &amp; waiver
+          </Button>
           <Button href="/" variant="secondary" radius="xl">
             Back to home
           </Button>
