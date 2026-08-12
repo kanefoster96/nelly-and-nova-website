@@ -14,6 +14,7 @@ import {
   type WaiverData,
 } from "@/lib/waiver/draft";
 import { submitWaiver } from "@/lib/waiver/data";
+import { setWaiverSigned } from "@/lib/onboarding/store";
 import {
   countryOptions,
   dialCodes,
@@ -176,6 +177,14 @@ export function WaiverForm() {
     }
     setStatus("submitting");
     await submitWaiver(data);
+    // Flip the onboarding waiver gate the coach sees, keyed to this dog.
+    if (session?.dogId) {
+      setWaiverSigned(session.dogId, {
+        ownerName: `${data.firstName} ${data.lastName}`.trim() || session.ownerName,
+        email: data.email,
+        dogName: data.dogName || session.dogName,
+      });
+    }
     clearDraft();
     setStatus("success");
     scrollTop();

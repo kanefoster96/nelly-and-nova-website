@@ -8,9 +8,16 @@ import {
   confirmSlot,
   holdSlot,
   releaseSlot,
-  setOnboarding,
   useScheduleOverrides,
 } from "@/lib/schedule/allocations";
+import {
+  confirmPlacement,
+  setPaymentSet,
+  setWaiver,
+  startRecord,
+  useOnboarding,
+} from "@/lib/onboarding/store";
+import { blankOnboarding, cadenceLabel, isReadyToConfirm } from "@/lib/onboarding/types";
 import { dayLabel, spacesLeft } from "@/lib/schedule/types";
 import type { Cadence, DayId, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 
@@ -23,16 +30,18 @@ function pickAvatar(name: string): string {
   return `/placeholders/dog-avatar-${String((sum % 16) + 1).padStart(2, "0")}.svg`;
 }
 
-type FormState = { name: string; owner: string; cadence: Cadence; parity: "A" | "B" };
-const blankForm: FormState = { name: "", owner: "", cadence: "weekly", parity: "A" };
+type FormState = { name: string; owner: string; email: string; cadence: Cadence; parity: "A" | "B" };
+const blankForm: FormState = { name: "", owner: "", email: "", cadence: "weekly", parity: "A" };
 
 export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
   const ov = useScheduleOverrides();
+  const onboarding = useOnboarding();
   const merged = useMemo(() => applyOverrides(week, ov), [week, ov]);
 
   const [allocatingDay, setAllocatingDay] = useState<DayId | null>(null);
   const [form, setForm] = useState<FormState>(blankForm);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState("");
 
   function openAllocate(day: DayId) {
     setForm(blankForm);
@@ -54,8 +63,49 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
       status: "held",
     };
     holdSlot(day, dog);
+    // Open the customer's onboarding record so the waiver + payment gates and
+    // the confirmation email all reference the same data.
+    startRecord(
+      blankOnboarding(dog.id, {
+        ownerName: owner,
+        email: form.email.trim(),
+        dogName: name,
+        day,
+        cadence: form.cadence,
+      })
+    );
     setAllocatingDay(null);
     setForm(blankForm);
+  }
+
+  function doConfirm(dog: ScheduledDog, day: DayId) {
+    if (!startDate) return;
+    const rec = onboarding[dog.id];
+    confirmSlot(dog.id); // slot → permanent
+    confirmPlacement(dog.id, startDate); // onboarding → confirmed + start date
+    // Email the customer their day + first start date (best-effort).
+    if (rec?.email) {
+      const startLabel = new Date(startDate).toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+      void fetch("/api/onboarding/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerName: rec.ownerName,
+          email: rec.email,
+          dogName: rec.dogName || dog.name,
+          dayLabel: dayLabel(day),
+          cadenceLabel: cadenceLabel(dog.cadence),
+          startDateLabel: startLabel,
+        }),
+      });
+    }
+    setConfirmingId(null);
+    setStartDate("");
   }
 
   return (
@@ -84,8 +134,8 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
               ) : (
                 <ul className="mt-3 space-y-2">
                   {d.dogs.map((dog) => {
-                    const onb = ov.onboarding[dog.id] ?? { payment: false, waiver: false };
-                    const canConfirm = onb.payment && onb.waiver;
+                    const onb = onboarding[dog.id];
+                    const canConfirm = isReadyToConfirm(onb) && !!startDate;
                     return (
                       <li
                         key={dog.id}
@@ -111,9 +161,11 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
                             <div className="flex shrink-0 items-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setConfirmingId(confirmingId === dog.id ? null : dog.id)
-                                }
+                                onClick={() => {
+                                  const opening = confirmingId !== dog.id;
+                                  setConfirmingId(opening ? dog.id : null);
+                                  setStartDate(opening ? onb?.startDate ?? "" : "");
+                                }}
                                 className="rounded-full bg-amber-400/15 px-2.5 py-1 text-[11px] font-semibold text-amber-300"
                               >
                                 Held · confirm
@@ -143,21 +195,29 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
                             <div className="mt-2 space-y-1.5">
                               <ChecklistRow
                                 label="Payment set up"
-                                checked={onb.payment}
-                                onToggle={() => setOnboarding(dog.id, { payment: !onb.payment })}
+                                checked={!!onb?.paymentSet}
+                                onToggle={() => setPaymentSet(dog.id, !onb?.paymentSet)}
                               />
                               <ChecklistRow
-                                label="Waiver signed"
-                                checked={onb.waiver}
-                                onToggle={() => setOnboarding(dog.id, { waiver: !onb.waiver })}
+                                label={onb?.waiverSigned ? "Waiver signed by customer" : "Waiver signed"}
+                                checked={!!onb?.waiverSigned}
+                                onToggle={() => setWaiver(dog.id, !onb?.waiverSigned)}
                               />
                             </div>
+
+                            <label className="mt-3 block text-[11px] font-medium text-paper/80">
+                              First start date
+                              <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-paper focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                              />
+                            </label>
+
                             <Button
                               radius="xl"
-                              onClick={() => {
-                                confirmSlot(dog.id);
-                                setConfirmingId(null);
-                              }}
+                              onClick={() => doConfirm(dog, d.day)}
                               disabled={!canConfirm}
                               className="mt-3 w-full justify-center text-sm disabled:opacity-50"
                             >
@@ -165,7 +225,9 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
                             </Button>
                             {!canConfirm && (
                               <p className="mt-1.5 text-center text-[11px] text-paper-dim">
-                                Payment and waiver required.
+                                {isReadyToConfirm(onb)
+                                  ? "Choose a first start date."
+                                  : "Payment, waiver and a start date required."}
                               </p>
                             )}
                           </div>
@@ -265,6 +327,13 @@ function AllocateForm({
           value={form.owner}
           onChange={(e) => onChange({ owner: e.target.value })}
           placeholder="Owner's name"
+          className={input}
+        />
+        <input
+          type="email"
+          value={form.email}
+          onChange={(e) => onChange({ email: e.target.value })}
+          placeholder="Owner's email (for their confirmation)"
           className={input}
         />
       </div>

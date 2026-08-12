@@ -1,7 +1,9 @@
-import { contact, site } from "@/config/site";
+import { site } from "@/config/site";
 import { findService, findBookingType, priceFor } from "@/config/booking";
 import { createRequest } from "@/lib/inbox/data";
 import { bookingToRequest } from "@/lib/inbox/mappers";
+import { sendEmail, ownerAddress } from "@/lib/email/resend";
+import { bookingConfirmation, bookingOwnerNotification } from "@/lib/email/templates";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -66,35 +68,29 @@ export async function POST(request: Request) {
   // Accept the submission as an inbox request (scaffold no-op until a backend).
   await createRequest(bookingToRequest(d));
 
-  // Best-effort owner notification by email — optional, never blocks the
-  // submission (the request itself is the deliverable). Set RESEND_API_KEY
-  // to receive these; see .env.example.
-  const apiKey = process.env.RESEND_API_KEY;
-  if (apiKey) {
-    const to = process.env.CONTACT_TO_EMAIL || contact.email;
-    const from = process.env.CONTACT_FROM_EMAIL || `${site.name} <onboarding@resend.dev>`;
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from,
-          to: [to],
-          reply_to: email,
-          subject: `New booking request — ${firstName} ${lastName} (${svc?.label ?? "enquiry"})`,
-          text,
-        }),
-      });
-      if (!res.ok) {
-        console.error("Resend error", res.status, await res.text().catch(() => ""));
-      }
-    } catch (err) {
-      console.error("Booking email error", err);
-    }
-  }
+  // Emails are best-effort — they never block the submission (the request
+  // itself is the deliverable) and no-op without RESEND_API_KEY. See .env.example.
+  // 1) Notify the team. 2) Confirm to the customer that we've got their request.
+  await Promise.all([
+    sendEmail(
+      bookingOwnerNotification({
+        firstName,
+        lastName,
+        email,
+        serviceLabel: svc?.label,
+        detailsText: text,
+        to: ownerAddress(),
+      })
+    ),
+    sendEmail(
+      bookingConfirmation({
+        firstName,
+        email,
+        dogName: d.dogName,
+        serviceLabel: svc?.label,
+      })
+    ),
+  ]);
 
   return Response.json({ ok: true });
 }

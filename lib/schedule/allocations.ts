@@ -21,20 +21,16 @@ import {
 } from "./data";
 import type { DayId, DaySchedule, ScheduledDog, SlotStatus } from "./types";
 
-export type Onboarding = { payment: boolean; waiver: boolean };
-
 export type ScheduleOverrides = {
   added: { day: DayId; dog: ScheduledDog }[];
   statusById: Record<string, SlotStatus>;
   released: string[];
-  onboarding: Record<string, Onboarding>;
 };
 
 const EMPTY: ScheduleOverrides = {
   added: [],
   statusById: {},
   released: [],
-  onboarding: {},
 };
 
 const KEY = "nn-schedule-overrides";
@@ -78,21 +74,8 @@ export function applyOverrides(
 
 export function holdSlot(day: DayId, dog: ScheduledDog) {
   const ov = read();
-  write({
-    ...ov,
-    added: [...ov.added, { day, dog }],
-    onboarding: { ...ov.onboarding, [dog.id]: { payment: false, waiver: false } },
-  });
+  write({ ...ov, added: [...ov.added, { day, dog }] });
   void apiHold(day, dog); // backend seam (TODO)
-}
-
-export function setOnboarding(dogId: string, patch: Partial<Onboarding>) {
-  const ov = read();
-  const cur = ov.onboarding[dogId] ?? { payment: false, waiver: false };
-  write({
-    ...ov,
-    onboarding: { ...ov.onboarding, [dogId]: { ...cur, ...patch } },
-  });
 }
 
 export function confirmSlot(dogId: string) {

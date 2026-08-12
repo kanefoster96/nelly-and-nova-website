@@ -21,6 +21,8 @@ export type Session = {
   dogName: string;
   /** The dog's photo — used as the account picture in the header. */
   dogPhoto: string;
+  /** The dog's id — links the account to its onboarding record + schedule slot. */
+  dogId?: string;
   role: Role;
 };
 
@@ -32,6 +34,7 @@ export const SAMPLE_SESSION: Session = {
   ownerName: "Rachel T.",
   dogName: "Nova",
   dogPhoto: "/placeholders/dog-avatar-01.svg",
+  dogId: "d-nova",
   role: "member",
 };
 
