@@ -6,6 +6,8 @@ import { useReschedules, decide, suggest } from "@/lib/reschedule/store";
 import { applyOverrides, useScheduleOverrides } from "@/lib/schedule/allocations";
 import { formatSessionDate, dateForDayInWeek, spaceOnDate } from "@/lib/schedule/sessions";
 import { dayLabel } from "@/lib/schedule/types";
+import { extraSessionPrice, money } from "@/lib/payments/pricing";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { formatTime } from "@/lib/inbox/format";
 import type { DayId, DaySchedule } from "@/lib/schedule/types";
 import type { RescheduleRequest } from "@/lib/reschedule/types";
@@ -107,6 +109,7 @@ function Detail({
 }) {
   const [toDay, setToDay] = useState<DayId>(request.toDay);
   const [note, setNote] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
   const decidedAlready = request.status !== "pending";
   // The date the target day maps to — same week as the (session or requested) date.
   const baseDate = request.kind === "extra" ? request.toDate : request.sessionDate;
@@ -125,13 +128,46 @@ function Detail({
     ? `mailto:${request.email}?subject=${encodeURIComponent("Your reschedule request — Nelly & Nova")}`
     : null;
 
-  function approve() {
+  const extraPrice = request.kind === "extra" ? extraSessionPrice(request.service ?? "") : 0;
+
+  async function approve() {
     if (targetSpace <= 0) {
       setNote(`${dayLabel(toDay)} is full — choose another day.`);
       return;
     }
+    const ok = await confirm({
+      title: request.kind === "extra" ? "Approve & charge?" : "Approve this change?",
+      message:
+        request.kind === "extra" ? (
+          <>
+            Book {request.dogName}&apos;s extra {request.service} on{" "}
+            <b className="text-paper">{formatSessionDate(targetDate())}</b>.
+          </>
+        ) : (
+          <>
+            Move {request.dogName}&apos;s session to{" "}
+            <b className="text-paper">{formatSessionDate(targetDate())}</b>.
+          </>
+        ),
+      amount: extraPrice ? money(extraPrice) : undefined,
+      amountNote: extraPrice ? `Charged to ${request.ownerName} via GoCardless` : undefined,
+      confirmLabel: request.kind === "extra" ? "Approve & charge" : "Approve",
+    });
+    if (!ok) return;
     decide(request.id, "approved", { toDay, toDate: targetDate() });
     onClose();
+  }
+  async function reject() {
+    const ok = await confirm({
+      title: "Reject this request?",
+      message: <>This declines {request.dogName}&apos;s request. You can message them why.</>,
+      danger: true,
+      confirmLabel: "Reject",
+    });
+    if (ok) {
+      decide(request.id, "rejected");
+      onClose();
+    }
   }
   function suggestDate() {
     suggest(request.id, toDay, targetDate());
@@ -264,10 +300,7 @@ function Detail({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    decide(request.id, "rejected");
-                    onClose();
-                  }}
+                  onClick={reject}
                   className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full border border-white/15 px-4 text-sm font-medium text-paper/70 hover:text-paper"
                 >
                   Reject
@@ -283,6 +316,7 @@ function Detail({
           )}
         </footer>
       </div>
+      {dialog}
     </div>
   );
 }

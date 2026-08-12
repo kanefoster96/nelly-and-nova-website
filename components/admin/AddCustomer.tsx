@@ -9,6 +9,8 @@ import { startRecord, confirmPlacement } from "@/lib/onboarding/store";
 import { blankOnboarding, cadenceLabel } from "@/lib/onboarding/types";
 import { scheduleSubscription } from "@/lib/payments/data";
 import { chargeDayLabel } from "@/lib/payments/schedule";
+import { extraSessionPrice, money, recurringPrice } from "@/lib/payments/pricing";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { dayIdFromISO, formatSessionDate, spaceOnDate } from "@/lib/schedule/sessions";
 import { dayLabel } from "@/lib/schedule/types";
 import type { Cadence, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
@@ -44,6 +46,7 @@ export function AddCustomer({
   const overrides = useScheduleOverrides();
   const reschedules = useReschedules();
   const merged = useMemo(() => applyOverrides(week, overrides), [week, overrides]);
+  const { confirm, dialog } = useConfirm();
 
   // Recent customers who've at least booked their meet & greet.
   const eligible = customers.filter((c) => stageIndex(c.stage) >= 1);
@@ -75,8 +78,48 @@ export function AddCustomer({
     setParity("A");
   }
 
-  function submit() {
+  async function submit() {
     if (!valid || !customer || !day) return;
+    const svcLabel = /1-1|one-to-one/i.test(customer.service) ? "1-1 Training" : "Walk & Train";
+    const rec = recurringPrice();
+    const opts =
+      placement === "permanent"
+        ? {
+            title: "Add permanent member?",
+            message: (
+              <>
+                {customer.dogName} joins on <b className="text-paper">{dayLabel(day)}s</b> from{" "}
+                <b className="text-paper">{formatSessionDate(startDate)}</b>.
+              </>
+            ),
+            amount: money(rec.amount),
+            amountNote: `per ${rec.unit} · charged the day before each session`,
+            confirmLabel: "Add member",
+          }
+        : placement === "oneoff"
+          ? {
+              title: "Add one-off session?",
+              message: (
+                <>
+                  {customer.dogName} on <b className="text-paper">{formatSessionDate(startDate)}</b>.
+                </>
+              ),
+              amount: money(extraSessionPrice(svcLabel)),
+              amountNote: "Charged on confirmation via GoCardless",
+              confirmLabel: "Add & charge",
+            }
+          : {
+              title: "Hold a spot?",
+              message: (
+                <>
+                  Hold a place for {customer.dogName} on <b className="text-paper">{dayLabel(day)}s</b> from{" "}
+                  <b className="text-paper">{formatSessionDate(startDate)}</b> while onboarding finishes.
+                </>
+              ),
+              confirmLabel: "Hold spot",
+            };
+    if (!(await confirm(opts))) return;
+
     const dogId = `cust-${customer.id}`;
     const cad: Cadence = placement === "oneoff" ? "weekly" : cadence;
     const dog: ScheduledDog = {
@@ -307,6 +350,7 @@ export function AddCustomer({
           </div>
         </div>
       )}
+      {dialog}
     </>
   );
 }

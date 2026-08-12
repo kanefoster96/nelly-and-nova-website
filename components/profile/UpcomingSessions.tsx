@@ -15,6 +15,9 @@ import {
 } from "@/lib/schedule/sessions";
 import { applyOverrides, useScheduleOverrides } from "@/lib/schedule/allocations";
 import { describeChargeSchedule } from "@/lib/payments/schedule";
+import { extraSessionPrice, money } from "@/lib/payments/pricing";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import type { RescheduleRequest } from "@/lib/reschedule/types";
 import {
   createReschedule,
   useReschedules,
@@ -40,6 +43,7 @@ export function UpcomingSessions({
   const session = useSession();
   const reschedules = useReschedules();
   const overrides = useScheduleOverrides();
+  const { confirm, dialog } = useConfirm();
   // Availability reflects live moves + allocations so a full day is never offered.
   const merged = useMemo(() => applyOverrides(week, overrides), [week, overrides]);
   const [openDate, setOpenDate] = useState<string | null>(null);
@@ -79,6 +83,22 @@ export function UpcomingSessions({
     setOpenDate(null);
     setBookingExtra(false);
     return false;
+  }
+
+  async function acceptWithConfirm(r: RescheduleRequest) {
+    const price = r.kind === "extra" ? extraSessionPrice(r.service ?? "") : 0;
+    const ok = await confirm({
+      title: "Accept this date?",
+      message: (
+        <>
+          Confirm your session on <b className="text-paper">{formatSessionDate(r.toDate)}</b>.
+        </>
+      ),
+      amount: price ? money(price) : undefined,
+      amountNote: price ? "Charged via GoCardless" : undefined,
+      confirmLabel: "Accept",
+    });
+    if (ok) acceptSuggestion(r.id);
   }
 
   function submitRequest(kind: "reschedule" | "extra", toDay: DayId, opts: { sessionDate: string; fromDay: DayId; toDate: string; note?: string; service?: string }) {
@@ -142,7 +162,7 @@ export function UpcomingSessions({
                 {r.status === "suggested" ? (
                   <button
                     type="button"
-                    onClick={() => acceptSuggestion(r.id)}
+                    onClick={() => acceptWithConfirm(r)}
                     className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink"
                   >
                     Accept
@@ -203,7 +223,7 @@ export function UpcomingSessions({
               {sugg && (
                 <button
                   type="button"
-                  onClick={() => acceptSuggestion(sugg.id)}
+                  onClick={() => acceptWithConfirm(sugg)}
                   className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink"
                 >
                   Accept
@@ -226,9 +246,21 @@ export function UpcomingSessions({
           days={bookableDays(merged, reschedules, (day) => dateForDayInWeek(openSession.date, day), openSession.day)}
           withReason
           onClose={() => setOpenDate(null)}
-          onSubmit={(toDay, note) => {
+          onSubmit={async (toDay, note) => {
             const toDate = dateForDayInWeek(openSession.date, toDay);
             if (!guard(toDate)) return;
+            const ok = await confirm({
+              title: "Request this change?",
+              message: (
+                <>
+                  Move your session from <b className="text-paper">{formatSessionDate(openSession.date)}</b> to{" "}
+                  <b className="text-paper">{formatSessionDate(toDate)}</b>? We&apos;ll confirm it with you — your
+                  regular payment doesn&apos;t change.
+                </>
+              ),
+              confirmLabel: "Send request",
+            });
+            if (!ok) return;
             submitRequest("reschedule", toDay, {
               sessionDate: openSession.date,
               fromDay: openSession.day,
@@ -244,14 +276,30 @@ export function UpcomingSessions({
         <ExtraModal
           days={bookableDays(merged, reschedules, (day) => nextDateForDay(today, day))}
           onClose={() => setBookingExtra(false)}
-          onSubmit={(service, toDay) => {
+          onSubmit={async (service, toDay) => {
             const toDate = nextDateForDay(today, toDay);
             if (!guard(toDate)) return;
+            const price = extraSessionPrice(service);
+            const ok = await confirm({
+              title: "Book this extra session?",
+              message: (
+                <>
+                  An extra <b className="text-paper">{service}</b> on{" "}
+                  <b className="text-paper">{formatSessionDate(toDate)}</b>.
+                </>
+              ),
+              amount: money(price),
+              amountNote: "Charged via GoCardless once we approve it",
+              confirmLabel: "Request session",
+            });
+            if (!ok) return;
             submitRequest("extra", toDay, { sessionDate: toDate, fromDay: toDay, toDate, service });
             setBookingExtra(false);
           }}
         />
       )}
+
+      {dialog}
     </>
   );
 }

@@ -20,8 +20,11 @@ import {
 import { blankOnboarding, cadenceLabel, isReadyToConfirm } from "@/lib/onboarding/types";
 import { scheduleSubscription } from "@/lib/payments/data";
 import { chargeDayLabel } from "@/lib/payments/schedule";
+import { money, recurringPrice } from "@/lib/payments/pricing";
+import { formatSessionDate } from "@/lib/schedule/sessions";
 import { dayLabel, spacesLeft } from "@/lib/schedule/types";
 import type { Cadence, DayId, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const slug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -44,6 +47,7 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
   const [form, setForm] = useState<FormState>(blankForm);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
+  const { confirm, dialog } = useConfirm();
 
   function openAllocate(day: DayId) {
     setForm(blankForm);
@@ -80,8 +84,22 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
     setForm(blankForm);
   }
 
-  function doConfirm(dog: ScheduledDog, day: DayId) {
+  async function doConfirm(dog: ScheduledDog, day: DayId) {
     if (!startDate) return;
+    const price = recurringPrice();
+    const ok = await confirm({
+      title: "Confirm as a member?",
+      message: (
+        <>
+          {dog.name} becomes a member on <b className="text-paper">{dayLabel(day)}s</b> from{" "}
+          <b className="text-paper">{formatSessionDate(startDate)}</b>.
+        </>
+      ),
+      amount: money(price.amount),
+      amountNote: `per ${price.unit} · first charge the day before`,
+      confirmLabel: "Confirm member",
+    });
+    if (!ok) return;
     const rec = onboarding[dog.id];
     confirmSlot(dog.id); // slot → permanent
     confirmPlacement(dog.id, startDate); // onboarding → confirmed + start date
@@ -271,6 +289,7 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
             </div>
           );
         })}
+      {dialog}
     </div>
   );
 }

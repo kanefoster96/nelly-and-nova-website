@@ -25,7 +25,9 @@ import { sendReportCards } from "@/lib/reports/data";
 import { sendToOutbox } from "@/lib/reports/outbox";
 import { usePayments, getStatus, retryPayment } from "@/lib/payments/store";
 import { PAYMENT_LABEL, type PaymentStatus } from "@/lib/payments/types";
+import { money, recurringPrice } from "@/lib/payments/pricing";
 import { formatSessionDate } from "@/lib/schedule/sessions";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { SessionCalendar } from "./SessionCalendar";
 import { AddCustomer } from "./AddCustomer";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
@@ -90,8 +92,22 @@ export function AdminDashboard({
   const [payToast, setPayToast] = useState<string | null>(null);
   const payments = usePayments();
   const todayDate = todayISO.slice(0, 10);
+  const { confirm, dialog } = useConfirm();
 
-  function resendPayment(dog: ScheduledDog) {
+  async function resendPayment(dog: ScheduledDog) {
+    const price = recurringPrice();
+    const ok = await confirm({
+      title: "Re-request payment?",
+      message: (
+        <>
+          Ask {dog.ownerName} to resubmit {dog.name}&apos;s session payment.
+        </>
+      ),
+      amount: money(price.amount),
+      amountNote: "via GoCardless",
+      confirmLabel: "Send request",
+    });
+    if (!ok) return;
     retryPayment(dog.id, todayDate);
     if (dog.email) {
       void fetch("/api/payments/failed", {
@@ -317,6 +333,7 @@ export function AdminDashboard({
           onClose={() => setOpenId(null)}
         />
       )}
+      {dialog}
     </div>
   );
 }

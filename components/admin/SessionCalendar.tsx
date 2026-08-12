@@ -14,6 +14,7 @@ import {
 } from "@/lib/schedule/sessions";
 import { dayLabel } from "@/lib/schedule/types";
 import type { DaySchedule } from "@/lib/schedule/types";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { CalendarMonth } from "./CalendarMonth";
 
 export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string; week: DaySchedule[] }) {
@@ -23,6 +24,7 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
   const week = useMemo(() => applyOverrides(baseWeek, overrides), [baseWeek, overrides]);
   const [selected, setSelected] = useState(todayISO.slice(0, 10));
   const [moving, setMoving] = useState<{ item: DogOnDate; fromDate: string } | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   const openOn = (dayId: DaySchedule["day"]) => (week.find((d) => d.day === dayId)?.capacity ?? 0) > 0;
   const dogs = dogsForDate(selected, week, reschedules);
@@ -92,7 +94,19 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
           week={week}
           reschedules={reschedules}
           onClose={() => setMoving(null)}
-          onMove={(toDate) => {
+          onMove={async (toDate) => {
+            const ok = await confirm({
+              title: "Move this session?",
+              message: (
+                <>
+                  Move <b className="text-paper">{moving.item.dog.name}</b> from{" "}
+                  <b className="text-paper">{formatSessionDate(moving.fromDate)}</b> to{" "}
+                  <b className="text-paper">{formatSessionDate(toDate)}</b>?
+                </>
+              ),
+              confirmLabel: "Move session",
+            });
+            if (!ok) return;
             moveSession({
               dogId: moving.item.dog.id,
               dogName: moving.item.dog.name,
@@ -107,6 +121,7 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
           }}
         />
       )}
+      {dialog}
     </div>
   );
 }
