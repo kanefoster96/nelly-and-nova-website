@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import {
   ReportIcon,
@@ -12,7 +13,7 @@ import {
   CheckIcon,
   PlusIcon,
 } from "@/components/ui/Icons";
-import { useSession } from "@/lib/auth/session";
+import { useSession, signOut } from "@/lib/auth/session";
 import { formatDate } from "@/lib/inbox/format";
 import {
   entryToReportCard,
@@ -63,7 +64,13 @@ export function AdminDashboard({
   dogs: ScheduledDog[];
 }) {
   const session = useSession();
+  const router = useRouter();
   const coach = session?.ownerName ?? "Coach";
+
+  function logout() {
+    signOut();
+    router.push("/");
+  }
 
   const [forms, setForms] = useState<Record<string, Form>>(() =>
     Object.fromEntries(dogs.map((d) => [d.id, blankForm()]))
@@ -236,6 +243,13 @@ export function AdminDashboard({
           body="Manage or cancel a member's account."
         />
       </section>
+
+      {/* Log out */}
+      <div className="mt-8 flex justify-center">
+        <Button variant="ghost" radius="xl" onClick={logout}>
+          Log out
+        </Button>
+      </div>
 
       {/* Report entry modal */}
       {openDog && (

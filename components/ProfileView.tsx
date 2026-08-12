@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
-import { useSession } from "@/lib/auth/session";
+import { useSession, signOut } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import type { DogProfile } from "@/lib/reports/types";
 
@@ -17,6 +18,12 @@ import type { DogProfile } from "@/lib/reports/types";
 export function ProfileView({ profile }: { profile: DogProfile }) {
   const session = useSession();
   const unseen = useUnseenReportCount();
+  const router = useRouter();
+
+  function logout() {
+    signOut();
+    router.push("/");
+  }
 
   if (!session) {
     return (
@@ -153,6 +160,13 @@ export function ProfileView({ profile }: { profile: DogProfile }) {
           </span>
           <ArrowRightIcon width={18} height={18} className="ml-auto text-paper-dim" />
         </Link>
+      </div>
+
+      {/* Log out */}
+      <div className="mt-4 flex justify-center">
+        <Button variant="ghost" radius="xl" onClick={logout}>
+          Log out
+        </Button>
       </div>
     </div>
   );
