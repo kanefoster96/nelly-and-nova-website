@@ -49,7 +49,7 @@ export async function markReportSeen(reportId: string): Promise<void> {
 }
 
 /**
- * Send the day's report cards to owners (coach dashboard → "Send all").
+ * Send the day's report cards to owners (trainer dashboard → "Send all").
  * TODO(backend): insert each ReportCard into `report_cards` and create a
  * "new report card" notification per owner (delivered live over Realtime).
  * In the scaffold the dashboard also writes them to the client-side outbox

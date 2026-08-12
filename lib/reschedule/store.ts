@@ -61,7 +61,7 @@ export function moveSession(move: {
     fromDay: move.fromDay,
     toDay: move.toDay,
     toDate: move.toDate,
-    note: "Moved by coach",
+    note: "Moved by trainer",
     status: "approved",
     createdAt: new Date().toISOString(),
   };

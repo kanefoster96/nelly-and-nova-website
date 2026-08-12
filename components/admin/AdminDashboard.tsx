@@ -75,7 +75,7 @@ export function AdminDashboard({
 }) {
   const session = useSession();
   const router = useRouter();
-  const coach = session?.ownerName ?? "Coach";
+  const coach = session?.ownerName ?? "Trainer";
 
   function logout() {
     signOut();
@@ -112,7 +112,7 @@ export function AdminDashboard({
   if (!session || session.role !== "admin") {
     return (
       <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
-        <h2 className="display-heading text-2xl text-paper">Coaches only</h2>
+        <h2 className="display-heading text-2xl text-paper">Trainers only</h2>
         <p className="mx-auto mt-3 max-w-sm text-paper/75">
           This dashboard is for the Nelly &amp; Nova team.
         </p>
@@ -172,10 +172,10 @@ export function AdminDashboard({
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
-        Coach dashboard
+        Trainer dashboard
       </p>
       <h1 className="display-heading mt-2 text-3xl text-paper sm:text-4xl">
-        Welcome, coach {coach}.
+        Welcome, {coach}.
       </h1>
       <p className="mt-2 text-paper/70">
         {todayLabel} · {formatDate(todayISO)}
@@ -258,7 +258,7 @@ export function AdminDashboard({
 
       {/* Add a customer to the schedule (hold / permanent / one-off) */}
       <section className="mt-8">
-        <AddCustomer customers={customers} week={week} />
+        <AddCustomer customers={customers} week={week} todayISO={todayISO} />
       </section>
 
       {/* Calendar — browse any day and move a dog's session as a one-off */}
@@ -407,7 +407,7 @@ function ReportEntryModal({
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-paper">{dog.name}&apos;s report card</p>
             <p className="text-xs text-paper-dim">
-              Coach {coach} · {dateLabel}
+              {coach} · {dateLabel}
             </p>
           </div>
           <button

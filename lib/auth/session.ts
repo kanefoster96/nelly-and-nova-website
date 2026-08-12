@@ -41,7 +41,7 @@ export const SAMPLE_SESSION: Session = {
 /** Sample signed-in coach/admin. `ownerName` doubles as the coach's name. */
 export const SAMPLE_ADMIN: Session = {
   ownerName: "Charlotte",
-  dogName: "Coach",
+  dogName: "Trainer",
   dogPhoto: "/placeholders/icon-mark.svg",
   role: "admin",
 };

@@ -45,7 +45,7 @@ export const booking = {
     {
       value: "one-to-one",
       label: "1-1 Training",
-      desc: "In-person coaching",
+      desc: "In-person training",
       icon: "handshake",
       bookingTypes: [
         { value: "session", label: "1-1 Session", desc: "One hour with you and your dog", base: 90, unit: "session" },

@@ -74,19 +74,19 @@ export function Nav() {
             <MessageIcon width={22} height={22} />
           </Link>
 
-          {/* Account — admins go to the coach dashboard; members to their dog's
+          {/* Account — admins go to the trainer dashboard; members to their dog's
               profile. Signed out shows "Log in". */}
           {session ? (
             session.role === "admin" ? (
               <Link
                 href="/admin"
-                aria-label="Coach dashboard"
+                aria-label="Trainer dashboard"
                 className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/10 p-2 ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={session.dogPhoto}
-                  alt="Coach dashboard"
+                  alt="Trainer dashboard"
                   className="h-full w-full object-contain"
                 />
               </Link>

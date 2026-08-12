@@ -10,7 +10,7 @@ import { oneToOnePage } from "@/config/site";
 export const metadata: Metadata = {
   title: "1-1 Training",
   description:
-    "One-to-one dog training sessions across the North East — personalised, in-person coaching that teaches you how to understand and communicate with your dog, plus a free consultation and detailed report cards.",
+    "One-to-one dog training sessions across the North East — personalised, in-person training that teaches you how to understand and communicate with your dog, plus a free consultation and detailed report cards.",
 };
 
 export default function OneToOnePage() {

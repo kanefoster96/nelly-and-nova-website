@@ -12,9 +12,9 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
   if (!session || session.role !== "admin") {
     return (
       <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
-        <h2 className="display-heading text-2xl text-paper">Coaches only</h2>
+        <h2 className="display-heading text-2xl text-paper">Trainers only</h2>
         <p className="mx-auto mt-3 max-w-sm text-paper/75">
-          Log in as a coach to view this.
+          Log in as a trainer to view this.
         </p>
         <div className="mt-6 flex justify-center">
           <Button href="/login" radius="xl">

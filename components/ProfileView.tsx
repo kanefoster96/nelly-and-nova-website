@@ -7,6 +7,7 @@ import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
 import { useSession, signOut } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import type { DogProfile } from "@/lib/reports/types";
+import type { WeatherReminder } from "@/lib/weather/data";
 
 /**
  * The account profile — centred on the dog. Shows their photo, name, age and
@@ -15,7 +16,15 @@ import type { DogProfile } from "@/lib/reports/types";
  * for stats/skills; and an "Account holder information" button at the bottom
  * for the owner's own details and password.
  */
-export function ProfileView({ profile }: { profile: DogProfile }) {
+export function ProfileView({
+  profile,
+  weather,
+  sessionLabel,
+}: {
+  profile: DogProfile;
+  weather?: WeatherReminder;
+  sessionLabel?: string;
+}) {
   const session = useSession();
   const unseen = useUnseenReportCount();
   const router = useRouter();
@@ -81,6 +90,18 @@ export function ProfileView({ profile }: { profile: DogProfile }) {
           </span>
         )}
       </Link>
+
+      {/* Weather reminder — only when the session day looks wet/icy/snowy */}
+      {weather && (
+        <div className="mt-8 flex items-start gap-3 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+          <span className="text-2xl leading-none" aria-hidden>{weather.emoji}</span>
+          <p className="text-sm text-paper/85">
+            <span className="font-semibold text-paper">{weather.label}</span> for{" "}
+            {sessionLabel || "your next session"} — remember to pack a coat for{" "}
+            {profile.name}. {weather.emoji}
+          </p>
+        </div>
+      )}
 
       {/* Training plan */}
       <div className="mt-10">

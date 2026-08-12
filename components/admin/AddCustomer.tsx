@@ -13,6 +13,7 @@ import { dayIdFromISO, formatSessionDate, spaceOnDate } from "@/lib/schedule/ses
 import { dayLabel } from "@/lib/schedule/types";
 import type { Cadence, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import { ONBOARDING_FLOW, stageIndex, type OnboardingEntry } from "@/lib/inbox/onboarding";
+import { CalendarMonth } from "./CalendarMonth";
 
 type Placement = "hold" | "permanent" | "oneoff";
 
@@ -34,9 +35,11 @@ function stageLabel(stage: OnboardingEntry["stage"]): string {
 export function AddCustomer({
   customers,
   week,
+  todayISO,
 }: {
   customers: OnboardingEntry[];
   week: DaySchedule[];
+  todayISO: string;
 }) {
   const overrides = useScheduleOverrides();
   const reschedules = useReschedules();
@@ -139,8 +142,6 @@ export function AddCustomer({
     window.setTimeout(() => setDone(null), 4000);
   }
 
-  const input =
-    "w-full rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
   const pill = (active: boolean) =>
     `rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
       active ? "bg-accent text-accent-ink" : "border border-white/15 text-paper hover:border-white/40"
@@ -234,15 +235,19 @@ export function AddCustomer({
 
               {/* 3. Date + cadence */}
               <div>
-                <label className="block text-sm font-medium text-paper/90">
+                <p className="mb-2 text-sm font-medium text-paper/90">
                   {placement === "oneoff" ? "Session date" : "Start date"}
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className={`mt-1.5 ${input}`}
+                </p>
+                <div className="rounded-2xl bg-black/20 p-3 ring-1 ring-white/5">
+                  <CalendarMonth
+                    todayISO={todayISO}
+                    week={merged}
+                    reschedules={reschedules}
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    minDate={todayISO.slice(0, 10)}
                   />
-                </label>
+                </div>
                 {startDate && (
                   <p className="mt-2 text-sm">
                     {!runs ? (

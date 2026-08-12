@@ -7,7 +7,7 @@ import { getOnboarding } from "@/lib/inbox/data";
 import { dayIdFromDate, dayLabel } from "@/lib/schedule/types";
 
 export const metadata: Metadata = {
-  title: "Coach dashboard",
+  title: "Trainer dashboard",
   robots: { index: false, follow: false },
 };
 

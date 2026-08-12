@@ -28,8 +28,8 @@ export function LoginForm() {
     setStatus("submitting");
     // TODO(backend): supabase.auth.signInWithPassword({ email, password }), then
     // route by role (is_staff() → /admin, otherwise /profile).
-    // Scaffold: a coach/admin email signs in as staff; anyone else as a member.
-    if (/coach|admin|charlotte/i.test(email)) {
+    // Scaffold: a trainer/admin email signs in as staff; anyone else as a member.
+    if (/coach|trainer|admin|charlotte/i.test(email)) {
       signIn(SAMPLE_ADMIN);
       router.push("/admin");
     } else {
@@ -38,7 +38,7 @@ export function LoginForm() {
     }
   }
 
-  function loginAsCoach() {
+  function loginAsTrainer() {
     signIn(SAMPLE_ADMIN);
     router.push("/admin");
   }
@@ -87,10 +87,10 @@ export function LoginForm() {
         {/* Scaffold shortcut — remove once real staff auth is wired. */}
         <button
           type="button"
-          onClick={loginAsCoach}
+          onClick={loginAsTrainer}
           className="text-center text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
         >
-          Log in as coach (demo)
+          Log in as trainer (demo)
         </button>
       </div>
     </div>
