@@ -34,6 +34,8 @@ export type ScheduledDog = {
   /** For alternating dogs — which week they're in ("A" or "B"). */
   weekParity?: "A" | "B";
   status: SlotStatus;
+  /** The recurring slot starts from this date (YYYY-MM-DD) — no sessions before it. */
+  startDate?: string;
 };
 
 export type DaySchedule = {

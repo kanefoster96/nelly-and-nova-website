@@ -24,7 +24,9 @@ import {
 import { sendReportCards } from "@/lib/reports/data";
 import { sendToOutbox } from "@/lib/reports/outbox";
 import { SessionCalendar } from "./SessionCalendar";
+import { AddCustomer } from "./AddCustomer";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
+import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 
 type Form = {
   focus: string;
@@ -60,11 +62,13 @@ export function AdminDashboard({
   todayISO,
   dogs,
   week,
+  customers,
 }: {
   todayLabel: string;
   todayISO: string;
   dogs: ScheduledDog[];
   week: DaySchedule[];
+  customers: OnboardingEntry[];
 }) {
   const session = useSession();
   const router = useRouter();
@@ -217,6 +221,11 @@ export function AdminDashboard({
             {sent && <span className="text-sm font-medium text-emerald-300">Sent to owners ✓</span>}
           </div>
         )}
+      </section>
+
+      {/* Add a customer to the schedule (hold / permanent / one-off) */}
+      <section className="mt-8">
+        <AddCustomer customers={customers} week={week} />
       </section>
 
       {/* Calendar — browse any day and move a dog's session as a one-off */}

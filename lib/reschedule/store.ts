@@ -68,6 +68,32 @@ export function moveSession(move: {
   void submitReschedule(req);
 }
 
+/** Add a one-off session for a customer on a single date (no recurring slot). */
+export function addOneOff(o: {
+  dogId: string;
+  dogName: string;
+  ownerName: string;
+  date: string;
+  day: DayId;
+}) {
+  const req: RescheduleRequest = {
+    id: `oneoff-${o.dogId}-${o.date}`,
+    dogId: o.dogId,
+    dogName: o.dogName,
+    ownerName: o.ownerName,
+    sessionDate: o.date,
+    fromDay: o.day,
+    toDay: o.day,
+    toDate: o.date,
+    note: "One-off session",
+    status: "approved",
+    createdAt: new Date().toISOString(),
+  };
+  const list = read().filter((r) => r.id !== req.id);
+  write([req, ...list]);
+  void submitReschedule(req);
+}
+
 /** Admin decides — approve / reject, optionally editing the target day/date. */
 export function decide(
   id: string,

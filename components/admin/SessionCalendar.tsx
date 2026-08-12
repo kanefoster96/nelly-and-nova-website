@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon, CloseIcon } from "@/components/ui/Icons";
 import { useReschedules, moveSession } from "@/lib/reschedule/store";
+import { applyOverrides, useScheduleOverrides } from "@/lib/schedule/allocations";
 import {
   monthGrid,
   monthName,
@@ -30,8 +31,11 @@ function Chevron({ dir }: { dir: "left" | "right" }) {
   );
 }
 
-export function SessionCalendar({ todayISO, week }: { todayISO: string; week: DaySchedule[] }) {
+export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string; week: DaySchedule[] }) {
   const reschedules = useReschedules();
+  const overrides = useScheduleOverrides();
+  // Reflect allocations (held / permanent / released customers) on the calendar.
+  const week = useMemo(() => applyOverrides(baseWeek, overrides), [baseWeek, overrides]);
   const today = todayISO.slice(0, 10);
   const [view, setView] = useState(() => ({
     year: Number(today.slice(0, 4)),

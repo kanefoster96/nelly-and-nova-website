@@ -132,7 +132,10 @@ export function dogsForDate(
   reschedules: RescheduleRequest[]
 ): DogOnDate[] {
   const day = dayIdFromISO(dateISO);
-  const base = week.find((d) => d.day === day)?.dogs ?? [];
+  // A recurring dog only runs on/after its start date (if it has one).
+  const base = (week.find((d) => d.day === day)?.dogs ?? []).filter(
+    (dg) => !dg.startDate || dg.startDate <= dateISO
+  );
   const moves = approvedMoves(reschedules);
   const movedAway = new Set(moves.filter((r) => r.sessionDate === dateISO).map((r) => r.dogId));
   const dogById = new Map(week.flatMap((d) => d.dogs).map((dg) => [dg.id, dg]));

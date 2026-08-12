@@ -3,6 +3,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { getDaySchedule, getWeekSchedule } from "@/lib/schedule/data";
+import { getOnboarding } from "@/lib/inbox/data";
 import { dayIdFromDate, dayLabel } from "@/lib/schedule/types";
 
 export const metadata: Metadata = {
@@ -17,7 +18,11 @@ export default async function AdminPage() {
   // "Today" is computed on the server so the client renders deterministically.
   const now = new Date();
   const todayId = dayIdFromDate(now);
-  const [today, week] = await Promise.all([getDaySchedule(todayId), getWeekSchedule()]);
+  const [today, week, customers] = await Promise.all([
+    getDaySchedule(todayId),
+    getWeekSchedule(),
+    getOnboarding(),
+  ]);
   const todayISO = now.toISOString();
 
   return (
@@ -31,6 +36,7 @@ export default async function AdminPage() {
               todayISO={todayISO}
               dogs={today.dogs}
               week={week}
+              customers={customers}
             />
           </div>
         </section>
