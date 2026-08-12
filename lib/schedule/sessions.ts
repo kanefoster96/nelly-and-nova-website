@@ -18,11 +18,11 @@ const JS_DAY: Record<DayId, number> = {
   sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
 };
 
-/** Sessions from the next occurrence up to `months` ahead (default 2). */
+/** Sessions from the next occurrence up to `months` ahead (default 1). */
 export function upcomingSessions(
   plan: { dayId: DayId; cadence: Cadence },
   todayISO: string,
-  months = 2
+  months = 1
 ): SessionDate[] {
   const target = JS_DAY[plan.dayId];
   const start = new Date(todayISO);
@@ -245,10 +245,14 @@ export function bookableDays(
   mergedWeek: DaySchedule[],
   reschedules: RescheduleRequest[],
   targetFor: (day: DayId) => string,
-  exclude?: DayId
+  exclude?: DayId,
+  // Optional block on the resulting date — e.g. a holiday closure, so members
+  // can't reschedule to, or book an extra on, a day we're away.
+  isBlocked?: (dateISO: string) => boolean
 ): MemberDay[] {
   return mergedWeek
     .filter((d) => d.capacity > 0 && d.day !== exclude)
+    .filter((d) => !isBlocked?.(targetFor(d.day)))
     .filter((d) => spaceOnDate(targetFor(d.day), mergedWeek, reschedules, true) > 0)
     .map((d) => ({ day: d.day, label: dayLabel(d.day) }));
 }

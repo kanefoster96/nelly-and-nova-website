@@ -12,6 +12,7 @@ import type { Holiday, HolidayCustomer } from "./types";
 import { ANNUAL_HOLIDAY_ALLOWANCE } from "./types";
 import { isoToNum, rangeCoversISO, yearOf } from "./dates";
 import type { DaySchedule } from "@/lib/schedule/types";
+import type { RescheduleRequest } from "@/lib/reschedule/types";
 import { publishHoliday, unpublishHoliday, scheduleHolidayReminders } from "./data";
 
 const EMPTY: Holiday[] = [];
@@ -64,6 +65,23 @@ export function holidaysUsed(list: Holiday[], year: number): number {
 
 export function remainingAllowance(list: Holiday[], year: number): number {
   return Math.max(0, ANNUAL_HOLIDAY_ALLOWANCE - holidaysUsed(list, year));
+}
+
+/**
+ * Bookings that land inside a closure and so can't happen — the member either
+ * moved a session in or booked an extra/one-off (paid, non-membership) for a
+ * day we're away. These need sorting with the customer (cancel / refund /
+ * replace), so they surface as a warning when adding a holiday and as a notice
+ * afterwards. Rejected requests are ignored.
+ */
+export function conflictingBookings(
+  reschedules: RescheduleRequest[],
+  start: string,
+  end: string
+): RescheduleRequest[] {
+  return reschedules.filter(
+    (r) => r.status !== "rejected" && rangeCoversISO(start, end, r.toDate)
+  );
 }
 
 /**

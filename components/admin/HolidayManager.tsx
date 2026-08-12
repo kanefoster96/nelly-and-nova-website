@@ -12,9 +12,13 @@ import {
   removeHoliday,
   rosterCustomers,
   holidaysUsed,
+  conflictingBookings,
 } from "@/lib/holidays/store";
 import { ANNUAL_HOLIDAY_ALLOWANCE, type HolidayCustomer } from "@/lib/holidays/types";
 import { daysInclusive, formatRange, isoToNum, yearOf } from "@/lib/holidays/dates";
+import { useReschedules } from "@/lib/reschedule/store";
+import { formatSessionDate } from "@/lib/schedule/sessions";
+import type { RescheduleRequest } from "@/lib/reschedule/types";
 
 /**
  * Trainer holidays. Add a closure (choose the days away); it marks one holiday
@@ -29,6 +33,7 @@ export function HolidayManager({
   todayISO: string;
 }) {
   const holidays = useHolidays();
+  const reschedules = useReschedules();
   const customers = useMemo(() => rosterCustomers(week), [week]);
   const today = todayISO.slice(0, 10);
   const year = Number(today.slice(0, 4));
@@ -76,47 +81,53 @@ export function HolidayManager({
         {/* Scheduled closures */}
         {yearHolidays.length > 0 && (
           <ul className="mt-5 space-y-2">
-            {yearHolidays.map((h) => (
-              <li
-                key={h.id}
-                className="flex items-center gap-3 rounded-xl bg-white/[0.03] p-3 ring-1 ring-white/5"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
-                  <CalendarIcon width={18} height={18} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-paper">
-                    {formatRange(h)}
-                  </p>
-                  <p className="truncate text-xs text-paper-dim">
-                    {daysInclusive(h)} days · no sessions
-                    {h.reason ? ` · ${h.reason}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: "Remove this holiday?",
-                      message: (
-                        <>
-                          Remove the closure for{" "}
-                          <b className="text-paper">{formatRange(h)}</b>? Members
-                          get this holiday back.
-                        </>
-                      ),
-                      confirmLabel: "Remove",
-                      danger: true,
-                    });
-                    if (ok) removeHoliday(h.id);
-                  }}
-                  aria-label="Remove holiday"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
+            {yearHolidays.map((h) => {
+              const conflicts = conflictingBookings(reschedules, h.start, h.end);
+              return (
+                <li
+                  key={h.id}
+                  className="rounded-xl bg-white/[0.03] p-3 ring-1 ring-white/5"
                 >
-                  <CloseIcon width={16} height={16} />
-                </button>
-              </li>
-            ))}
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
+                      <CalendarIcon width={18} height={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-paper">
+                        {formatRange(h)}
+                      </p>
+                      <p className="truncate text-xs text-paper-dim">
+                        {daysInclusive(h)} days · no sessions
+                        {h.reason ? ` · ${h.reason}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: "Remove this holiday?",
+                          message: (
+                            <>
+                              Remove the closure for{" "}
+                              <b className="text-paper">{formatRange(h)}</b>? Members
+                              get this holiday back.
+                            </>
+                          ),
+                          confirmLabel: "Remove",
+                          danger: true,
+                        });
+                        if (ok) removeHoliday(h.id);
+                      }}
+                      aria-label="Remove holiday"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
+                    >
+                      <CloseIcon width={16} height={16} />
+                    </button>
+                  </div>
+                  {conflicts.length > 0 && <ConflictNotice conflicts={conflicts} />}
+                </li>
+              );
+            })}
           </ul>
         )}
 
@@ -170,6 +181,7 @@ export function HolidayManager({
           today={today}
           customers={customers}
           holidays={holidays}
+          reschedules={reschedules}
           onClose={() => setOpen(false)}
           confirm={confirm}
           onAdded={(msg) => {
@@ -189,6 +201,7 @@ function AddHolidayModal({
   today,
   customers,
   holidays,
+  reschedules,
   onClose,
   onAdded,
   confirm,
@@ -197,6 +210,7 @@ function AddHolidayModal({
   today: string;
   customers: HolidayCustomer[];
   holidays: { start: string }[];
+  reschedules: RescheduleRequest[];
   onClose: () => void;
   onAdded: (msg: string) => void;
   confirm: ReturnType<typeof useConfirm>["confirm"];
@@ -218,6 +232,9 @@ function AddHolidayModal({
   const wouldExceed = holYear != null && usedInYear >= ANNUAL_HOLIDAY_ALLOWANCE;
 
   const withEmail = customers.filter((c) => c.email);
+  // Bookings already made for days inside the chosen period — these will need
+  // sorting with the customer (cancel / refund / replace).
+  const conflicts = period ? conflictingBookings(reschedules, period.start, period.end) : [];
   const valid = !!period && !wouldExceed && !busy;
 
   async function submit() {
@@ -231,6 +248,16 @@ function AddHolidayModal({
           <b className="text-paper">{customers.length}</b> members and emails{" "}
           <b className="text-paper">{withEmail.length}</b> that sessions
           won&apos;t run.
+          {conflicts.length > 0 && (
+            <>
+              {" "}
+              <b className="text-amber-300">
+                {conflicts.length} existing booking{conflicts.length === 1 ? "" : "s"} fall
+                {conflicts.length === 1 ? "s" : ""} in this period
+              </b>{" "}
+              and will need sorting with the customer.
+            </>
+          )}
         </>
       ),
       confirmLabel: "Yes, add holiday",
@@ -334,6 +361,9 @@ function AddHolidayModal({
               </p>
             </div>
           )}
+
+          {/* Conflict pop-up — a booking already exists inside this period */}
+          {period && conflicts.length > 0 && <ConflictNotice conflicts={conflicts} inModal />}
           {bothSet && !orderOk && (
             <p className="text-sm text-red-400">The last day can&apos;t be before the first.</p>
           )}
@@ -358,6 +388,63 @@ function AddHolidayModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Flags bookings that clash with a closure — a paid extra/one-off or a session
+ * someone moved into the week. They can't run, so they need sorting with the
+ * customer (cancel / refund / replace). Shown as a pop-up when adding a holiday
+ * and as a standing notice under a scheduled one.
+ */
+function ConflictNotice({
+  conflicts,
+  inModal,
+}: {
+  conflicts: RescheduleRequest[];
+  inModal?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl bg-red-500/10 p-3.5 ring-1 ring-red-500/25 ${inModal ? "" : "mt-3"}`}
+    >
+      <p className="text-sm font-semibold text-red-300">
+        ⚠️ {conflicts.length} booking{conflicts.length === 1 ? "" : "s"} in this period —
+        needs sorting
+      </p>
+      <p className="mt-0.5 text-xs text-red-300/80">
+        We&apos;re closed, so {conflicts.length === 1 ? "this" : "these"} can&apos;t run.
+        Cancel / refund / replace with the customer.
+      </p>
+      <ul className="mt-2.5 space-y-1.5">
+        {conflicts.map((r) => {
+          const isExtra = r.kind === "extra";
+          return (
+            <li
+              key={r.id}
+              className="flex items-start justify-between gap-3 rounded-lg bg-black/20 px-3 py-2 text-xs"
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-paper">
+                  {r.ownerName} · {r.dogName}
+                </p>
+                <p className="text-paper-dim">
+                  {isExtra ? `${r.service ?? "Extra session"} (paid one-off)` : "Moved-in session"}{" "}
+                  · {formatSessionDate(r.toDate)}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  isExtra ? "bg-red-500/20 text-red-200" : "bg-amber-400/15 text-amber-300"
+                }`}
+              >
+                {isExtra ? "Refund" : "Rebook"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

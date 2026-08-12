@@ -34,7 +34,7 @@ export function HolidayReminder({
   const today = todayISO.slice(0, 10);
 
   // Their sessions from now (include today if today is their training day).
-  const upcoming = upcomingSessions({ dayId, cadence }, todayISO, 2);
+  const upcoming = upcomingSessions({ dayId, cadence }, todayISO, 1);
   const candidates =
     dayIdFromISO(today) === dayId ? [{ date: today, day: dayId }, ...upcoming] : upcoming;
 

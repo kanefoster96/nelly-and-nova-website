@@ -80,6 +80,14 @@ export function UpcomingSessions({
   // Re-check space at the moment of submitting — the day may have filled since
   // the picker rendered. (The backend enforces the 6-limit atomically too.)
   function guard(toDate: string): boolean {
+    const holiday = holidayCoveringDate(holidays, toDate);
+    if (holiday) {
+      setFullNote(`We're closed that week (${formatRange(holiday)}). Please pick another day.`);
+      window.setTimeout(() => setFullNote(null), 5000);
+      setOpenDate(null);
+      setBookingExtra(false);
+      return false;
+    }
     if (spaceOnDate(toDate, merged, reschedules, true) > 0) return true;
     setFullNote("Sorry — that day just filled up. Please pick another.");
     window.setTimeout(() => setFullNote(null), 4000);
@@ -87,6 +95,9 @@ export function UpcomingSessions({
     setBookingExtra(false);
     return false;
   }
+
+  // Days a member can pick — never one inside a holiday closure.
+  const notHoliday = (iso: string) => holidayCoveringDate(holidays, iso) != null;
 
   async function acceptWithConfirm(r: RescheduleRequest) {
     const price = r.kind === "extra" ? extraSessionPrice(r.service ?? "") : 0;
@@ -125,7 +136,7 @@ export function UpcomingSessions({
   return (
     <>
       <p className="text-sm text-paper/70">
-        {plan.service} · {plan.day} — your sessions for the next two months. Can&apos;t
+        {plan.service} · {plan.day} — your sessions for the next month. Can&apos;t
         make one? Request a swap to another available day.
       </p>
       <p className="mt-2 rounded-xl bg-white/[0.03] px-4 py-2.5 text-xs text-paper-dim ring-1 ring-white/5">
@@ -271,7 +282,7 @@ export function UpcomingSessions({
         <PickDayModal
           title="Request a reschedule"
           subtitle={formatSessionDate(openSession.date)}
-          days={bookableDays(merged, reschedules, (day) => dateForDayInWeek(openSession.date, day), openSession.day)}
+          days={bookableDays(merged, reschedules, (day) => dateForDayInWeek(openSession.date, day), openSession.day, notHoliday)}
           withReason
           onClose={() => setOpenDate(null)}
           onSubmit={async (toDay, note) => {
@@ -302,7 +313,7 @@ export function UpcomingSessions({
 
       {bookingExtra && (
         <ExtraModal
-          days={bookableDays(merged, reschedules, (day) => nextDateForDay(today, day))}
+          days={bookableDays(merged, reschedules, (day) => nextDateForDay(today, day), undefined, notHoliday)}
           onClose={() => setBookingExtra(false)}
           onSubmit={async (service, toDay) => {
             const toDate = nextDateForDay(today, toDay);
