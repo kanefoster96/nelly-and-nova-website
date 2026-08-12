@@ -14,10 +14,18 @@ import {
 } from "@/components/ui/Icons";
 import { useSession } from "@/lib/auth/session";
 import { formatDate } from "@/lib/inbox/format";
-import { isComplete, saveReportEntry, type ReportEntryStatus } from "@/lib/reports/entry";
+import {
+  entryToReportCard,
+  isComplete,
+  saveReportEntry,
+  type ReportEntryStatus,
+} from "@/lib/reports/entry";
+import { sendReportCards } from "@/lib/reports/data";
+import { sendToOutbox } from "@/lib/reports/outbox";
 import type { ScheduledDog } from "@/lib/schedule/types";
 
 type Form = {
+  focus: string;
   summary: string;
   wins: string[];
   homework: string[];
@@ -25,6 +33,7 @@ type Form = {
 };
 
 const blankForm = (): Form => ({
+  focus: "",
   summary: "",
   wins: ["", "", ""],
   homework: [""],
@@ -107,7 +116,12 @@ export function AdminDashboard({
   }
 
   function sendAll() {
-    // TODO(backend): create the owner-facing report cards + notifications.
+    // Turn every ready entry into an owner-facing report card and send it.
+    const cards = dogs
+      .filter((d) => forms[d.id]?.status === "ready" || forms[d.id]?.status === "sent")
+      .map((d) => entryToReportCard({ dogId: d.id, coach, date: todayISO, ...forms[d.id] }));
+    void sendReportCards(cards); // backend seam (insert + notify) — TODO
+    sendToOutbox(cards); // scaffold: surface to owners + light their badge now
     setForms((f) =>
       Object.fromEntries(
         Object.entries(f).map(([k, v]) => [k, { ...v, status: "sent" as const }])
@@ -316,6 +330,19 @@ function ReportEntryModal({
         </div>
 
         <div className="grid gap-5 px-5 py-5">
+          {/* Headline — the card title the owner sees. */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-paper/90">
+              Headline
+            </label>
+            <input
+              value={form.focus}
+              onChange={(e) => onChange({ focus: e.target.value })}
+              placeholder="e.g. Loose lead &amp; recall"
+              className={inputCls}
+            />
+          </div>
+
           {/* 1. Summary */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-paper/90">

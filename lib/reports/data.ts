@@ -47,3 +47,14 @@ export async function markReportSeen(reportId: string): Promise<void> {
   // TODO(backend): update report_cards set seen_at = now() where id = $1
   console.log(`[reports] report ${reportId} marked seen (scaffold)`);
 }
+
+/**
+ * Send the day's report cards to owners (coach dashboard → "Send all").
+ * TODO(backend): insert each ReportCard into `report_cards` and create a
+ * "new report card" notification per owner (delivered live over Realtime).
+ * In the scaffold the dashboard also writes them to the client-side outbox
+ * (lib/reports/outbox.ts) so the owner sees them straight away.
+ */
+export async function sendReportCards(cards: ReportCard[]): Promise<void> {
+  console.log(`[reports] sending ${cards.length} report card(s) to owners (scaffold)`);
+}

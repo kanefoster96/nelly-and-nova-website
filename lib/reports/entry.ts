@@ -8,12 +8,15 @@
  * when every dog's entry is ready they're sent to the owners as the report cards
  * they read, comment on and mark homework complete (lib/reports/types.ts).
  */
+import type { Homework, ReportCard } from "./types";
+
 export type ReportEntryStatus = "todo" | "draft" | "ready" | "sent";
 
 export type ReportEntry = {
   dogId: string;
   coach: string;
   date: string; // ISO — the session date (today)
+  focus: string; // headline the owner sees, e.g. "Loose lead & recall"
   summary: string;
   wins: string[]; // three things they did well
   homework: string[]; // homework for the week
@@ -26,6 +29,7 @@ export function blankEntry(dogId: string, coach: string, date: string): ReportEn
     dogId,
     coach,
     date,
+    focus: "",
     summary: "",
     wins: ["", "", ""],
     homework: [""],
@@ -39,6 +43,32 @@ export function isComplete(entry: ReportEntry): boolean {
     entry.summary.trim().length > 0 &&
     entry.wins.some((w) => w.trim().length > 0)
   );
+}
+
+/**
+ * Turn a completed coach entry into the owner-facing report card — the exact
+ * shape the owner reads (lib/reports/types.ts). This is the transform the send
+ * pipeline runs for each ready dog; the backend will do the same insert.
+ */
+export function entryToReportCard(entry: ReportEntry): ReportCard {
+  const id = `sent-${entry.dogId}-${entry.date.slice(0, 10)}`;
+  const wins = entry.wins.map((w) => w.trim()).filter(Boolean);
+  const homework: Homework[] = entry.homework
+    .map((h) => h.trim())
+    .filter(Boolean)
+    .map((title, i) => ({ id: `${id}-hw${i}`, title, done: false }));
+
+  return {
+    id,
+    date: entry.date,
+    // A headline is required; fall back to the first win, then a default.
+    focus: entry.focus.trim() || wins[0] || "Training session",
+    summary: entry.summary.trim(),
+    wins,
+    homework,
+    comments: [],
+    isNew: true, // unseen by the owner → notifies them
+  };
 }
 
 /**

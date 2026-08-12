@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "./ui/Button";
 import { CheckIcon, ChevronDownIcon } from "./ui/Icons";
 import { formatDate, formatTime } from "@/lib/inbox/format";
 import { useSession } from "@/lib/auth/session";
 import { markReportsSeen } from "@/lib/reports/seen";
+import { useOutboxCards } from "@/lib/reports/outbox";
 import { setHomeworkDone, addReportComment } from "@/lib/reports/data";
 import type { ReportCard, ReportComment } from "@/lib/reports/types";
+
+const byDateDesc = (a: ReportCard, b: ReportCard) =>
+  a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+
+/** Owner edits kept as an overlay so they apply to sample + sent cards alike. */
+type Edit = { hw: Record<string, boolean>; comments: ReportComment[] };
 
 /**
  * Report cards for the owner's dog. The latest opens by default. Owners mark
@@ -21,14 +28,35 @@ import type { ReportCard, ReportComment } from "@/lib/reports/types";
 export function ReportCards({ initial }: { initial: ReportCard[] }) {
   const session = useSession();
   const isStaff = session?.role === "admin";
-  const [cards, setCards] = useState(initial);
-  const [openId, setOpenId] = useState<string | null>(initial[0]?.id ?? null);
+  const outbox = useOutboxCards();
+  const [edits, setEdits] = useState<Record<string, Edit>>({});
+  // `undefined` = follow the newest card automatically; set once the user clicks.
+  const [openId, setOpenId] = useState<string | null | undefined>(undefined);
   const [draft, setDraft] = useState<Record<string, string>>({});
 
+  // Base list: sample cards plus any a coach has just sent (scaffold outbox),
+  // newest first. Then apply the owner's local edits over the top.
+  const cards = useMemo(() => {
+    const byId = new Map<string, ReportCard>();
+    for (const c of [...outbox, ...initial]) if (!byId.has(c.id)) byId.set(c.id, c);
+    return [...byId.values()].sort(byDateDesc).map((c) => {
+      const e = edits[c.id];
+      if (!e) return c;
+      return {
+        ...c,
+        homework: c.homework.map((h) => (h.id in e.hw ? { ...h, done: e.hw[h.id] } : h)),
+        comments: e.comments.length ? [...c.comments, ...e.comments] : c.comments,
+      };
+    });
+  }, [outbox, initial, edits]);
+
+  const openCardId = openId === undefined ? cards[0]?.id ?? null : openId;
+
   // Clear the "new report card" badge once the owner views them.
+  const idsKey = cards.map((c) => c.id).join(",");
   useEffect(() => {
-    if (!isStaff) markReportsSeen(initial.map((c) => c.id));
-  }, [initial, isStaff]);
+    if (!isStaff) markReportsSeen(idsKey ? idsKey.split(",") : []);
+  }, [idsKey, isStaff]);
 
   if (!session) {
     return (
@@ -46,23 +74,17 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
     );
   }
 
-  function toggleHw(cardId: string, hwId: string) {
-    setCards((cs) => {
-      const next = cs.map((c) =>
-        c.id !== cardId
-          ? c
-          : {
-              ...c,
-              homework: c.homework.map((h) =>
-                h.id === hwId ? { ...h, done: !h.done } : h
-              ),
-            }
-      );
-      const hw = next.find((c) => c.id === cardId)?.homework.find((h) => h.id === hwId);
-      // TODO(backend): persist the change (localStorage stands in until then).
-      if (hw) void setHomeworkDone(cardId, hwId, hw.done);
-      return next;
+  function editFor(cardId: string, prev: Record<string, Edit>): Edit {
+    return prev[cardId] ?? { hw: {}, comments: [] };
+  }
+
+  function toggleHw(cardId: string, hwId: string, done: boolean) {
+    setEdits((prev) => {
+      const e = editFor(cardId, prev);
+      return { ...prev, [cardId]: { ...e, hw: { ...e.hw, [hwId]: done } } };
     });
+    // TODO(backend): persist the change (the edit overlay stands in until then).
+    void setHomeworkDone(cardId, hwId, done);
   }
 
   function submitComment(cardId: string) {
@@ -75,11 +97,10 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
       body,
       createdAt: new Date().toISOString(),
     };
-    setCards((cs) =>
-      cs.map((c) =>
-        c.id === cardId ? { ...c, comments: [...c.comments, comment] } : c
-      )
-    );
+    setEdits((prev) => {
+      const e = editFor(cardId, prev);
+      return { ...prev, [cardId]: { ...e, comments: [...e.comments, comment] } };
+    });
     setDraft((d) => ({ ...d, [cardId]: "" }));
     // TODO(backend): insert the comment; an owner comment notifies staff.
     void addReportComment(cardId, comment);
@@ -88,7 +109,7 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
   return (
     <div className="space-y-4">
       {cards.map((card) => {
-        const open = openId === card.id;
+        const open = openCardId === card.id;
         const remaining = card.homework.filter((h) => !h.done).length;
         return (
           <div
@@ -159,7 +180,7 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
                       <li key={h.id}>
                         <button
                           type="button"
-                          onClick={() => toggleHw(card.id, h.id)}
+                          onClick={() => toggleHw(card.id, h.id, !h.done)}
                           disabled={isStaff}
                           aria-pressed={h.done}
                           className="flex w-full items-start gap-3 rounded-xl bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.05] disabled:cursor-default disabled:hover:bg-white/[0.03]"

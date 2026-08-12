@@ -10,6 +10,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { newReportIds } from "./sample";
+import { OUTBOX_EVENT, OUTBOX_KEY, readOutboxNewIds } from "./outbox";
 
 const KEY = "nn-reports-seen";
 const EVENT = "nn-reports-seen-change";
@@ -35,17 +36,20 @@ let cacheRaw: string | null | undefined = undefined;
 
 function subscribe(cb: () => void) {
   window.addEventListener(EVENT, cb);
+  window.addEventListener(OUTBOX_EVENT, cb);
   window.addEventListener("storage", cb);
   return () => {
     window.removeEventListener(EVENT, cb);
+    window.removeEventListener(OUTBOX_EVENT, cb);
     window.removeEventListener("storage", cb);
   };
 }
 
 function getSnapshot(): number {
+  // Recompute when either the seen set or the sent-cards outbox changes.
   const raw = (() => {
     try {
-      return localStorage.getItem(KEY);
+      return `${localStorage.getItem(KEY)}|${localStorage.getItem(OUTBOX_KEY)}`;
     } catch {
       return null;
     }
@@ -53,7 +57,9 @@ function getSnapshot(): number {
   if (raw !== cacheRaw) {
     cacheRaw = raw;
     const seen = new Set(readSeen());
-    cache = newReportIds.filter((id) => !seen.has(id)).length;
+    // Sample "new" cards plus any freshly-sent ones the owner hasn't seen.
+    const newIds = [...newReportIds, ...readOutboxNewIds()];
+    cache = newIds.filter((id) => !seen.has(id)).length;
   }
   return cache;
 }
