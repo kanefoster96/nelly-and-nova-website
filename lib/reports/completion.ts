@@ -23,6 +23,13 @@ export function isWindowOpen(cardDateISO: string, todayISO: string): boolean {
   return todayISO <= windowEnd(cardDateISO);
 }
 
+/** The date `months` before `todayISO` (YYYY-MM-DD) — e.g. a 6-month window. */
+export function monthsAgoISO(todayISO: string, months: number): string {
+  const d = new Date(todayISO);
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
+
 export type Completion = { percent: number; completed: number; total: number };
 
 /**

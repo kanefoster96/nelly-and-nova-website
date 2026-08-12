@@ -16,11 +16,12 @@ export const dynamic = "force-dynamic";
 export default async function ProfilePage() {
   const profile = await getDogProfile();
 
+  const todayISO = new Date().toISOString().slice(0, 10);
+
   // Weather for their next/today's session → coat reminder if wet.
   let weather = null;
   let sessionLabel = "";
   if (profile.plan) {
-    const todayISO = new Date().toISOString().slice(0, 10);
     const isTodaySession = dayIdFromISO(todayISO) === profile.plan.dayId;
     const sessionDate = isTodaySession ? todayISO : nextDateForDay(todayISO, profile.plan.dayId);
     weather = await getSessionWeather(sessionDate);
@@ -33,7 +34,12 @@ export default async function ProfilePage() {
       <main id="main" className="flex-1">
         <section className="bg-ink pb-24 pt-28 sm:pt-32">
           <div className="mx-auto max-w-md px-4 sm:px-6">
-            <ProfileView profile={profile} weather={weather} sessionLabel={sessionLabel} />
+            <ProfileView
+              profile={profile}
+              weather={weather}
+              sessionLabel={sessionLabel}
+              todayISO={todayISO}
+            />
           </div>
         </section>
       </main>

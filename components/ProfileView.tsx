@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
@@ -7,8 +8,14 @@ import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
 import { useSession, signOut, setActiveDog } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import { accountDogProfile } from "@/lib/dogs/account";
+import { sampleReportCards } from "@/lib/reports/sample";
+import { useOutboxCards } from "@/lib/reports/outbox";
+import { useHomeworkProgress } from "@/lib/reports/progress";
+import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
+import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
 import { HolidayReminder } from "./profile/HolidayReminder";
 import { HomeworkSummary } from "./profile/HomeworkSummary";
+import { LatestCommunityPost } from "./profile/LatestCommunityPost";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
 
@@ -23,14 +30,30 @@ export function ProfileView({
   profile,
   weather,
   sessionLabel,
+  todayISO,
 }: {
   profile: DogProfile;
   weather?: WeatherReminder;
   sessionLabel?: string;
+  todayISO: string;
 }) {
   const session = useSession();
   const unseen = useUnseenReportCount(session?.dogId);
+  const outbox = useOutboxCards();
+  const progress = useHomeworkProgress();
+  const resets = useHomeworkResets();
   const router = useRouter();
+
+  // Homework completion over the past 6 months (shown as a header stat). Cards
+  // count from the later of any trainer reset or the 6-month cutoff.
+  const homeworkPercent = useMemo(() => {
+    const byId = new Map<string, (typeof sampleReportCards)[number]>();
+    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
+    const sixMonthsAgo = monthsAgoISO(todayISO, 6);
+    const reset = resetAtFor(resets, session?.dogId);
+    const since = [reset, sixMonthsAgo].filter(Boolean).sort().pop();
+    return dogCompletion([...byId.values()], progress, session?.dogId, since).percent;
+  }, [outbox, progress, resets, session?.dogId, todayISO]);
 
   function logout() {
     signOut();
@@ -70,9 +93,10 @@ export function ProfileView({
           <img src={photo} alt={name} className="h-full w-full object-cover" />
         </span>
         <div className="flex flex-1 items-center justify-around">
-          <Stat value={active.age} label="Age" />
-          <Stat value={active.sessions} label="Sessions" />
-          <Stat value={active.level} label="Level" />
+          {/* Level isn't wired up yet — placeholder until levels launch. */}
+          <Stat label="Level" value="—" />
+          <Stat label="Age" value={active.age} />
+          <Stat label="Homework" value={`${homeworkPercent}%`} />
         </div>
       </div>
 
@@ -119,8 +143,8 @@ export function ProfileView({
         )}
       </Link>
 
-      {/* All-time homework completion + missed-homework info popup */}
-      <HomeworkSummary dogId={session.dogId} />
+      {/* Missed-homework nudge (the % itself lives in the header stats) */}
+      <HomeworkSummary percent={homeworkPercent} />
 
       {/* Holiday reminder — session-off notice, or a heads-up a week before */}
       <HolidayReminder
@@ -181,6 +205,9 @@ export function ProfileView({
           </div>
         )}
       </div>
+
+      {/* Their latest community post, or a nudge to share their first */}
+      <LatestCommunityPost dogName={name} />
 
       {/* Stats & skills — placeholder */}
       <div className="mt-8">
@@ -243,12 +270,14 @@ export function ProfileView({
   );
 }
 
-/** One stat column in the Instagram-style header. */
+/** One stat column in the Instagram-style header — word above, number below. */
 function Stat({ value, label }: { value: string | number; label: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-xl font-bold text-paper sm:text-2xl">{value}</span>
-      <span className="text-sm text-paper-dim">{label}</span>
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-xs font-medium uppercase tracking-wide text-paper-dim">
+        {label}
+      </span>
+      <span className="text-lg font-bold text-paper sm:text-xl">{value}</span>
     </div>
   );
 }

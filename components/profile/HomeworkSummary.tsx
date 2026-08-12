@@ -1,56 +1,34 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { HelpCircleIcon, CloseIcon, ArrowRightIcon } from "@/components/ui/Icons";
-import { sampleReportCards } from "@/lib/reports/sample";
-import { useOutboxCards } from "@/lib/reports/outbox";
-import { useHomeworkProgress } from "@/lib/reports/progress";
-import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
-import { dogCompletion } from "@/lib/reports/completion";
 
 /**
- * All-time homework completion for the active dog, shown as a percentage. When
- * it's under 100% a small info button explains that homework was missed and
+ * Missed-homework nudge. The homework percentage itself lives in the header
+ * stats; when it's under 100% this explains that some homework was missed and
  * points the owner to book a 1-1 (which the trainer can use to reset to 100%).
+ * Renders nothing when homework is fully complete.
  */
-export function HomeworkSummary({ dogId }: { dogId?: string }) {
-  const outbox = useOutboxCards();
-  const progress = useHomeworkProgress();
-  const resets = useHomeworkResets();
+export function HomeworkSummary({ percent }: { percent: number }) {
   const [open, setOpen] = useState(false);
-
-  const { percent } = useMemo(() => {
-    const byId = new Map<string, (typeof sampleReportCards)[number]>();
-    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
-    return dogCompletion([...byId.values()], progress, dogId, resetAtFor(resets, dogId));
-  }, [outbox, progress, resets, dogId]);
+  if (percent >= 100) return null;
 
   return (
-    <div className="mt-4 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-paper/90">Homework completed</p>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm font-semibold text-paper">{percent}%</span>
-          {percent < 100 && (
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              aria-label="Why isn't my homework at 100%?"
-              className="flex h-6 w-6 items-center justify-center rounded-full text-paper-dim hover:text-paper"
-            >
-              <HelpCircleIcon width={16} height={16} />
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="mt-2 h-2 rounded-full bg-white/10">
-        <div
-          className={`h-full rounded-full ${percent >= 100 ? "bg-accent" : "bg-accent/70"}`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <p className="mt-1.5 text-xs text-paper-dim">All-time across your report cards</p>
+    <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-paper">
+        <HelpCircleIcon width={18} height={18} />
+      </span>
+      <p className="min-w-0 flex-1 text-sm text-paper/85">
+        Some homework was missed.
+      </p>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="shrink-0 rounded-full border border-white/20 px-3 py-1.5 text-xs font-medium text-paper hover:border-white/40"
+      >
+        Learn more
+      </button>
 
       {open && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
