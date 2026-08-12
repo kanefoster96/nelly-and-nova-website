@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { formatTime } from "@/lib/inbox/format";
 import { CloseIcon, MessageIcon, MailIcon, CheckIcon } from "../ui/Icons";
+import { AddressPin } from "../maps/AddressPin";
 import type { InboxRequest } from "@/lib/inbox/types";
 
 export function RequestDetail({
@@ -69,14 +70,22 @@ export function RequestDetail({
         </header>
 
         <dl className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-          {request.details.map((f, i) => (
-            <div key={i} className="border-b border-white/5 py-3 last:border-0">
-              <dt className="text-xs font-medium uppercase tracking-wide text-paper-dim">
-                {f.label}
-              </dt>
-              <dd className="mt-1 whitespace-pre-wrap text-paper">{f.value}</dd>
-            </div>
-          ))}
+          {request.details.map((f, i) => {
+            const isAddress = /address/i.test(f.label) && f.value.trim() && f.value.trim() !== "—";
+            return (
+              <div key={i} className="border-b border-white/5 py-3 last:border-0">
+                <dt className="text-xs font-medium uppercase tracking-wide text-paper-dim">
+                  {f.label}
+                </dt>
+                <dd className="mt-1 whitespace-pre-wrap text-paper">{f.value}</dd>
+                {isAddress && (
+                  <div className="mt-2">
+                    <AddressPin address={f.value} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </dl>
 
         <footer className="flex flex-wrap gap-2 border-t border-white/10 p-4">

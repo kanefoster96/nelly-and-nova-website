@@ -5,6 +5,7 @@ import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
 import { useSession, signOut } from "@/lib/auth/session";
 import { useRouter } from "next/navigation";
+import { AddressPin } from "./maps/AddressPin";
 
 /**
  * Account holder information — the owner's own details and password. The dog is
@@ -82,7 +83,14 @@ export function AccountInfo() {
           </div>
           <Field label="Email" name="email" type="email" inputMode="email" value={email} onChange={setEmail} />
           <Field label="Phone" name="phone" type="tel" inputMode="tel" value={phone} onChange={setPhone} />
-          <Field label="Address & postcode" name="address" value={address} onChange={setAddress} />
+          <div>
+            <Field label="Address & postcode" name="address" value={address} onChange={setAddress} />
+            {address.trim() && (
+              <div className="mt-1.5">
+                <AddressPin address={address} showMap={false} />
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <Button radius="xl" onClick={saveDetails}>
               Save changes
