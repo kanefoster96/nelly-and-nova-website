@@ -15,7 +15,7 @@ import { dayIdFromISO, formatSessionDate, spaceOnDate } from "@/lib/schedule/ses
 import { dayLabel } from "@/lib/schedule/types";
 import type { Cadence, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import { ONBOARDING_FLOW, stageIndex, type OnboardingEntry } from "@/lib/inbox/onboarding";
-import { CalendarMonth } from "./CalendarMonth";
+import { DatePicker } from "./DatePicker";
 
 type Placement = "hold" | "permanent" | "oneoff";
 
@@ -281,16 +281,14 @@ export function AddCustomer({
                 <p className="mb-2 text-sm font-medium text-paper/90">
                   {placement === "oneoff" ? "Session date" : "Start date"}
                 </p>
-                <div className="rounded-2xl bg-black/20 p-3 ring-1 ring-white/5">
-                  <CalendarMonth
-                    todayISO={todayISO}
-                    week={merged}
-                    reschedules={reschedules}
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    minDate={todayISO.slice(0, 10)}
-                  />
-                </div>
+                <DatePicker
+                  todayISO={todayISO}
+                  week={merged}
+                  reschedules={reschedules}
+                  value={startDate}
+                  onChange={setStartDate}
+                  minDate={todayISO.slice(0, 10)}
+                />
                 {startDate && (
                   <p className="mt-2 text-sm">
                     {!runs ? (

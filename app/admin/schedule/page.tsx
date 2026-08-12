@@ -11,8 +11,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function SchedulePage() {
   const week = await getWeekSchedule();
+  const todayISO = new Date().toISOString();
 
   return (
     <>
@@ -36,7 +39,7 @@ export default async function SchedulePage() {
             </p>
 
             <RequireAdmin>
-              <ScheduleBoard week={week} />
+              <ScheduleBoard week={week} todayISO={todayISO} />
             </RequireAdmin>
           </div>
         </section>

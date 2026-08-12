@@ -16,6 +16,7 @@ import { dayLabel } from "@/lib/schedule/types";
 import type { DaySchedule } from "@/lib/schedule/types";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { CalendarMonth } from "./CalendarMonth";
+import { DatePicker } from "./DatePicker";
 
 export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string; week: DaySchedule[] }) {
   const reschedules = useReschedules();
@@ -93,6 +94,7 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
           fromDate={moving.fromDate}
           week={week}
           reschedules={reschedules}
+          todayISO={todayISO}
           onClose={() => setMoving(null)}
           onMove={async (toDate) => {
             const ok = await confirm({
@@ -131,6 +133,7 @@ function MoveModal({
   fromDate,
   week,
   reschedules,
+  todayISO,
   onClose,
   onMove,
 }: {
@@ -138,6 +141,7 @@ function MoveModal({
   fromDate: string;
   week: DaySchedule[];
   reschedules: Parameters<typeof spaceOnDate>[2];
+  todayISO: string;
   onClose: () => void;
   onMove: (toDate: string) => void;
 }) {
@@ -166,15 +170,15 @@ function MoveModal({
           </button>
         </div>
         <div className="px-5 py-5">
-          <label className="block text-sm font-medium text-paper/90">
-            Move to
-            <input
-              type="date"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </label>
+          <p className="mb-1.5 text-sm font-medium text-paper/90">Move to</p>
+          <DatePicker
+            todayISO={todayISO}
+            week={week}
+            reschedules={reschedules}
+            value={target}
+            onChange={setTarget}
+            minDate={todayISO.slice(0, 10)}
+          />
           {target && (
             <p className="mt-2 text-sm">
               {sameDay ? (

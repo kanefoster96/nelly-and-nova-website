@@ -25,6 +25,8 @@ import { formatSessionDate } from "@/lib/schedule/sessions";
 import { dayLabel, spacesLeft } from "@/lib/schedule/types";
 import type { Cadence, DayId, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useReschedules } from "@/lib/reschedule/store";
+import { DatePicker } from "./DatePicker";
 
 const slug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -38,9 +40,10 @@ function pickAvatar(name: string): string {
 type FormState = { name: string; owner: string; email: string; cadence: Cadence; parity: "A" | "B" };
 const blankForm: FormState = { name: "", owner: "", email: "", cadence: "weekly", parity: "A" };
 
-export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
+export function ScheduleBoard({ week, todayISO }: { week: DaySchedule[]; todayISO: string }) {
   const ov = useScheduleOverrides();
   const onboarding = useOnboarding();
+  const reschedules = useReschedules();
   const merged = useMemo(() => applyOverrides(week, ov), [week, ov]);
 
   const [allocatingDay, setAllocatingDay] = useState<DayId | null>(null);
@@ -234,15 +237,19 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
                               />
                             </div>
 
-                            <label className="mt-3 block text-[11px] font-medium text-paper/80">
-                              First start date
-                              <input
-                                type="date"
+                            <div className="mt-3">
+                              <p className="mb-1.5 text-[11px] font-medium text-paper/80">
+                                First start date
+                              </p>
+                              <DatePicker
+                                todayISO={todayISO}
+                                week={merged}
+                                reschedules={reschedules}
                                 value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="mt-1 w-full rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-paper focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                                onChange={setStartDate}
+                                minDate={todayISO.slice(0, 10)}
                               />
-                            </label>
+                            </div>
 
                             <Button
                               radius="xl"
