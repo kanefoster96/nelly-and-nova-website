@@ -102,6 +102,13 @@ export function ProfileView({ profile }: { profile: DogProfile }) {
                 )}
               </div>
             </div>
+            <Link
+              href="/profile/sessions"
+              className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/[0.02] px-4 py-3 text-sm font-medium text-paper transition-colors hover:border-white/35"
+            >
+              All upcoming sessions
+              <ArrowRightIcon width={16} height={16} className="text-paper-dim" />
+            </Link>
           </div>
         ) : (
           <div className="rounded-2xl bg-white/[0.04] p-5 text-sm text-paper/70 ring-1 ring-white/10">

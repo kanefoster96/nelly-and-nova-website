@@ -15,6 +15,8 @@ export const sampleDog: DogProfile = {
   plan: {
     service: "Walk & Train",
     day: "Thursdays",
+    dayId: "thu",
+    cadence: "weekly",
     note: "Collection 8:00–10:00am · Drop off 4:00–6:00pm",
   },
   skills: [

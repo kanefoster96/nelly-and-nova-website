@@ -8,6 +8,8 @@ import {
   getNotifications,
   getOnboarding,
 } from "@/lib/inbox/data";
+import { getWeekSchedule } from "@/lib/schedule/data";
+import { availableDays } from "@/lib/schedule/sessions";
 
 export const metadata: Metadata = {
   title: "Messages",
@@ -18,11 +20,13 @@ export default async function MessagesPage() {
   const conversations = await getConversations();
   // Scaffold: pretend the signed-in member owns this conversation.
   const mine = conversations[1] ?? conversations[0];
-  const [messages, notifications, onboarding] = await Promise.all([
+  const [messages, notifications, onboarding, week] = await Promise.all([
     mine ? getMessages(mine.id) : Promise.resolve([]),
     getNotifications(),
     getOnboarding(),
+    getWeekSchedule(),
   ]);
+  const avail = availableDays(week);
 
   return (
     <>
@@ -43,6 +47,7 @@ export default async function MessagesPage() {
               initialMessages={messages}
               notifications={notifications}
               onboarding={onboarding}
+              avail={avail}
             />
           </div>
         </section>

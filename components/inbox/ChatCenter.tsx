@@ -4,8 +4,11 @@ import { useState } from "react";
 import { MemberChat } from "./MemberChat";
 import { NotificationsList } from "./NotificationsList";
 import { OnboardingList } from "./OnboardingList";
+import { RescheduleRequests } from "./RescheduleRequests";
 import { WhatsAppIcon } from "@/components/ui/Icons";
 import { contact } from "@/config/site";
+import { useReschedules } from "@/lib/reschedule/store";
+import type { DayAvailability } from "@/lib/schedule/sessions";
 import type { Message, Notification } from "@/lib/inbox/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 
@@ -22,7 +25,7 @@ import type { OnboardingEntry } from "@/lib/inbox/onboarding";
  * (guest = anon, member = authed, admin = is_staff()) and drop the switcher.
  */
 type Role = "guest" | "member" | "admin";
-type Tab = "chat" | "notifications" | "onboarding";
+type Tab = "chat" | "notifications" | "requests" | "onboarding";
 
 const ROLES: { id: Role; label: string }[] = [
   { id: "guest", label: "Guest" },
@@ -35,14 +38,17 @@ export function ChatCenter({
   initialMessages,
   notifications,
   onboarding,
+  avail,
 }: {
   conversationId: string | null;
   initialMessages: Message[];
   notifications: Notification[];
   onboarding: OnboardingEntry[];
+  avail: DayAvailability[];
 }) {
   const [role, setRole] = useState<Role>("guest");
   const [tab, setTab] = useState<Tab>("chat");
+  const pendingReschedules = useReschedules().filter((r) => r.status === "pending").length;
 
   // Which pills this role may see.
   const tabs: { id: Tab; label: string }[] = [
@@ -51,7 +57,13 @@ export function ChatCenter({
       ? [{ id: "notifications" as Tab, label: "Notifications" }]
       : []),
     ...(role === "admin"
-      ? [{ id: "onboarding" as Tab, label: "Onboarding" }]
+      ? [
+          {
+            id: "requests" as Tab,
+            label: pendingReschedules > 0 ? `Requests (${pendingReschedules})` : "Requests",
+          },
+          { id: "onboarding" as Tab, label: "Onboarding" },
+        ]
       : []),
   ];
 
@@ -149,6 +161,8 @@ export function ChatCenter({
         {activeTab === "notifications" && (
           <NotificationsList initial={notifications} />
         )}
+
+        {activeTab === "requests" && <RescheduleRequests avail={avail} />}
 
         {activeTab === "onboarding" && (
           <OnboardingList

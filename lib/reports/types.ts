@@ -40,6 +40,10 @@ export type Skill = { label: string; level: number; of: number };
 export type TrainingPlan = {
   service: string; // "Walk & Train"
   day: string; // the day they train, e.g. "Thursdays"
+  /** Structured recurring pattern — drives the upcoming-sessions list. */
+  dayId: import("@/lib/schedule/types").DayId;
+  cadence: import("@/lib/schedule/types").Cadence;
+  weekParity?: "A" | "B";
   note?: string;
 };
 
