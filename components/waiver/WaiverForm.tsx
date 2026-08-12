@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { SelectCards } from "@/components/ui/SelectCards";
-import { CheckIcon, CheckCircleIcon } from "@/components/ui/Icons";
+import { CheckIcon, CheckCircleIcon, CalendarIcon } from "@/components/ui/Icons";
 import { useSession } from "@/lib/auth/session";
 import {
   clearDraft,
@@ -128,7 +128,7 @@ export function WaiverForm() {
         if (!data.agreed) e.agreed = "Please confirm you agree to the terms.";
         break;
       case 7: // Sign
-        req("clientName"); req("signDate");
+        req("clientName");
         if (!data.signature) e.signature = "Please add your signature.";
         break;
     }
@@ -176,7 +176,11 @@ export function WaiverForm() {
       }
     }
     setStatus("submitting");
-    await submitWaiver(data);
+    // Stamp the signing date with the moment they click "Sign & submit",
+    // rather than a date they picked by hand.
+    const signedData = { ...data, signDate: new Date().toISOString().slice(0, 10) };
+    setData(signedData);
+    await submitWaiver(signedData);
     // Flip the onboarding waiver gate the coach sees, keyed to this dog.
     if (session?.dogId) {
       setWaiverSigned(session.dogId, {
@@ -286,7 +290,7 @@ export function WaiverForm() {
             disabled={status === "submitting"}
             className="disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {status === "submitting" ? "Submitting…" : "Submit"}
+            {status === "submitting" ? "Signing…" : "Sign & submit"}
           </Button>
         )}
       </div>
@@ -569,6 +573,19 @@ function AgreementStep({
   );
 }
 
+function formatSignDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return iso;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function SignStep({
   data,
   set,
@@ -583,7 +600,16 @@ function SignStep({
   return (
     <div className="grid gap-4">
       <Field label="The Client (Full Name)" name="clientName" required value={data.clientName} onChange={set("clientName")} error={errors.clientName} />
-      <Field label="Date" name="signDate" type="date" required value={data.signDate} onChange={set("signDate")} error={errors.signDate} />
+      <div>
+        <p className="mb-2 block text-sm font-medium text-paper/90">Date signed</p>
+        <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper">
+          <CalendarIcon width={16} height={16} className="shrink-0 text-paper-dim" />
+          <span>{data.signDate ? formatSignDate(data.signDate) : "Today"}</span>
+        </div>
+        <p className="mt-1.5 text-xs text-paper-dim">
+          Captured automatically when you sign and submit.
+        </p>
+      </div>
       <div>
         <p className="mb-2 block text-sm font-medium text-paper/90">
           Client Signature <span className="text-paper-dim">*</span>
