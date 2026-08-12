@@ -13,7 +13,6 @@ export function PostComposer({ user }: { user: { name: string; avatarUrl?: strin
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [media, setMedia] = useState<MediaItem[]>([]);
-  const firstName = user.name.split(" ")[0] || "there";
 
   function collapse() {
     setExpanded(false);
@@ -61,7 +60,7 @@ export function PostComposer({ user }: { user: { name: string; avatarUrl?: strin
         >
           <Avatar name={user.name} avatarUrl={user.avatarUrl} />
           <span className="min-w-0 flex-1 truncate text-sm text-paper-dim">
-            What&apos;s on your mind, {firstName}?
+            Share a cute photo, or ask your question…
           </span>
         </button>
         <button
