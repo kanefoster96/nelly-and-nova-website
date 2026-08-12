@@ -10,6 +10,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { submitReschedule, decideReschedule } from "./data";
+import { chargeForSession } from "@/lib/payments/data";
 import type { RescheduleRequest, RescheduleStatus } from "./types";
 import type { DayId } from "@/lib/schedule/types";
 
@@ -52,6 +53,7 @@ export function moveSession(move: {
 }) {
   const req: RescheduleRequest = {
     id: `mv-${move.dogId}-${move.fromDate}`,
+    kind: "reschedule",
     dogId: move.dogId,
     dogName: move.dogName,
     ownerName: move.ownerName,
@@ -78,6 +80,7 @@ export function addOneOff(o: {
 }) {
   const req: RescheduleRequest = {
     id: `oneoff-${o.dogId}-${o.date}`,
+    kind: "extra",
     dogId: o.dogId,
     dogName: o.dogName,
     ownerName: o.ownerName,
@@ -94,14 +97,50 @@ export function addOneOff(o: {
   void submitReschedule(req);
 }
 
+/** Approving an extra session charges the customer via GoCardless. */
+function chargeIfExtra(req: RescheduleRequest | undefined) {
+  if (req?.kind === "extra") {
+    void chargeForSession(req.dogId, { reason: "Extra session", service: req.service });
+  }
+}
+
 /** Admin decides — approve / reject, optionally editing the target day/date. */
 export function decide(
   id: string,
   status: RescheduleStatus,
   patch: Partial<Pick<RescheduleRequest, "toDay" | "toDate">> = {}
 ) {
-  write(read().map((r) => (r.id === id ? { ...r, ...patch, status } : r)));
+  const list = read();
+  const req = list.find((r) => r.id === id);
+  write(list.map((r) => (r.id === id ? { ...r, ...patch, status } : r)));
   void decideReschedule(id, status, patch);
+  if (status === "approved") chargeIfExtra(req);
+}
+
+/** Admin offers the member a different date (member can accept). */
+export function suggest(id: string, toDay: DayId, toDate: string) {
+  write(read().map((r) => (r.id === id ? { ...r, toDay, toDate, status: "suggested" } : r)));
+  void decideReschedule(id, "suggested" as RescheduleStatus, { toDay, toDate });
+}
+
+/** Member accepts the admin's suggested date → approved (+ charge if extra). */
+export function acceptSuggestion(id: string) {
+  const req = read().find((r) => r.id === id);
+  write(read().map((r) => (r.id === id ? { ...r, status: "approved" } : r)));
+  void decideReschedule(id, "approved");
+  chargeIfExtra(req);
+}
+
+/** Requests with an admin-suggested alternative, keyed by original session. */
+export function suggestedFor(
+  list: RescheduleRequest[],
+  dogId: string
+): Record<string, RescheduleRequest> {
+  const out: Record<string, RescheduleRequest> = {};
+  for (const r of list) {
+    if (r.dogId === dogId && r.status === "suggested") out[r.sessionDate] = r;
+  }
+  return out;
 }
 
 /** Approved moves for a dog, keyed by the original session date. */

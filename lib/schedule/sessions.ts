@@ -46,11 +46,42 @@ export function upcomingSessions(
 
 export type DayAvailability = { day: DayId; label: string; spaces: number };
 
-/** Open days with their remaining spaces (days the business runs). */
+/** Open days with their remaining spaces (days the business runs) — admin view. */
 export function availableDays(week: DaySchedule[]): DayAvailability[] {
   return week
     .filter((d) => d.capacity > 0)
     .map((d) => ({ day: d.day, label: dayLabel(d.day), spaces: spacesLeft(d) }));
+}
+
+export type MemberDay = { day: DayId; label: string };
+
+/**
+ * Days a member may book onto — those with space (5 or fewer dogs, and under
+ * capacity). Deliberately omits the dog count so members only see availability,
+ * never how full a day is.
+ */
+export function memberDays(week: DaySchedule[]): MemberDay[] {
+  return week
+    .filter((d) => d.capacity > 0 && d.dogs.length < d.capacity && d.dogs.length <= 5)
+    .map((d) => ({ day: d.day, label: dayLabel(d.day) }));
+}
+
+/** The next occurrence of `day` strictly after `fromISO`. */
+export function nextDateForDay(fromISO: string, day: DayId): string {
+  const target = JS_DAY[day];
+  const d = new Date(`${fromISO}T00:00:00Z`);
+  do {
+    d.setUTCDate(d.getUTCDate() + 1);
+  } while (d.getUTCDay() !== target);
+  return d.toISOString().slice(0, 10);
+}
+
+/** At-a-glance fullness colour for a day's dot: green ≤3, orange 4–5, red full/6. */
+export function dotColor(count: number, capacity: number): "green" | "orange" | "red" | null {
+  if (count <= 0) return null;
+  if (count >= 6 || count >= capacity) return "red";
+  if (count >= 4) return "orange";
+  return "green";
 }
 
 /** Format a YYYY-MM-DD as e.g. "Thursday 21 August". */

@@ -12,6 +12,7 @@ import {
   spacesOnDate,
   dayIdFromISO,
   formatSessionDate,
+  dotColor,
   type DogOnDate,
 } from "@/lib/schedule/sessions";
 import { DAYS, dayLabel } from "@/lib/schedule/types";
@@ -91,7 +92,11 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
           <div key={wi} className="grid grid-cols-7 gap-1">
             {wk.map((cell) => {
               const open = openOn(cell.dayId);
+              const capacity = week.find((d) => d.day === cell.dayId)?.capacity ?? 0;
               const count = open ? dogsForDate(cell.iso, week, reschedules).length : 0;
+              const color = dotColor(count, capacity);
+              const dotClass =
+                color === "red" ? "bg-red-500" : color === "orange" ? "bg-amber-400" : "bg-emerald-400";
               const isSelected = cell.iso === selected;
               const isToday = cell.iso === today;
               return (
@@ -111,18 +116,27 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
                   } ${isToday && !isSelected ? "ring-1 ring-accent/60" : ""}`}
                 >
                   {cell.day}
-                  {count > 0 && (
-                    <span
-                      className={`absolute bottom-1 h-1 w-1 rounded-full ${
-                        isSelected ? "bg-accent-ink/70" : "bg-accent"
-                      }`}
-                    />
+                  {color && (
+                    <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${dotClass}`} />
                   )}
                 </button>
               );
             })}
           </div>
         ))}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-3 flex items-center justify-center gap-4 text-[11px] text-paper-dim">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> ≤3
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> 4–5
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> full
+        </span>
       </div>
 
       {/* Selected day's dogs */}

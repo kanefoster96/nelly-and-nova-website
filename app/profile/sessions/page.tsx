@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { UpcomingSessions } from "@/components/profile/UpcomingSessions";
 import { getDogProfile } from "@/lib/reports/data";
 import { getWeekSchedule } from "@/lib/schedule/data";
-import { availableDays } from "@/lib/schedule/sessions";
+import { memberDays } from "@/lib/schedule/sessions";
 
 export const metadata: Metadata = {
   title: "Upcoming sessions",
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function SessionsPage() {
   const [profile, week] = await Promise.all([getDogProfile(), getWeekSchedule()]);
   const todayISO = new Date().toISOString();
-  const avail = availableDays(week);
+  const days = memberDays(week);
 
   return (
     <>
@@ -45,7 +45,7 @@ export default async function SessionsPage() {
                     service: profile.plan.service,
                     day: profile.plan.day,
                   }}
-                  avail={avail}
+                  days={days}
                 />
               ) : (
                 <p className="rounded-2xl bg-white/[0.04] p-5 text-sm text-paper/70 ring-1 ring-white/10">
