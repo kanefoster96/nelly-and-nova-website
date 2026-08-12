@@ -8,15 +8,30 @@ import { useSession } from "@/lib/auth/session";
 import { markReportsSeen } from "@/lib/reports/seen";
 import { useOutboxCards } from "@/lib/reports/outbox";
 import { useHomeworkOverrides, saveCardHomework } from "@/lib/reports/homework";
+import {
+  useHomeworkProgress,
+  markHomeworkDay,
+  daysFor,
+  HOMEWORK_TARGET_DAYS,
+} from "@/lib/reports/progress";
 import { HomeworkEditModal } from "@/components/reports/HomeworkEditor";
-import { setHomeworkDone, addReportComment } from "@/lib/reports/data";
+import { addReportComment } from "@/lib/reports/data";
 import type { ReportCard, ReportComment } from "@/lib/reports/types";
 
 const byDateDesc = (a: ReportCard, b: ReportCard) =>
   a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
 
+/** "12 Aug" from a YYYY-MM-DD date. */
+function shortDay(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+}
+
 /** Owner edits kept as an overlay so they apply to sample + sent cards alike. */
-type Edit = { hw: Record<string, boolean>; comments: ReportComment[] };
+type Edit = { comments: ReportComment[] };
 
 /**
  * Report cards for the owner's dog. The latest opens by default. Owners mark
@@ -32,6 +47,8 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
   const isStaff = session?.role === "admin";
   const outbox = useOutboxCards();
   const overrides = useHomeworkOverrides();
+  const progress = useHomeworkProgress();
+  const today = new Date().toISOString().slice(0, 10);
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   // `undefined` = follow the newest card automatically; set once the user clicks.
   const [openId, setOpenId] = useState<string | null | undefined>(undefined);
@@ -53,15 +70,9 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
       // Trainer's homework edit (if any) replaces the card's categories/drills.
       const baseHw = overrides[c.id] ?? c.homework;
       const e = edits[c.id];
-      if (!e) return baseHw === c.homework ? c : { ...c, homework: baseHw };
-      return {
-        ...c,
-        homework: baseHw.map((cat) => ({
-          ...cat,
-          drills: cat.drills.map((d) => (d.id in e.hw ? { ...d, done: e.hw[d.id] } : d)),
-        })),
-        comments: e.comments.length ? [...c.comments, ...e.comments] : c.comments,
-      };
+      const comments = e && e.comments.length ? [...c.comments, ...e.comments] : c.comments;
+      if (baseHw === c.homework && comments === c.comments) return c;
+      return { ...c, homework: baseHw, comments };
     });
   }, [outbox, initial, edits, isStaff, activeDogId, overrides]);
 
@@ -90,16 +101,7 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
   }
 
   function editFor(cardId: string, prev: Record<string, Edit>): Edit {
-    return prev[cardId] ?? { hw: {}, comments: [] };
-  }
-
-  function toggleHw(cardId: string, hwId: string, done: boolean) {
-    setEdits((prev) => {
-      const e = editFor(cardId, prev);
-      return { ...prev, [cardId]: { ...e, hw: { ...e.hw, [hwId]: done } } };
-    });
-    // TODO(backend): persist the change (the edit overlay stands in until then).
-    void setHomeworkDone(cardId, hwId, done);
+    return prev[cardId] ?? { comments: [] };
   }
 
   function submitComment(cardId: string) {
@@ -125,10 +127,11 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
     <div className="space-y-4">
       {cards.map((card) => {
         const open = openCardId === card.id;
-        const remaining = card.homework.reduce(
-          (n, cat) => n + cat.drills.filter((d) => !d.done).length,
-          0
-        );
+        // Homework progress is 3 separate days per card; one day per calendar day.
+        const days = daysFor(progress, card.id);
+        const doneToday = days.includes(today);
+        const complete = days.length >= HOMEWORK_TARGET_DAYS;
+        const daysLeft = HOMEWORK_TARGET_DAYS - days.length;
         return (
           <div
             key={card.id}
@@ -152,12 +155,10 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
                 </div>
                 <p className="mt-0.5 text-sm text-paper-dim">
                   {formatDate(card.date)}
-                  {remaining > 0 && (
-                    <span className="text-paper/60">
-                      {" "}
-                      · {remaining} homework left
-                    </span>
-                  )}
+                  <span className="text-paper/60">
+                    {" "}
+                    · {complete ? "done this week ✓" : `${days.length}/${HOMEWORK_TARGET_DAYS} days done`}
+                  </span>
                 </p>
               </div>
               <ChevronDownIcon
@@ -204,48 +205,76 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
                       </button>
                     )}
                   </div>
+                  {/* The drills to practise — reference, not a checklist. */}
                   <div className="mt-2 space-y-4">
                     {card.homework.map((cat) => (
                       <div key={cat.id}>
                         <p className="mb-1.5 text-sm font-semibold text-paper">{cat.name}</p>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1.5">
                           {cat.drills.map((d) => (
-                            <li key={d.id}>
-                              <button
-                                type="button"
-                                onClick={() => toggleHw(card.id, d.id, !d.done)}
-                                disabled={isStaff}
-                                aria-pressed={d.done}
-                                className="flex w-full items-start gap-3 rounded-xl bg-white/[0.03] p-3 text-left transition-colors hover:bg-white/[0.05] disabled:cursor-default disabled:hover:bg-white/[0.03]"
-                              >
-                                <span
-                                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                                    d.done
-                                      ? "border-accent bg-accent text-accent-ink"
-                                      : "border-white/30"
-                                  }`}
-                                >
-                                  {d.done && <CheckIcon width={13} height={13} />}
-                                </span>
-                                <span
-                                  className={`min-w-0 text-sm font-medium ${
-                                    d.done ? "text-paper/50 line-through" : "text-paper"
-                                  }`}
-                                >
-                                  {d.name}
-                                </span>
-                              </button>
+                            <li key={d.id} className="flex items-start gap-2 text-sm text-paper/80">
+                              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                              {d.name}
                             </li>
                           ))}
                         </ul>
                       </div>
                     ))}
                   </div>
-                  {remaining === 0 && (
-                    <p className="mt-3 text-sm font-medium text-accent">
-                      All homework complete — great work! 🐾
+
+                  {/* Completion — practise it on 3 separate days (one per day). */}
+                  <div className="mt-4 rounded-xl bg-white/[0.03] p-3 ring-1 ring-white/10">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-paper-dim">
+                      This week · {days.length}/{HOMEWORK_TARGET_DAYS} days
                     </p>
-                  )}
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {Array.from({ length: HOMEWORK_TARGET_DAYS }, (_, i) => {
+                        const date = days[i];
+                        return (
+                          <div
+                            key={i}
+                            className={`rounded-lg px-2 py-2 text-center ${
+                              date ? "bg-accent/15 text-accent" : "bg-white/[0.04] text-paper-dim"
+                            }`}
+                          >
+                            <span className="flex items-center justify-center gap-1 text-xs font-semibold">
+                              {date && <CheckIcon width={12} height={12} />} Day {i + 1}
+                            </span>
+                            <span className="mt-0.5 block text-[11px]">
+                              {date ? shortDay(date) : "—"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!isStaff && (
+                      complete ? (
+                        <p className="mt-3 text-sm font-medium text-accent">
+                          Homework complete this week — great work! 🐾
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => markHomeworkDay(card.id, today)}
+                          disabled={doneToday}
+                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-default disabled:bg-white/10 disabled:text-paper-dim"
+                        >
+                          {doneToday ? (
+                            "Done for today — come back tomorrow ✓"
+                          ) : (
+                            <>
+                              <CheckIcon width={16} height={16} /> Mark today&apos;s homework done
+                            </>
+                          )}
+                        </button>
+                      )
+                    )}
+                    {!isStaff && !complete && !doneToday && (
+                      <p className="mt-1.5 text-center text-[11px] text-paper-dim">
+                        {daysLeft} more day{daysLeft === 1 ? "" : "s"} to finish this week
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Comment thread — owner + staff only */}

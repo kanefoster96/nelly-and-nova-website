@@ -38,7 +38,6 @@ export default async function AdminReportsPage() {
               <ul className="mt-8 space-y-2">
                 {cards.map((c) => {
                   const drills = c.homework.flatMap((cat) => cat.drills);
-                  const doneCount = drills.filter((d) => d.done).length;
                   return (
                     <li
                       key={c.id}
@@ -54,7 +53,7 @@ export default async function AdminReportsPage() {
                           <span className="text-paper-dim"> · {c.focus}</span>
                         </p>
                         <p className="truncate text-xs text-paper-dim">
-                          {formatDate(c.date)} · {doneCount}/{drills.length} homework done
+                          {formatDate(c.date)} · {c.homework.length} categor{c.homework.length === 1 ? "y" : "ies"} · {drills.length} drills
                           {c.comments.length > 0 && ` · ${c.comments.length} comment${c.comments.length > 1 ? "s" : ""}`}
                         </p>
                       </div>

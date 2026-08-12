@@ -34,6 +34,13 @@ export async function setHomeworkDone(
   console.log(`[reports] homework ${homeworkId} on ${reportId} → ${done} (scaffold)`);
 }
 
+/** Log a day's homework completion for a report card (one per day per card). */
+export async function logHomeworkDay(reportId: string, date: string): Promise<void> {
+  // TODO(backend): insert into homework_completions (report_id, date) with a
+  // UNIQUE(report_id, date) constraint so the one-per-day rule holds server-side.
+  console.log(`[reports] homework day logged for ${reportId} on ${date} (scaffold)`);
+}
+
 /** Save an edited set of homework categories/drills for a report card. */
 export async function saveHomework(
   reportId: string,
