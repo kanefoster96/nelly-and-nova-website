@@ -34,6 +34,17 @@ export async function setHomeworkDone(
   console.log(`[reports] homework ${homeworkId} on ${reportId} → ${done} (scaffold)`);
 }
 
+/** Save an edited set of homework categories/drills for a report card. */
+export async function saveHomework(
+  reportId: string,
+  categories: import("./types").HomeworkCategory[]
+): Promise<void> {
+  // TODO(backend): upsert homework_categories + drills for this report card,
+  // preserving each drill's done state where its id is unchanged.
+  const drills = categories.reduce((n, c) => n + c.drills.length, 0);
+  console.log(`[reports] homework saved for ${reportId} — ${categories.length} categories, ${drills} drills (scaffold)`);
+}
+
 export async function addReportComment(
   reportId: string,
   comment: ReportComment

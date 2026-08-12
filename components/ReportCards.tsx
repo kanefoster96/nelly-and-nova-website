@@ -7,6 +7,8 @@ import { formatDate, formatTime } from "@/lib/inbox/format";
 import { useSession } from "@/lib/auth/session";
 import { markReportsSeen } from "@/lib/reports/seen";
 import { useOutboxCards } from "@/lib/reports/outbox";
+import { useHomeworkOverrides, saveCardHomework } from "@/lib/reports/homework";
+import { HomeworkEditModal } from "@/components/reports/HomeworkEditor";
 import { setHomeworkDone, addReportComment } from "@/lib/reports/data";
 import type { ReportCard, ReportComment } from "@/lib/reports/types";
 
@@ -29,13 +31,15 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
   const session = useSession();
   const isStaff = session?.role === "admin";
   const outbox = useOutboxCards();
+  const overrides = useHomeworkOverrides();
   const [edits, setEdits] = useState<Record<string, Edit>>({});
   // `undefined` = follow the newest card automatically; set once the user clicks.
   const [openId, setOpenId] = useState<string | null | undefined>(undefined);
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [editingCard, setEditingCard] = useState<ReportCard | null>(null);
 
   // Base list: sample cards plus any a coach has just sent (scaffold outbox),
-  // newest first. Then apply the owner's local edits over the top.
+  // newest first. Then apply trainer homework edits, then the owner's ticks.
   const activeDogId = session?.dogId;
   const cards = useMemo(() => {
     const byId = new Map<string, ReportCard>();
@@ -46,18 +50,20 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
       (c) => isStaff || !activeDogId || !c.dogId || c.dogId === activeDogId
     );
     return list.sort(byDateDesc).map((c) => {
+      // Trainer's homework edit (if any) replaces the card's categories/drills.
+      const baseHw = overrides[c.id] ?? c.homework;
       const e = edits[c.id];
-      if (!e) return c;
+      if (!e) return baseHw === c.homework ? c : { ...c, homework: baseHw };
       return {
         ...c,
-        homework: c.homework.map((cat) => ({
+        homework: baseHw.map((cat) => ({
           ...cat,
           drills: cat.drills.map((d) => (d.id in e.hw ? { ...d, done: e.hw[d.id] } : d)),
         })),
         comments: e.comments.length ? [...c.comments, ...e.comments] : c.comments,
       };
     });
-  }, [outbox, initial, edits, isStaff, activeDogId]);
+  }, [outbox, initial, edits, isStaff, activeDogId, overrides]);
 
   const openCardId = openId === undefined ? cards[0]?.id ?? null : openId;
 
@@ -184,9 +190,20 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
 
                 {/* Homework — grouped by category, each with its drills */}
                 <div className="mt-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-accent">
-                    Homework
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                      Homework
+                    </p>
+                    {isStaff && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingCard(card)}
+                        className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-paper transition-colors hover:border-white/40"
+                      >
+                        Edit drills
+                      </button>
+                    )}
+                  </div>
                   <div className="mt-2 space-y-4">
                     {card.homework.map((cat) => (
                       <div key={cat.id}>
@@ -294,6 +311,15 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
           </div>
         );
       })}
+
+      {editingCard && (
+        <HomeworkEditModal
+          title={`${editingCard.focus} · ${formatDate(editingCard.date)}`}
+          initial={overrides[editingCard.id] ?? editingCard.homework}
+          onSave={(cats) => saveCardHomework(editingCard.id, cats)}
+          onClose={() => setEditingCard(null)}
+        />
+      )}
     </div>
   );
 }

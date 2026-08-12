@@ -310,6 +310,12 @@ export function AdminDashboard({
           body="The latest cards across all dogs."
         />
         <NavCard
+          href="/admin/homework"
+          icon={<CheckIcon width={22} height={22} />}
+          title="Homework"
+          body="Edit drills by category for each dog."
+        />
+        <NavCard
           href="/admin/members"
           icon={<UserIcon width={22} height={22} />}
           title="Members"
