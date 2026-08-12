@@ -96,7 +96,17 @@ export function BookingForm() {
     return e;
   }
 
-  const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  // Start each new step at the top of the page. Deferring to the next frame
+  // lets React swap in the new step first; then we move focus to the top of
+  // the form BEFORE scrolling — this clears focus from the "Next" button,
+  // whose retained focus would otherwise anchor the page part-way down as the
+  // taller/shorter step renders (the "I had to scroll up myself" bug), and it
+  // announces the new step to screen readers.
+  const scrollTop = () =>
+    requestAnimationFrame(() => {
+      topRef.current?.focus({ preventScroll: true });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 
   function next() {
     const e = validate(step);
@@ -183,7 +193,7 @@ export function BookingForm() {
   }
 
   return (
-    <div ref={topRef}>
+    <div ref={topRef} tabIndex={-1} className="outline-none">
       {/* Progress */}
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
         Step {step + 1} of {STEPS.length}
