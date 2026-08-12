@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cancelMember, useCancellations } from "@/lib/members/cancellations";
 
 export type Member = {
   id: string;
@@ -10,23 +11,23 @@ export type Member = {
 };
 
 /**
- * Members management — for now, cancelling an account. Cancelling is local-only
- * in the scaffold. TODO(backend): cancel the membership (release their schedule
- * slot, stop the GoCardless mandate, mark the account inactive).
+ * Members management — cancelling an account. Cancelling runs through the
+ * backend seam (lib/members/data.ts → cancelAccount) and frees the member's
+ * schedule slot; in the scaffold it persists via localStorage.
  */
 export function MembersList({ members }: { members: Member[] }) {
-  const [cancelled, setCancelled] = useState<Set<string>>(new Set());
+  const cancelled = useCancellations();
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   function cancel(id: string) {
-    setCancelled((s) => new Set(s).add(id));
+    cancelMember(id);
     setConfirmId(null);
   }
 
   return (
     <ul className="mt-8 space-y-2">
       {members.map((m) => {
-        const isCancelled = cancelled.has(m.id);
+        const isCancelled = cancelled.includes(m.id);
         return (
           <li
             key={m.id}

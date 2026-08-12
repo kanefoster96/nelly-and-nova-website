@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
+import { DogsList, type DogRow } from "@/components/admin/DogsList";
 import { getWeekSchedule } from "@/lib/schedule/data";
 import { dayLabel } from "@/lib/schedule/types";
-import type { DayId } from "@/lib/schedule/types";
 
 export const metadata: Metadata = {
   title: "All dogs",
@@ -15,8 +15,14 @@ export const metadata: Metadata = {
 export default async function DogsPage() {
   const week = await getWeekSchedule();
   // One row per dog, with the day they train.
-  const dogs = week.flatMap((d) =>
-    d.dogs.map((dog) => ({ ...dog, day: d.day as DayId }))
+  const dogs: DogRow[] = week.flatMap((d) =>
+    d.dogs.map((dog) => ({
+      id: dog.id,
+      name: dog.name,
+      owner: dog.ownerName,
+      photo: dog.photo,
+      day: dayLabel(d.day),
+    }))
   );
 
   return (
@@ -35,32 +41,11 @@ export default async function DogsPage() {
               All dogs
             </h1>
             <p className="mt-3 text-paper/75">
-              Every dog on the books. Editing profile details is coming next.
+              Every dog on the books. Edit a dog to update their details.
             </p>
 
             <RequireAdmin>
-              <ul className="mt-8 space-y-2">
-                {dogs.map((dog) => (
-                  <li
-                    key={dog.id}
-                    className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10"
-                  >
-                    <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={dog.photo} alt="" className="h-full w-full object-cover" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-paper">{dog.name}</p>
-                      <p className="truncate text-xs text-paper-dim">
-                        {dog.ownerName} · {dayLabel(dog.day)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-paper-dim">
-                      Edit soon
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <DogsList dogs={dogs} />
             </RequireAdmin>
           </div>
         </section>
