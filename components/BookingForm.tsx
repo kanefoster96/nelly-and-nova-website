@@ -11,7 +11,18 @@ import { booking, findService, priceFor } from "@/config/booking";
 import { areas } from "@/config/site";
 import { DOG_PHOTO_HANDOFF_KEY } from "@/lib/storage/photos";
 
-const STEPS = ["About you", "Your booking", "About your dog", "Meet & greet"];
+// Short steps so each fits a phone screen without scrolling — the long "about
+// your dog" section is split into your dog / behaviour / care & handling.
+const STEPS = [
+  "About you",
+  "How you found us",
+  "Choose a service",
+  "Booking options",
+  "Your dog",
+  "Behaviour",
+  "Care & handling",
+  "Meet & greet",
+];
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 type Data = Record<string, string>;
@@ -60,19 +71,32 @@ export function BookingForm() {
     const req = (k: string) => {
       if (!data[k]?.trim()) e[k] = "Please fill this in.";
     };
-    if (s === 0) {
-      req("firstName"); req("lastName"); req("email"); req("phone"); req("address");
-      if (data.email && !EMAIL_RE.test(data.email)) e.email = "Enter a valid email address.";
-      if (!data.findUs) e.findUs = "Please choose one.";
-    } else if (s === 1) {
-      if (!data.service) e.service = "Please choose a service.";
-      if (!data.bookingType) e.bookingType = "Please choose an option.";
-      if (!data.dogs || !(dogsNum >= 1)) e.dogs = "Enter a number (1 or more).";
-    } else if (s === 2) {
-      req("dogName"); req("breed"); req("age"); req("withDogs"); req("withPeople");
-      req("needHelp"); req("allergies"); req("tools");
-      if (!data.gender) e.gender = "Please choose.";
-      if (!data.trust) e.trust = "Please choose.";
+    switch (s) {
+      case 0: // About you
+        req("firstName"); req("lastName"); req("email"); req("phone"); req("address");
+        if (data.email && !EMAIL_RE.test(data.email)) e.email = "Enter a valid email address.";
+        break;
+      case 1: // How you found us
+        if (!data.findUs) e.findUs = "Please choose one.";
+        break;
+      case 2: // Choose a service
+        if (!data.service) e.service = "Please choose a service.";
+        break;
+      case 3: // Booking options
+        if (!data.bookingType) e.bookingType = "Please choose an option.";
+        if (!data.dogs || !(dogsNum >= 1)) e.dogs = "Enter a number (1 or more).";
+        break;
+      case 4: // Your dog
+        req("dogName"); req("breed"); req("age");
+        if (!data.gender) e.gender = "Please choose.";
+        break;
+      case 5: // Behaviour
+        req("withDogs"); req("withPeople"); req("needHelp");
+        break;
+      case 6: // Care & handling
+        req("allergies"); req("tools");
+        if (!data.trust) e.trust = "Please choose.";
+        break;
     }
     return e;
   }
@@ -98,7 +122,7 @@ export function BookingForm() {
   }
 
   async function submit() {
-    for (let s = 0; s < 3; s++) {
+    for (let s = 0; s < STEPS.length - 1; s++) {
       const e = validate(s);
       if (Object.keys(e).length) {
         setErrors(e);
@@ -170,7 +194,11 @@ export function BookingForm() {
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
         Step {step + 1} of {STEPS.length}
       </p>
-      <div className="mt-3 grid grid-cols-4 gap-2" aria-hidden="true">
+      <div
+        className="mt-3 grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${STEPS.length}, 1fr)` }}
+        aria-hidden="true"
+      >
         {STEPS.map((label, i) => (
           <div
             key={label}
@@ -178,7 +206,7 @@ export function BookingForm() {
           />
         ))}
       </div>
-      <h2 className="display-heading mt-6 text-3xl text-paper sm:text-4xl">
+      <h2 className="display-heading mt-5 text-2xl text-paper sm:text-3xl">
         {STEPS[step]}
       </h2>
 
@@ -195,7 +223,7 @@ export function BookingForm() {
         </label>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {step === 0 && (
           <div className="grid gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
@@ -207,13 +235,16 @@ export function BookingForm() {
               <Field label="Phone" name="phone" type="tel" inputMode="tel" required value={data.phone} onChange={set("phone")} error={errors.phone} placeholder="07000 000000" />
             </div>
             <Field label="Address & postcode" name="address" required value={data.address} onChange={set("address")} error={errors.address} placeholder="Street, town, postcode" />
+          </div>
+        )}
 
+        {step === 1 && (
+          <div className="grid gap-5">
             <div className="rounded-2xl bg-white/[0.03] p-4 text-sm text-paper/70 ring-1 ring-white/5">
               <p className="text-paper/80">{booking.copy.areasIntro}</p>
               <p className="mt-2">{areas.join(" · ")}</p>
               <p className="mt-3 text-paper-dim">{booking.copy.areasNote}</p>
             </div>
-
             <div>
               <p className="mb-2 block text-sm font-medium text-paper/90">
                 How did you find us? <span className="text-paper-dim">*</span>
@@ -224,21 +255,23 @@ export function BookingForm() {
           </div>
         )}
 
-        {step === 1 && (
-          <div className="grid gap-6">
-            <div>
-              <p className="mb-2 block text-sm font-medium text-paper/90">
-                Service type <span className="text-paper-dim">*</span>
-              </p>
-              <SelectCards
-                ariaLabel="Service type"
-                options={booking.services.map((s) => ({ value: s.value, label: s.label, desc: s.desc, icon: s.icon }))}
-                value={data.service}
-                onChange={setService}
-              />
-              {errors.service && <p className="mt-1.5 text-sm text-red-400">{errors.service}</p>}
-            </div>
+        {step === 2 && (
+          <div>
+            <p className="mb-2 block text-sm font-medium text-paper/90">
+              Service type <span className="text-paper-dim">*</span>
+            </p>
+            <SelectCards
+              ariaLabel="Service type"
+              options={booking.services.map((s) => ({ value: s.value, label: s.label, desc: s.desc, icon: s.icon }))}
+              value={data.service}
+              onChange={setService}
+            />
+            {errors.service && <p className="mt-1.5 text-sm text-red-400">{errors.service}</p>}
+          </div>
+        )}
 
+        {step === 3 && (
+          <div className="grid gap-6">
             {service && (
               <div>
                 <p className="mb-2 block text-sm font-medium text-paper/90">
@@ -278,21 +311,11 @@ export function BookingForm() {
                 )}
               </div>
             )}
-
-            {data.service === "walk-train" && (
-              <div className="rounded-2xl bg-white/[0.03] p-4 text-sm text-paper/70 ring-1 ring-white/5">
-                <p className="font-semibold text-paper/90">Full day</p>
-                <p className="mt-1">Collection {booking.fullDay.collection}</p>
-                <p>Drop off {booking.fullDay.dropoff}</p>
-              </div>
-            )}
           </div>
         )}
 
-        {step === 2 && (
+        {step === 4 && (
           <div className="grid gap-5">
-            <p className="text-paper/70">{booking.copy.dogIntro}</p>
-
             {/* Optional dog photo — becomes their account picture. */}
             <div>
               <AvatarUpload value={photo} onSelect={setPhoto} size={104} />
@@ -316,12 +339,22 @@ export function BookingForm() {
               </div>
               <Field label="Age" name="age" required value={data.age} onChange={set("age")} error={errors.age} placeholder="e.g. 2 years" />
             </div>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="grid gap-5">
+            <p className="text-paper/70">{booking.copy.dogIntro}</p>
             <Field label="How are they with other dogs?" name="withDogs" required textarea rows={2} value={data.withDogs} onChange={set("withDogs")} error={errors.withDogs} placeholder={booking.placeholders.withDogs} />
             <Field label="How are they with other people?" name="withPeople" required textarea rows={2} value={data.withPeople} onChange={set("withPeople")} error={errors.withPeople} placeholder={booking.placeholders.withPeople} />
             <Field label="What do you need help with?" name="needHelp" required textarea rows={2} value={data.needHelp} onChange={set("needHelp")} error={errors.needHelp} placeholder={booking.placeholders.needHelp} />
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="grid gap-5">
             <Field label="Any allergies?" name="allergies" required value={data.allergies} onChange={set("allergies")} error={errors.allergies} placeholder={booking.placeholders.allergies} />
             <Field label="What lead / tools do you use during walks?" name="tools" required value={data.tools} onChange={set("tools")} error={errors.tools} placeholder={booking.placeholders.tools} />
-
             <div className="rounded-2xl bg-white/[0.03] p-4 text-sm text-paper/70 ring-1 ring-white/5">
               {booking.copy.toolsNote}
             </div>
@@ -335,7 +368,7 @@ export function BookingForm() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 7 && (
           <div className="grid gap-4 text-paper/75">
             {booking.copy.meetGreet.map((p, i) => (
               <p key={i}>{p}</p>
