@@ -12,6 +12,7 @@ import {
   CloseIcon,
   CheckIcon,
   PlusIcon,
+  CardIcon,
 } from "@/components/ui/Icons";
 import { useSession, signOut } from "@/lib/auth/session";
 import { formatDate } from "@/lib/inbox/format";
@@ -313,7 +314,13 @@ export function AdminDashboard({
           href="/admin/members"
           icon={<UserIcon width={22} height={22} />}
           title="Members"
-          body="Manage or cancel a member's account."
+          body="Contacts, plans, payments & more."
+        />
+        <NavCard
+          href="/admin/payments"
+          icon={<CardIcon width={22} height={22} />}
+          title="Manage payments"
+          body="Every payment taken — retry or refund."
         />
       </section>
 
@@ -346,13 +353,16 @@ const PAY_STYLE: Record<PaymentStatus, string> = {
   paid: "bg-emerald-400/15 text-emerald-300",
   pending: "bg-amber-400/15 text-amber-300",
   failed: "bg-red-500/15 text-red-300",
+  refunded: "bg-sky-400/15 text-sky-300",
+  cancelled: "bg-white/10 text-paper-dim",
 };
 
 /** Paid/unpaid/failed chip. Unpaid + failed are tappable to re-request payment. */
 function PaymentPill({ status, onResend }: { status: PaymentStatus; onResend: () => void }) {
   const cls = `rounded-full px-2.5 py-1 text-xs font-semibold ${PAY_STYLE[status]}`;
-  if (status === "paid") {
-    return <span className={cls}>{PAYMENT_LABEL.paid}</span>;
+  // Settled states (paid / refunded / cancelled) aren't chase-able.
+  if (status === "paid" || status === "refunded" || status === "cancelled") {
+    return <span className={cls}>{PAYMENT_LABEL[status]}</span>;
   }
   return (
     <button

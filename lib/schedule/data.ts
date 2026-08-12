@@ -45,3 +45,10 @@ export async function confirmSlot(dogId: string): Promise<void> {
 export async function releaseSlot(dogId: string): Promise<void> {
   console.log(`[schedule] released ${dogId} (scaffold)`);
 }
+
+/** Move a member's recurring slot to a different weekday. */
+export async function reassignSlotDay(dogId: string, day: DayId): Promise<void> {
+  // TODO(backend): update schedule_slots set day = $2 where dog_id = $1, and
+  // re-point the GoCardless subscription's charge day (day before the new day).
+  console.log(`[schedule] reassigned ${dogId} → ${day} (scaffold)`);
+}

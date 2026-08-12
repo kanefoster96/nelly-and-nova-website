@@ -3,31 +3,19 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
-import { MembersList, type Member } from "@/components/admin/MembersList";
+import { PaymentsBoard } from "@/components/admin/PaymentsBoard";
 import { getWeekSchedule } from "@/lib/schedule/data";
 
 export const metadata: Metadata = {
-  title: "Members",
+  title: "Manage payments",
   robots: { index: false, follow: false },
 };
 
-export default async function MembersPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PaymentsPage() {
   const week = await getWeekSchedule();
-  // One member per dog owner (deduped by owner name).
-  const seen = new Set<string>();
-  const members: Member[] = [];
-  for (const day of week) {
-    for (const dog of day.dogs) {
-      if (seen.has(dog.ownerName)) continue;
-      seen.add(dog.ownerName);
-      members.push({
-        id: dog.id,
-        name: dog.ownerName,
-        dogName: dog.name,
-        photo: dog.photo,
-      });
-    }
-  }
+  const todayISO = new Date().toISOString();
 
   return (
     <>
@@ -42,15 +30,15 @@ export default async function MembersPage() {
               ← Back to dashboard
             </Link>
             <h1 className="display-heading mt-4 text-3xl text-paper sm:text-4xl">
-              Members
+              Manage payments
             </h1>
             <p className="mt-3 text-paper/75">
-              Tap a contact to see their plan, dog, payments and more — edit their
-              details, change their day, message them, or cancel.
+              Every payment taken, most recent first. Retry a failed charge, or send
+              a full or partial refund.
             </p>
 
             <RequireAdmin>
-              <MembersList members={members} />
+              <PaymentsBoard week={week} todayISO={todayISO} />
             </RequireAdmin>
           </div>
         </section>

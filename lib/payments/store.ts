@@ -9,7 +9,7 @@
  * re-charges via the seam; the backend flips status on the webhook.
  */
 import { useSyncExternalStore } from "react";
-import { retryCharge } from "./data";
+import { retryCharge, refundPayment as refundSeam, cancelPayment as cancelSeam } from "./data";
 import type { PaymentStatus } from "./types";
 
 type Store = Record<string, PaymentStatus>;
@@ -53,6 +53,22 @@ export function setStatus(dogId: string, date: string, status: PaymentStatus) {
 export function retryPayment(dogId: string, date: string) {
   setStatus(dogId, date, "pending");
   void retryCharge(dogId, date);
+}
+
+/** Refund a collected payment (full or partial) → status refunded. */
+export function refundPayment(
+  dogId: string,
+  date: string,
+  opts: { amount: number; full: boolean; note?: string }
+) {
+  setStatus(dogId, date, "refunded");
+  void refundSeam(dogId, date, opts);
+}
+
+/** Cancel a not-yet-taken charge → status cancelled (no money moves). */
+export function cancelPayment(dogId: string, date: string) {
+  setStatus(dogId, date, "cancelled");
+  void cancelSeam(dogId, date);
 }
 
 // --- store wiring for useSyncExternalStore --------------------------------

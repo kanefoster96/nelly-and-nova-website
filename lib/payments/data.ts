@@ -38,3 +38,32 @@ export async function retryCharge(dogId: string, date: string): Promise<void> {
   // TODO(backend): create a new GoCardless payment for this session.
   console.log(`[payments] retry ${dogId} @ ${date} (scaffold GoCardless)`);
 }
+
+/**
+ * Refund a collected payment (full or partial) back to the customer's bank
+ * account via GoCardless. No card details are needed — the refund uses the
+ * existing mandate and lands in the same account the money came from.
+ * TODO(backend): POST /refunds with { links.payment, amount (pence),
+ * total_amount_confirmation }. Refunds must be enabled on the account and
+ * respect GoCardless's refund limits / 7-day window.
+ */
+export async function refundPayment(
+  dogId: string,
+  date: string,
+  opts: { amount: number; full: boolean; note?: string }
+): Promise<void> {
+  console.log(
+    `[payments] refund ${dogId} @ ${date} — £${opts.amount} ${opts.full ? "(full)" : "(partial)"}${opts.note ? ` — ${opts.note}` : ""} (scaffold GoCardless)`
+  );
+}
+
+/**
+ * Cancel a payment that hasn't been submitted to the bank yet — cleaner than a
+ * refund because no money moves. Use this when the charge is still pending
+ * (e.g. a session cancelled before its day-before charge is taken).
+ * TODO(backend): POST /payments/:id/actions/cancel (only valid while
+ * pending_submission).
+ */
+export async function cancelPayment(dogId: string, date: string): Promise<void> {
+  console.log(`[payments] cancel pending charge ${dogId} @ ${date} (scaffold GoCardless)`);
+}

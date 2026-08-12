@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatThread } from "./ChatThread";
 import { ConversationList } from "./ConversationList";
 import { NotificationsList } from "./NotificationsList";
@@ -58,6 +58,36 @@ export function InboxApp({
     initialConversations[0]?.id ?? null
   );
   const [openRequestId, setOpenRequestId] = useState<string | null>(null);
+
+  // Deep-link: /inbox?name=<owner> opens (or starts) that customer's chat.
+  // Runs once on the client after mount, so SSR still renders the default.
+  const deepLinkedRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkedRef.current) return;
+    deepLinkedRef.current = true;
+    const name = new URLSearchParams(window.location.search).get("name");
+    if (!name) return;
+    const existing = conversations.find(
+      (c) => c.user.name.toLowerCase() === name.toLowerCase()
+    );
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (existing) {
+      setSelectedId(existing.id);
+      return;
+    }
+    const conv: Conversation = {
+      id: `dm-${name.toLowerCase().replace(/\s+/g, "-")}`,
+      user: { id: `u-${name.toLowerCase().replace(/\s+/g, "-")}`, name },
+      lastMessageAt: new Date().toISOString(),
+      lastMessagePreview: "New conversation",
+      unread: false,
+      status: "new",
+    };
+    setConversations((cs) => [conv, ...cs]);
+    setMessagesByConversation((m) => ({ ...m, [conv.id]: [] }));
+    setSelectedId(conv.id);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [conversations]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const openRequest = requests.find((r) => r.id === openRequestId) ?? null;

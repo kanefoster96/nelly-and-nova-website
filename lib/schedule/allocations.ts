@@ -18,6 +18,7 @@ import {
   holdSlot as apiHold,
   confirmSlot as apiConfirm,
   releaseSlot as apiRelease,
+  reassignSlotDay as apiReassign,
 } from "./data";
 import type { DayId, DaySchedule, ScheduledDog, SlotStatus } from "./types";
 
@@ -25,12 +26,15 @@ export type ScheduleOverrides = {
   added: { day: DayId; dog: ScheduledDog }[];
   statusById: Record<string, SlotStatus>;
   released: string[];
+  /** Permanent day changes — a member's recurring slot moved to another day. */
+  dayById: Record<string, DayId>;
 };
 
 const EMPTY: ScheduleOverrides = {
   added: [],
   statusById: {},
   released: [],
+  dayById: {},
 };
 
 const KEY = "nn-schedule-overrides";
@@ -58,16 +62,24 @@ export function applyOverrides(
   const released = new Set(ov.released);
   const withStatus = (dog: ScheduledDog): ScheduledDog =>
     ov.statusById[dog.id] ? { ...dog, status: ov.statusById[dog.id] } : dog;
+  // A dog's effective day — its reassigned day if it has one, else its base day.
+  const dayFor = (dogId: string, baseDay: DayId): DayId => ov.dayById[dogId] ?? baseDay;
 
-  return base.map((d) => {
-    const existing = d.dogs
-      .filter((dog) => !released.has(dog.id))
-      .map(withStatus);
-    const added = ov.added
-      .filter((a) => a.day === d.day && !released.has(a.dog.id))
-      .map((a) => withStatus(a.dog));
-    return { ...d, dogs: [...existing, ...added] };
-  });
+  // Every active dog placed on its effective day (base dogs first, then added).
+  const placed: { day: DayId; dog: ScheduledDog }[] = [];
+  for (const d of base) {
+    for (const dog of d.dogs) {
+      if (!released.has(dog.id)) placed.push({ day: dayFor(dog.id, d.day), dog: withStatus(dog) });
+    }
+  }
+  for (const a of ov.added) {
+    if (!released.has(a.dog.id)) placed.push({ day: dayFor(a.dog.id, a.day), dog: withStatus(a.dog) });
+  }
+
+  return base.map((d) => ({
+    ...d,
+    dogs: placed.filter((p) => p.day === d.day).map((p) => p.dog),
+  }));
 }
 
 // --- mutators -------------------------------------------------------------
@@ -88,6 +100,13 @@ export function releaseSlot(dogId: string) {
   const ov = read();
   write({ ...ov, released: [...ov.released, dogId] });
   void apiRelease(dogId); // backend seam (TODO)
+}
+
+/** Move a member's recurring slot to a different weekday. */
+export function reassignDay(dogId: string, day: DayId) {
+  const ov = read();
+  write({ ...ov, dayById: { ...ov.dayById, [dogId]: day } });
+  void apiReassign(dogId, day); // backend seam (TODO)
 }
 
 // --- store wiring for useSyncExternalStore --------------------------------
