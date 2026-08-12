@@ -9,7 +9,6 @@ import {
   getOnboarding,
 } from "@/lib/inbox/data";
 import { getWeekSchedule } from "@/lib/schedule/data";
-import { availableDays } from "@/lib/schedule/sessions";
 
 export const metadata: Metadata = {
   title: "Messages",
@@ -26,7 +25,6 @@ export default async function MessagesPage() {
     getOnboarding(),
     getWeekSchedule(),
   ]);
-  const avail = availableDays(week);
 
   return (
     <>
@@ -47,7 +45,7 @@ export default async function MessagesPage() {
               initialMessages={messages}
               notifications={notifications}
               onboarding={onboarding}
-              avail={avail}
+              week={week}
             />
           </div>
         </section>

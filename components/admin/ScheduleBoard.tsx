@@ -18,6 +18,8 @@ import {
   useOnboarding,
 } from "@/lib/onboarding/store";
 import { blankOnboarding, cadenceLabel, isReadyToConfirm } from "@/lib/onboarding/types";
+import { scheduleSubscription } from "@/lib/payments/data";
+import { chargeDayLabel } from "@/lib/payments/schedule";
 import { dayLabel, spacesLeft } from "@/lib/schedule/types";
 import type { Cadence, DayId, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 
@@ -83,6 +85,14 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
     const rec = onboarding[dog.id];
     confirmSlot(dog.id); // slot → permanent
     confirmPlacement(dog.id, startDate); // onboarding → confirmed + start date
+    // Set up the recurring GoCardless subscription — charged the day before each
+    // session, unchanged by later reschedules.
+    void scheduleSubscription(dog.id, {
+      sessionDay: day,
+      cadence: dog.cadence,
+      startDate,
+      chargeDay: chargeDayLabel(day),
+    });
     // Email the customer their day + first start date (best-effort).
     if (rec?.email) {
       const startLabel = new Date(startDate).toLocaleDateString("en-GB", {
@@ -101,6 +111,7 @@ export function ScheduleBoard({ week }: { week: DaySchedule[] }) {
           dayLabel: dayLabel(day),
           cadenceLabel: cadenceLabel(dog.cadence),
           startDateLabel: startLabel,
+          chargeDayLabel: chargeDayLabel(day),
         }),
       });
     }

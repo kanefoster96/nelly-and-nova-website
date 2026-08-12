@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       dayLabel: String(d.dayLabel ?? "").trim(),
       cadenceLabel: String(d.cadenceLabel ?? "").trim() || undefined,
       startDateLabel: String(d.startDateLabel ?? "").trim(),
+      chargeDayLabel: String(d.chargeDayLabel ?? "").trim() || undefined,
     })
   );
 

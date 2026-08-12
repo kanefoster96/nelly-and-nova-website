@@ -9,8 +9,12 @@ import {
   formatSessionDate,
   dateForDayInWeek,
   nextDateForDay,
+  bookableDays,
+  spaceOnDate,
   type MemberDay,
 } from "@/lib/schedule/sessions";
+import { applyOverrides, useScheduleOverrides } from "@/lib/schedule/allocations";
+import { describeChargeSchedule } from "@/lib/payments/schedule";
 import {
   createReschedule,
   useReschedules,
@@ -19,7 +23,7 @@ import {
   suggestedFor,
   acceptSuggestion,
 } from "@/lib/reschedule/store";
-import type { Cadence, DayId } from "@/lib/schedule/types";
+import type { Cadence, DayId, DaySchedule } from "@/lib/schedule/types";
 
 type Plan = { dayId: DayId; cadence: Cadence; service: string; day: string };
 const EXTRA_SERVICES = ["Walk & Train", "1-1 Training"];
@@ -27,16 +31,21 @@ const EXTRA_SERVICES = ["Walk & Train", "1-1 Training"];
 export function UpcomingSessions({
   todayISO,
   plan,
-  days,
+  week,
 }: {
   todayISO: string;
   plan: Plan;
-  days: MemberDay[];
+  week: DaySchedule[];
 }) {
   const session = useSession();
   const reschedules = useReschedules();
+  const overrides = useScheduleOverrides();
+  // Availability reflects live moves + allocations so a full day is never offered.
+  const merged = useMemo(() => applyOverrides(week, overrides), [week, overrides]);
   const [openDate, setOpenDate] = useState<string | null>(null);
   const [bookingExtra, setBookingExtra] = useState(false);
+  const [fullNote, setFullNote] = useState<string | null>(null);
+  const today = todayISO.slice(0, 10);
 
   const sessions = useMemo(
     () => upcomingSessions({ dayId: plan.dayId, cadence: plan.cadence }, todayISO),
@@ -60,6 +69,17 @@ export function UpcomingSessions({
   const suggested = suggestedFor(reschedules, dogId);
   const myExtras = reschedules.filter((r) => r.dogId === dogId && r.kind === "extra");
   const openSession = sessions.find((s) => s.date === openDate) ?? null;
+
+  // Re-check space at the moment of submitting — the day may have filled since
+  // the picker rendered. (The backend enforces the 6-limit atomically too.)
+  function guard(toDate: string): boolean {
+    if (spaceOnDate(toDate, merged, reschedules, true) > 0) return true;
+    setFullNote("Sorry — that day just filled up. Please pick another.");
+    window.setTimeout(() => setFullNote(null), 4000);
+    setOpenDate(null);
+    setBookingExtra(false);
+    return false;
+  }
 
   function submitRequest(kind: "reschedule" | "extra", toDay: DayId, opts: { sessionDate: string; fromDay: DayId; toDate: string; note?: string; service?: string }) {
     createReschedule({
@@ -85,6 +105,10 @@ export function UpcomingSessions({
         {plan.service} · {plan.day} — your sessions for the next two months. Can&apos;t
         make one? Request a swap to another available day.
       </p>
+      <p className="mt-2 rounded-xl bg-white/[0.03] px-4 py-2.5 text-xs text-paper-dim ring-1 ring-white/5">
+        {describeChargeSchedule(plan.dayId, plan.cadence)} Rescheduling a session
+        doesn&apos;t change this — only extra sessions are charged separately.
+      </p>
 
       <button
         type="button"
@@ -93,6 +117,10 @@ export function UpcomingSessions({
       >
         <PlusIcon width={16} height={16} /> Book an extra session
       </button>
+
+      {fullNote && (
+        <p className="mt-2 rounded-xl bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{fullNote}</p>
+      )}
 
       {myExtras.length > 0 && (
         <div className="mt-5">
@@ -195,14 +223,16 @@ export function UpcomingSessions({
         <PickDayModal
           title="Request a reschedule"
           subtitle={formatSessionDate(openSession.date)}
-          days={days.filter((d) => d.day !== openSession.day)}
+          days={bookableDays(merged, reschedules, (day) => dateForDayInWeek(openSession.date, day), openSession.day)}
           withReason
           onClose={() => setOpenDate(null)}
           onSubmit={(toDay, note) => {
+            const toDate = dateForDayInWeek(openSession.date, toDay);
+            if (!guard(toDate)) return;
             submitRequest("reschedule", toDay, {
               sessionDate: openSession.date,
               fromDay: openSession.day,
-              toDate: dateForDayInWeek(openSession.date, toDay),
+              toDate,
               note,
             });
             setOpenDate(null);
@@ -212,17 +242,12 @@ export function UpcomingSessions({
 
       {bookingExtra && (
         <ExtraModal
-          days={days}
-          todayISO={todayISO}
+          days={bookableDays(merged, reschedules, (day) => nextDateForDay(today, day))}
           onClose={() => setBookingExtra(false)}
           onSubmit={(service, toDay) => {
-            const toDate = nextDateForDay(todayISO.slice(0, 10), toDay);
-            submitRequest("extra", toDay, {
-              sessionDate: toDate,
-              fromDay: toDay,
-              toDate,
-              service,
-            });
+            const toDate = nextDateForDay(today, toDay);
+            if (!guard(toDate)) return;
+            submitRequest("extra", toDay, { sessionDate: toDate, fromDay: toDay, toDate, service });
             setBookingExtra(false);
           }}
         />
@@ -330,7 +355,6 @@ function ExtraModal({
   onSubmit,
 }: {
   days: MemberDay[];
-  todayISO: string;
   onClose: () => void;
   onSubmit: (service: string, toDay: DayId) => void;
 }) {

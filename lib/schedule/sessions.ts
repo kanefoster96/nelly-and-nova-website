@@ -191,13 +191,64 @@ export function dogsForDate(
   return [...staying, ...movedIn];
 }
 
-export function spacesOnDate(
+/**
+ * Bookable space left on a specific date, capped at the strict 6 limit.
+ * Counts the recurring roster (respecting start dates) minus approved moves-away
+ * plus approved moves-in. With `reservePending`, pending inbound requests also
+ * hold a space — so two members can't both be offered the last spot while a
+ * request is awaiting approval. Pass the week already merged with allocations.
+ */
+export function spaceOnDate(
   dateISO: string,
-  week: DaySchedule[],
-  reschedules: RescheduleRequest[]
+  mergedWeek: DaySchedule[],
+  reschedules: RescheduleRequest[],
+  reservePending = false
 ): number {
   const day = dayIdFromISO(dateISO);
-  const daySched = week.find((d) => d.day === day);
+  const daySched = mergedWeek.find((d) => d.day === day);
   if (!daySched || daySched.capacity === 0) return 0;
-  return Math.max(0, daySched.capacity - dogsForDate(dateISO, week, reschedules).length);
+  const cap = Math.min(daySched.capacity, 6);
+
+  const base = daySched.dogs
+    .filter((dg) => !dg.startDate || dg.startDate <= dateISO)
+    .map((dg) => dg.id);
+  const movedAway = new Set(
+    reschedules.filter((r) => r.status === "approved" && r.sessionDate === dateISO).map((r) => r.dogId)
+  );
+  const inbound = reschedules
+    .filter(
+      (r) =>
+        r.toDate === dateISO &&
+        (r.status === "approved" || (reservePending && r.status === "pending"))
+    )
+    .map((r) => r.dogId);
+
+  const occ = new Set([...base.filter((id) => !movedAway.has(id)), ...inbound]).size;
+  return Math.max(0, cap - occ);
+}
+
+/** Back-compat: actual (approved-only) spaces on a date. */
+export function spacesOnDate(
+  dateISO: string,
+  mergedWeek: DaySchedule[],
+  reschedules: RescheduleRequest[]
+): number {
+  return spaceOnDate(dateISO, mergedWeek, reschedules, false);
+}
+
+/**
+ * Days a member may book onto for a given target date per day — only those with
+ * real space (pending requests reserved). No counts: members see availability,
+ * never how full a day is.
+ */
+export function bookableDays(
+  mergedWeek: DaySchedule[],
+  reschedules: RescheduleRequest[],
+  targetFor: (day: DayId) => string,
+  exclude?: DayId
+): MemberDay[] {
+  return mergedWeek
+    .filter((d) => d.capacity > 0 && d.day !== exclude)
+    .filter((d) => spaceOnDate(targetFor(d.day), mergedWeek, reschedules, true) > 0)
+    .map((d) => ({ day: d.day, label: dayLabel(d.day) }));
 }

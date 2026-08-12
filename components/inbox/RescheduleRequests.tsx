@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CloseIcon, CheckIcon, MailIcon, MessageIcon } from "@/components/ui/Icons";
 import { useReschedules, decide, suggest } from "@/lib/reschedule/store";
-import { formatSessionDate, dateForDayInWeek, type DayAvailability } from "@/lib/schedule/sessions";
+import { applyOverrides, useScheduleOverrides } from "@/lib/schedule/allocations";
+import { formatSessionDate, dateForDayInWeek, spaceOnDate } from "@/lib/schedule/sessions";
+import { dayLabel } from "@/lib/schedule/types";
 import { formatTime } from "@/lib/inbox/format";
-import type { DayId } from "@/lib/schedule/types";
+import type { DayId, DaySchedule } from "@/lib/schedule/types";
 import type { RescheduleRequest } from "@/lib/reschedule/types";
 
 /**
  * Admin queue of member reschedule requests. Open one to approve (optionally
- * moving it to a different day first), reject, or message the member.
+ * moving it to a different day first), reject, or message the member. Approval
+ * is guarded against the strict 6-space limit using live occupancy.
  */
-export function RescheduleRequests({ avail }: { avail: DayAvailability[] }) {
+export function RescheduleRequests({ week }: { week: DaySchedule[] }) {
   const all = useReschedules();
+  const overrides = useScheduleOverrides();
+  const merged = useMemo(() => applyOverrides(week, overrides), [week, overrides]);
   const pending = all.filter((r) => r.status === "pending");
   const decided = all.filter((r) => r.status !== "pending").slice(0, 5);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -82,33 +87,49 @@ export function RescheduleRequests({ avail }: { avail: DayAvailability[] }) {
         </div>
       )}
 
-      {open && <Detail request={open} avail={avail} onClose={() => setOpenId(null)} />}
+      {open && (
+        <Detail request={open} merged={merged} all={all} onClose={() => setOpenId(null)} />
+      )}
     </div>
   );
 }
 
 function Detail({
   request,
-  avail,
+  merged,
+  all,
   onClose,
 }: {
   request: RescheduleRequest;
-  avail: DayAvailability[];
+  merged: DaySchedule[];
+  all: RescheduleRequest[];
   onClose: () => void;
 }) {
   const [toDay, setToDay] = useState<DayId>(request.toDay);
+  const [note, setNote] = useState<string | null>(null);
   const decidedAlready = request.status !== "pending";
-  const options = avail.filter((a) => a.day !== request.fromDay);
+  // The date the target day maps to — same week as the (session or requested) date.
+  const baseDate = request.kind === "extra" ? request.toDate : request.sessionDate;
+  const targetDate = () => dateForDayInWeek(baseDate, toDay);
+  // Live space excluding this request's own reservation, so it never blocks itself.
+  const others = all.filter((r) => r.id !== request.id);
+  const options = merged
+    .filter((d) => d.capacity > 0 && d.day !== request.fromDay)
+    .map((d) => ({
+      day: d.day,
+      label: dayLabel(d.day),
+      spaces: spaceOnDate(dateForDayInWeek(baseDate, d.day), merged, others, true),
+    }));
+  const targetSpace = spaceOnDate(targetDate(), merged, others, true);
   const mailto = request.email
     ? `mailto:${request.email}?subject=${encodeURIComponent("Your reschedule request — Nelly & Nova")}`
     : null;
 
-  // For a reschedule the target date stays within the session's week; for an
-  // extra session the requested date is used directly.
-  const targetDate = () =>
-    request.kind === "extra" ? request.toDate : dateForDayInWeek(request.sessionDate, toDay);
-
   function approve() {
+    if (targetSpace <= 0) {
+      setNote(`${dayLabel(toDay)} is full — choose another day.`);
+      return;
+    }
     decide(request.id, "approved", { toDay, toDate: targetDate() });
     onClose();
   }
@@ -252,7 +273,8 @@ function Detail({
                   Reject
                 </button>
               </div>
-              {request.kind === "extra" && (
+              {note && <p className="mt-2 text-center text-[11px] text-red-300">{note}</p>}
+              {request.kind === "extra" && !note && (
                 <p className="mt-2 text-center text-[11px] text-paper-dim">
                   Approving charges the customer via GoCardless.
                 </p>

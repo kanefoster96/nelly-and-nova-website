@@ -128,15 +128,23 @@ export function placementConfirmed(d: {
   dayLabel: string; // e.g. "Thursdays"
   cadenceLabel?: string; // e.g. "every week" / "alternating weeks"
   startDateLabel: string; // e.g. "Thursday 21 August 2026"
+  chargeDayLabel?: string; // weekday charges land on — day before the session
 }): EmailMessage {
   const name = (d.ownerName || "there").split(" ")[0];
   const cadence = d.cadenceLabel ? ` (${d.cadenceLabel})` : "";
+  const paymentLine = d.chargeDayLabel
+    ? `${d.chargeDayLabel}s${cadence} — the day before each session`
+    : "";
+  const paymentRow = paymentLine
+    ? `<tr><td style="padding:6px 0;color:#8a8880;">Payment</td><td style="padding:6px 0 6px 16px;color:#f5f3ee;font-weight:600;">${escape(paymentLine)}</td></tr>`
+    : "";
   const html = layout("You're all booked in", `
     <p>Hi ${escape(name)},</p>
     <p>Great news — ${escape(d.dogName || "your dog")}'s place is confirmed. Here are the details:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0;">
       <tr><td style="padding:6px 0;color:#8a8880;">Training day</td><td style="padding:6px 0 6px 16px;color:#f5f3ee;font-weight:600;">${escape(d.dayLabel)}${escape(cadence)}</td></tr>
       <tr><td style="padding:6px 0;color:#8a8880;">First session</td><td style="padding:6px 0 6px 16px;color:#f5f3ee;font-weight:600;">${escape(d.startDateLabel)}</td></tr>
+      ${paymentRow}
     </table>
     <p>We can't wait to get started. If anything changes before then, just reply to this email.</p>
     <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
@@ -148,6 +156,7 @@ export function placementConfirmed(d: {
     "",
     `Training day: ${d.dayLabel}${cadence}`,
     `First session: ${d.startDateLabel}`,
+    ...(paymentLine ? [`Payment: ${paymentLine}`] : []),
     "",
     "We can't wait to get started. If anything changes before then, just reply to this email.",
     "",

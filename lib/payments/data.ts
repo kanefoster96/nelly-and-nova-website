@@ -13,6 +13,23 @@ export async function chargeForSession(
 }
 
 /**
+ * Set up the recurring GoCardless subscription for a permanent member. Charges
+ * land the day before each session, the same day/time weekly (or every other
+ * week for alternating). Rescheduling a single session does NOT change this
+ * subscription — only extra sessions add a one-off charge on confirmation.
+ * TODO(backend): create a GoCardless subscription (day_of_month/day-before,
+ * interval by cadence) starting the cycle before the first session.
+ */
+export async function scheduleSubscription(
+  dogId: string,
+  opts: { sessionDay: string; cadence: string; startDate: string; chargeDay: string }
+): Promise<void> {
+  console.log(
+    `[payments] subscription ${dogId}: charge ${opts.chargeDay} (day before ${opts.sessionDay}), ${opts.cadence}, from ${opts.startDate} (scaffold GoCardless)`
+  );
+}
+
+/**
  * Retry a failed session payment (customer resubmits, or coach re-requests).
  * TODO(backend): create a fresh GoCardless payment on the mandate; the webhook
  * updates the status when it settles.

@@ -7,7 +7,9 @@ import { applyOverrides, holdSlot, useScheduleOverrides } from "@/lib/schedule/a
 import { addOneOff, useReschedules } from "@/lib/reschedule/store";
 import { startRecord, confirmPlacement } from "@/lib/onboarding/store";
 import { blankOnboarding, cadenceLabel } from "@/lib/onboarding/types";
-import { dayIdFromISO, formatSessionDate, spacesOnDate } from "@/lib/schedule/sessions";
+import { scheduleSubscription } from "@/lib/payments/data";
+import { chargeDayLabel } from "@/lib/payments/schedule";
+import { dayIdFromISO, formatSessionDate, spaceOnDate } from "@/lib/schedule/sessions";
 import { dayLabel } from "@/lib/schedule/types";
 import type { Cadence, DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import { ONBOARDING_FLOW, stageIndex, type OnboardingEntry } from "@/lib/inbox/onboarding";
@@ -58,7 +60,7 @@ export function AddCustomer({
   const spaces = !runs
     ? 0
     : placement === "oneoff"
-      ? spacesOnDate(startDate, merged, reschedules)
+      ? spaceOnDate(startDate, merged, reschedules, true)
       : Math.max(0, daySched!.capacity - daySched!.dogs.length);
   const valid = !!customer && !!startDate && runs && spaces > 0;
 
@@ -100,6 +102,14 @@ export function AddCustomer({
       );
       if (placement === "permanent") {
         confirmPlacement(dogId, startDate);
+        // Set up the recurring GoCardless subscription — charged the day before
+        // each session, unchanged by later reschedules.
+        void scheduleSubscription(dogId, {
+          sessionDay: day,
+          cadence: cad,
+          startDate,
+          chargeDay: chargeDayLabel(day),
+        });
         if (customer.email) {
           const startLabel = new Date(`${startDate}T00:00:00Z`).toLocaleDateString("en-GB", {
             weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -114,6 +124,7 @@ export function AddCustomer({
               dayLabel: dayLabel(day),
               cadenceLabel: cadenceLabel(cad),
               startDateLabel: startLabel,
+              chargeDayLabel: chargeDayLabel(day),
             }),
           });
         }

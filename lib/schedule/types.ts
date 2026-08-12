@@ -56,6 +56,12 @@ export function dayLabel(id: DayId): string {
   return DAYS.find((d) => d.id === id)?.label ?? id;
 }
 
+/** The weekday before `id` (wraps Mon → Sun). */
+export function dayBefore(id: DayId): DayId {
+  const i = DAYS.findIndex((d) => d.id === id);
+  return DAYS[(i + 6) % 7].id;
+}
+
 export function spacesLeft(day: DaySchedule): number {
   return Math.max(0, day.capacity - day.dogs.length);
 }

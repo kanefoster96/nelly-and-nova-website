@@ -9,7 +9,7 @@ import {
   monthGrid,
   monthName,
   dogsForDate,
-  spacesOnDate,
+  spaceOnDate,
   dayIdFromISO,
   formatSessionDate,
   dotColor,
@@ -224,14 +224,14 @@ function MoveModal({
   dogName: string;
   fromDate: string;
   week: DaySchedule[];
-  reschedules: Parameters<typeof spacesOnDate>[2];
+  reschedules: Parameters<typeof spaceOnDate>[2];
   onClose: () => void;
   onMove: (toDate: string) => void;
 }) {
   const [target, setTarget] = useState("");
   const targetDay = target ? dayIdFromISO(target) : null;
   const open = targetDay ? (week.find((d) => d.day === targetDay)?.capacity ?? 0) > 0 : false;
-  const spaces = target && open ? spacesOnDate(target, week, reschedules) : 0;
+  const spaces = target && open ? spaceOnDate(target, week, reschedules, true) : 0;
   const sameDay = target === fromDate;
   const valid = !!target && open && spaces > 0 && !sameDay;
 

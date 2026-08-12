@@ -8,7 +8,7 @@ import { RescheduleRequests } from "./RescheduleRequests";
 import { WhatsAppIcon } from "@/components/ui/Icons";
 import { contact } from "@/config/site";
 import { useReschedules } from "@/lib/reschedule/store";
-import type { DayAvailability } from "@/lib/schedule/sessions";
+import type { DaySchedule } from "@/lib/schedule/types";
 import type { Message, Notification } from "@/lib/inbox/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 
@@ -38,13 +38,13 @@ export function ChatCenter({
   initialMessages,
   notifications,
   onboarding,
-  avail,
+  week,
 }: {
   conversationId: string | null;
   initialMessages: Message[];
   notifications: Notification[];
   onboarding: OnboardingEntry[];
-  avail: DayAvailability[];
+  week: DaySchedule[];
 }) {
   const [role, setRole] = useState<Role>("guest");
   const [tab, setTab] = useState<Tab>("chat");
@@ -162,7 +162,7 @@ export function ChatCenter({
           <NotificationsList initial={notifications} />
         )}
 
-        {activeTab === "requests" && <RescheduleRequests avail={avail} />}
+        {activeTab === "requests" && <RescheduleRequests week={week} />}
 
         {activeTab === "onboarding" && (
           <OnboardingList
