@@ -91,7 +91,7 @@ export function WaiverForm() {
     setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
   };
 
-  const scrollTop = () => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   function validate(s: number): Record<string, string> {
     const e: Record<string, string> = {};
