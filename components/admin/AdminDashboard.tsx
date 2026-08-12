@@ -35,6 +35,7 @@ import { AddCustomer } from "./AddCustomer";
 import { HolidayManager } from "./HolidayManager";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
+import { DRILL_LIBRARY, drillsForCategory } from "@/config/drills";
 
 type Form = {
   summary: string;
@@ -543,6 +544,11 @@ function ReportEntryModal({
             <p className="mb-2 text-xs text-paper-dim">
               Add a category (e.g. Luring, Marker words, Recall), then drills under it.
             </p>
+            <datalist id="entry-lib-categories">
+              {DRILL_LIBRARY.map((c) => (
+                <option key={c.name} value={c.name} />
+              ))}
+            </datalist>
             <div className="grid gap-3">
               {form.homework.map((cat, ci) => (
                 <div key={ci} className="rounded-xl bg-white/[0.03] p-3 ring-1 ring-white/10">
@@ -551,6 +557,7 @@ function ReportEntryModal({
                       value={cat.name}
                       onChange={(e) => updateCat(ci, { name: e.target.value })}
                       placeholder={`Category ${ci + 1} · e.g. Recall`}
+                      list="entry-lib-categories"
                       className={`${inputCls} font-medium`}
                     />
                     {form.homework.length > 1 && (
@@ -564,13 +571,19 @@ function ReportEntryModal({
                       </button>
                     )}
                   </div>
+                  <datalist id={`entry-lib-drills-${ci}`}>
+                    {drillsForCategory(cat.name).map((d, k) => (
+                      <option key={k} value={d} />
+                    ))}
+                  </datalist>
                   <div className="mt-2 grid gap-2 border-l border-white/10 pl-3">
                     {cat.drills.map((d, di) => (
                       <div key={di} className="flex items-center gap-2">
                         <input
                           value={d.name}
                           onChange={(e) => setDrill(ci, di, e.target.value)}
-                          placeholder={`Drill ${di + 1}`}
+                          placeholder={`Drill ${di + 1} · how to practise`}
+                          list={`entry-lib-drills-${ci}`}
                           className={inputCls}
                         />
                         {cat.drills.length > 1 && (

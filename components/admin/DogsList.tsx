@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon } from "@/components/ui/Icons";
 import { saveDetails, useDogDetails } from "@/lib/dogs/details";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { sampleReportCards } from "@/lib/reports/sample";
+import { useOutboxCards } from "@/lib/reports/outbox";
+import { useHomeworkProgress } from "@/lib/reports/progress";
+import { useHomeworkResets, resetAtFor, resetDogHomework } from "@/lib/reports/reset";
+import { dogCompletion } from "@/lib/reports/completion";
 
 export type DogRow = {
   id: string;
@@ -36,35 +42,81 @@ export function DogsList({ dogs }: { dogs: DogRow[] }) {
   const [editId, setEditId] = useState<string | null>(null);
   const editing = rows.find((r) => r.id === editId) ?? null;
 
+  // Homework completion per dog, for the "reset to 100%" control.
+  const outbox = useOutboxCards();
+  const progress = useHomeworkProgress();
+  const resets = useHomeworkResets();
+  const { confirm, dialog } = useConfirm();
+  const cards = useMemo(() => {
+    const byId = new Map<string, (typeof sampleReportCards)[number]>();
+    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
+    return [...byId.values()];
+  }, [outbox]);
+
+  async function resetHomework(d: Editable, percent: number) {
+    const ok = await confirm({
+      title: `Reset ${d.name}'s homework to 100%?`,
+      message: (
+        <>
+          Use this when {d.owner} books a 1-1 — it clears any missed homework
+          {percent < 100 ? ` (currently ${percent}%)` : ""} so their completion
+          starts fresh at 100%.
+        </>
+      ),
+      confirmLabel: "Reset to 100%",
+    });
+    if (ok) resetDogHomework(d.id);
+  }
+
   return (
     <>
       <ul className="mt-8 space-y-2">
-        {rows.map((d) => (
-          <li
-            key={d.id}
-            className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10"
-          >
-            <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={d.photo} alt="" className="h-full w-full object-cover" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-paper">{d.name}</p>
-              <p className="truncate text-xs text-paper-dim">
-                {d.owner} · {d.day}
-                {d.breed && <span> · {d.breed}</span>}
-                {d.age && <span> · {d.age}</span>}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setEditId(d.id)}
-              className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:border-white/40"
+        {rows.map((d) => {
+          const { percent } = dogCompletion(cards, progress, d.id, resetAtFor(resets, d.id));
+          return (
+            <li
+              key={d.id}
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10"
             >
-              Edit
-            </button>
-          </li>
-        ))}
+              <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={d.photo} alt="" className="h-full w-full object-cover" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold text-paper">{d.name}</p>
+                <p className="truncate text-xs text-paper-dim">
+                  {d.owner} · {d.day}
+                  {d.breed && <span> · {d.breed}</span>}
+                  {d.age && <span> · {d.age}</span>}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  percent >= 100
+                    ? "bg-emerald-400/15 text-emerald-300"
+                    : "bg-amber-400/15 text-amber-300"
+                }`}
+                title="Homework completed (all time)"
+              >
+                HW {percent}%
+              </span>
+              <button
+                type="button"
+                onClick={() => resetHomework(d, percent)}
+                className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:border-white/40"
+              >
+                Reset 100%
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditId(d.id)}
+                className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:border-white/40"
+              >
+                Edit
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       {editing && (
@@ -77,6 +129,7 @@ export function DogsList({ dogs }: { dogs: DogRow[] }) {
           }}
         />
       )}
+      {dialog}
     </>
   );
 }

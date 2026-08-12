@@ -8,6 +8,7 @@ import { useSession, signOut, setActiveDog } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import { accountDogProfile } from "@/lib/dogs/account";
 import { HolidayReminder } from "./profile/HolidayReminder";
+import { HomeworkSummary } from "./profile/HomeworkSummary";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
 
@@ -117,6 +118,9 @@ export function ProfileView({
           </span>
         )}
       </Link>
+
+      {/* All-time homework completion + missed-homework info popup */}
+      <HomeworkSummary dogId={session.dogId} />
 
       {/* Holiday reminder — session-off notice, or a heads-up a week before */}
       <HolidayReminder

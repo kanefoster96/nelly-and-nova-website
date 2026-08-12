@@ -45,19 +45,19 @@ export const sampleReportCards: ReportCard[] = [
         id: "rc3-loose-lead",
         name: "Loose lead",
         drills: [
-          { id: "rc3-ll-1", name: "10 min loose-lead practice on your route", done: false },
-          { id: "rc3-ll-2", name: "Reward every time she's at your side", done: false },
+          { id: "rc3-ll-1", name: "10 min loose-lead practice on your route" },
+          { id: "rc3-ll-2", name: "Reward every time she's at your side" },
         ],
       },
       {
         id: "rc3-recall",
         name: "Recall",
-        drills: [{ id: "rc3-rc-1", name: "3 recalls in the garden daily", done: false }],
+        drills: [{ id: "rc3-rc-1", name: "3 recalls in the garden daily" }],
       },
       {
         id: "rc3-settle",
         name: "Settle",
-        drills: [{ id: "rc3-st-1", name: "Place/settle for 5 mins each evening", done: false }],
+        drills: [{ id: "rc3-st-1", name: "Place/settle for 5 mins each evening" }],
       },
     ],
     comments: [],
@@ -76,8 +76,8 @@ export const sampleReportCards: ReportCard[] = [
         id: "rc2-engagement",
         name: "Engagement",
         drills: [
-          { id: "rc2-en-1", name: "'Watch me' 5 reps before each meal", done: true },
-          { id: "rc2-en-2", name: "Practice engagement on your street", done: true },
+          { id: "rc2-en-1", name: "'Watch me' 5 reps before each meal" },
+          { id: "rc2-en-2", name: "Practice engagement on your street" },
         ],
       },
     ],
@@ -111,7 +111,7 @@ export const sampleReportCards: ReportCard[] = [
       {
         id: "rc1-settling",
         name: "Settling",
-        drills: [{ id: "rc1-se-1", name: "Short settle sessions at home", done: true }],
+        drills: [{ id: "rc1-se-1", name: "Short settle sessions at home" }],
       },
     ],
     comments: [],
@@ -130,14 +130,14 @@ export const sampleReportCards: ReportCard[] = [
       {
         id: "rcr2-doors",
         name: "Door manners",
-        drills: [{ id: "rcr2-dr-1", name: "Wait before going out each time", done: false }],
+        drills: [{ id: "rcr2-dr-1", name: "Wait before going out each time" }],
       },
       {
         id: "rcr2-leaveit",
         name: "Leave it",
         drills: [
-          { id: "rcr2-li-1", name: "'Leave it' 5 reps daily", done: false },
-          { id: "rcr2-li-2", name: "Drill 2", done: false },
+          { id: "rcr2-li-1", name: "'Leave it' 5 reps daily" },
+          { id: "rcr2-li-2", name: "Drill 2" },
         ],
       },
     ],
@@ -155,7 +155,7 @@ export const sampleReportCards: ReportCard[] = [
       {
         id: "rcr1-settling",
         name: "Settling",
-        drills: [{ id: "rcr1-se-1", name: "Short engagement games at home", done: true }],
+        drills: [{ id: "rcr1-se-1", name: "Short engagement games at home" }],
       },
     ],
     comments: [],

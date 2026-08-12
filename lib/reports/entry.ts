@@ -73,7 +73,6 @@ export function entryToReportCard(entry: ReportEntry): ReportCard {
       drills: c.drills.map((d, di) => ({
         id: `${id}-cat${ci}-d${di}`,
         name: d.name.trim() || `Drill ${di + 1}`,
-        done: false,
       })),
     }));
 

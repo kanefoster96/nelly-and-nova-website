@@ -14,6 +14,7 @@ import {
   daysFor,
   HOMEWORK_TARGET_DAYS,
 } from "@/lib/reports/progress";
+import { isWindowOpen, HOMEWORK_WINDOW_DAYS } from "@/lib/reports/completion";
 import { HomeworkEditModal } from "@/components/reports/HomeworkEditor";
 import { addReportComment } from "@/lib/reports/data";
 import type { ReportCard, ReportComment } from "@/lib/reports/types";
@@ -132,6 +133,8 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
         const doneToday = days.includes(today);
         const complete = days.length >= HOMEWORK_TARGET_DAYS;
         const daysLeft = HOMEWORK_TARGET_DAYS - days.length;
+        // Homework can only be logged within 14 days of the card.
+        const windowOpen = isWindowOpen(card.date, today);
         return (
           <div
             key={card.id}
@@ -250,7 +253,11 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
                     {!isStaff && (
                       complete ? (
                         <p className="mt-3 text-sm font-medium text-accent">
-                          Homework complete this week — great work! 🐾
+                          Homework complete — great work! 🐾
+                        </p>
+                      ) : !windowOpen ? (
+                        <p className="mt-3 text-sm text-paper-dim">
+                          The {HOMEWORK_WINDOW_DAYS}-day window to log this homework has closed.
                         </p>
                       ) : (
                         <button
@@ -269,9 +276,9 @@ export function ReportCards({ initial }: { initial: ReportCard[] }) {
                         </button>
                       )
                     )}
-                    {!isStaff && !complete && !doneToday && (
+                    {!isStaff && !complete && windowOpen && !doneToday && (
                       <p className="mt-1.5 text-center text-[11px] text-paper-dim">
-                        {daysLeft} more day{daysLeft === 1 ? "" : "s"} to finish this week
+                        {daysLeft} more day{daysLeft === 1 ? "" : "s"} to finish
                       </p>
                     )}
                   </div>

@@ -4,8 +4,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon, CheckIcon, PlusIcon } from "@/components/ui/Icons";
 import type { HomeworkCategory, HomeworkDrill } from "@/lib/reports/types";
+import { DRILL_LIBRARY, drillsForCategory } from "@/config/drills";
 
-const newDrill = (): HomeworkDrill => ({ id: crypto.randomUUID(), name: "", done: false });
+const newDrill = (): HomeworkDrill => ({ id: crypto.randomUUID(), name: "" });
 const newCat = (): HomeworkCategory => ({ id: crypto.randomUUID(), name: "", drills: [newDrill()] });
 
 const inputCls =
@@ -13,9 +14,9 @@ const inputCls =
 
 /**
  * Edit a report card's homework — categories and their drills. Preserves each
- * drill's id (and its done state) so the owner's progress survives an edit;
- * new drills get a fresh id and blank names save as "Drill N". The card is
- * titled from the category names, previewed live.
+ * drill's id so ids stay stable across an edit; new drills get a fresh id and
+ * blank names save as "Drill N". The card is titled from the category names,
+ * previewed live. A category can be picked from the drill library, or typed.
  */
 export function HomeworkEditModal({
   title,
@@ -70,6 +71,13 @@ export function HomeworkEditModal({
           </button>
         </div>
 
+        {/* Library options — pick a category / drill, or type a custom one. */}
+        <datalist id="hw-lib-categories">
+          {DRILL_LIBRARY.map((c) => (
+            <option key={c.name} value={c.name} />
+          ))}
+        </datalist>
+
         <div className="grid gap-4 px-5 py-5">
           <div>
             <p className="mb-1.5 text-sm font-medium text-paper/90">Title</p>
@@ -90,6 +98,7 @@ export function HomeworkEditModal({
                     value={cat.name}
                     onChange={(e) => patchCat(ci, { name: e.target.value })}
                     placeholder={`Category ${ci + 1} · e.g. Recall`}
+                    list="hw-lib-categories"
                     className={`${inputCls} font-medium`}
                   />
                   {cats.length > 1 && (
@@ -103,13 +112,19 @@ export function HomeworkEditModal({
                     </button>
                   )}
                 </div>
+                <datalist id={`hw-lib-drills-${cat.id}`}>
+                  {drillsForCategory(cat.name).map((d, k) => (
+                    <option key={k} value={d} />
+                  ))}
+                </datalist>
                 <div className="mt-2 grid gap-2 border-l border-white/10 pl-3">
                   {cat.drills.map((d, di) => (
                     <div key={d.id} className="flex items-center gap-2">
                       <input
                         value={d.name}
                         onChange={(e) => setDrillName(ci, di, e.target.value)}
-                        placeholder={`Drill ${di + 1}`}
+                        placeholder={`Drill ${di + 1} · how to practise`}
+                        list={`hw-lib-drills-${cat.id}`}
                         className={inputCls}
                       />
                       {cat.drills.length > 1 && (

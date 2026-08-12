@@ -6,11 +6,14 @@
  * questions about homework in a thread only they and staff can see.
  */
 
-/** One drill the owner ticks off. Unnamed drills save as "Drill 1", "Drill 2"… */
+/**
+ * One drill — how to practise a specific skill. Unnamed drills save as
+ * "Drill 1", "Drill 2"… Completion is tracked per report card over 3 days
+ * (lib/reports/progress.ts), not per drill.
+ */
 export type HomeworkDrill = {
   id: string;
   name: string;
-  done: boolean;
 };
 
 /**

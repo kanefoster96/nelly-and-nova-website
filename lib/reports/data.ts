@@ -25,13 +25,14 @@ export async function getReportCards(): Promise<ReportCard[]> {
   return sampleReportCards;
 }
 
-export async function setHomeworkDone(
-  reportId: string,
-  homeworkId: string,
-  done: boolean
-): Promise<void> {
-  // TODO(backend): update homework set done = $3 where id = $2 and report_id = $1
-  console.log(`[reports] homework ${homeworkId} on ${reportId} → ${done} (scaffold)`);
+/**
+ * Reset a dog's homework completion to 100% — offered when they book a 1-1, so
+ * any missed homework before this point no longer counts.
+ */
+export async function resetHomework(dogId: string, at: string): Promise<void> {
+  // TODO(backend): store a homework_reset (dog_id, reset_at); completion is then
+  // computed only from report cards dated on/after reset_at.
+  console.log(`[reports] homework reset to 100% for ${dogId} at ${at} (scaffold)`);
 }
 
 /** Log a day's homework completion for a report card (one per day per card). */
