@@ -54,6 +54,22 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * Prevent iOS Safari's auto-zoom on focus. Mobile Safari zooms the page in
+ * whenever a focused text field's font-size is under 16px. Our fields use
+ * text-sm (14px) for a tighter look on desktop, so on small screens we bump
+ * every typed-input control up to 16px — this keeps the desktop typography
+ * unchanged while stopping the jarring zoom on phones. Checkbox/radio/range
+ * are excluded (no typed input; font-size can affect their box sizing).
+ */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Visible, accessible focus ring for keyboard users everywhere. */
 :focus-visible {
   outline: 2px solid var(--color-accent);
