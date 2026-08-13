@@ -21,8 +21,10 @@ export const sampleConversations: Conversation[] = [
     status: "new",
   },
   {
+    // An account is known by its dog(s) in chat too — this member owns Nova & Rex.
+    // TODO(backend): derive the conversation title from the account's dogs.
     id: "c2",
-    user: { id: "u2", name: "Rachel T." },
+    user: { id: "u2", name: "Nova & Rex" },
     lastMessageAt: "2026-08-11T12:10:00Z",
     lastMessagePreview: "Perfect, see you Thursday for the meet & greet 🐾",
     unread: false,

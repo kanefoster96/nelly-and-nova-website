@@ -7,7 +7,7 @@ import type { Post } from "./types";
 export const sampleCommunityPosts: Post[] = [
   {
     id: "p3",
-    authorName: "Rachel T.",
+    authorName: "Nova & Rex",
     authorAvatarUrl: "/placeholders/dog-avatar-01.svg",
     title: "Loose lead win 🎉",
     body:

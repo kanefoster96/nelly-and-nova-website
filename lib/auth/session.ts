@@ -75,6 +75,24 @@ export function signOut() {
   window.dispatchEvent(new Event(EVENT));
 }
 
+/** Join names naturally: "Nova", "Nova & Rex", "Nova, Rex & Bella". */
+export function joinNames(names: string[]): string {
+  const list = names.filter(Boolean);
+  if (list.length <= 1) return list[0] ?? "";
+  return `${list.slice(0, -1).join(", ")} & ${list[list.length - 1]}`;
+}
+
+/**
+ * How the account is shown to others — in the community and in chat with the
+ * business. An account is known by its dogs, so this joins every dog's name
+ * ("Nova & Rex"), falling back to the active dog, then the owner's name.
+ */
+export function accountDisplayName(session: Session | null): string {
+  if (!session) return "";
+  const names = (session.dogs ?? []).map((d) => d.name);
+  return joinNames(names) || session.dogName || session.ownerName;
+}
+
 /** Switch the account's active dog — mirrors it into dogName/dogPhoto/dogId. */
 export function setActiveDog(dogId: string) {
   const s = read();
