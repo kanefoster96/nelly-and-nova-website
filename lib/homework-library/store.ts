@@ -10,9 +10,9 @@
  * and (by drill name) the owner's practice screen.
  */
 import { useSyncExternalStore } from "react";
-import { HOMEWORK_LIBRARY } from "@/config/homeworkLibrary";
+import { HOMEWORK_LIBRARY, type DrillBlock } from "@/config/homeworkLibrary";
 
-export type LibDrillState = { id: string; name: string; description: string; level: number };
+export type LibDrillState = { id: string; name: string; level: number; blocks: DrillBlock[] };
 export type LibraryOverlay = { categories: Record<string, LibDrillState[]> };
 
 /** Highest level a drill can be promoted to (a safety cap on new levels). */
@@ -33,7 +33,7 @@ function baseCategory(pillarId: string, categoryId: string): LibDrillState[] {
   );
   if (!cat) return [];
   return cat.levels.flatMap((lvl) =>
-    lvl.drills.map((d) => ({ id: d.id, name: d.name, description: d.description, level: lvl.level }))
+    lvl.drills.map((d) => ({ id: d.id, name: d.name, level: lvl.level, blocks: d.blocks }))
   );
 }
 
@@ -136,9 +136,65 @@ export function addLibraryDrill(
   if (!text) return;
   update(pillarId, categoryId, (drills) => {
     const id = `custom-${pillarId}-${categoryId}-${level}-${drills.length}-${text.length}`;
-    drills.splice(endOfLevel(drills, level), 0, { id, name: text, description: description.trim(), level });
+    const blocks: DrillBlock[] = description.trim()
+      ? [{ id: `${id}-p1`, type: "paragraph", text: description.trim() }]
+      : [];
+    drills.splice(endOfLevel(drills, level), 0, { id, name: text, level, blocks });
     return drills;
   });
+}
+
+// --- drill content blocks (the drill's blog-style page) -------------------
+
+function updateBlocks(
+  pillarId: string,
+  categoryId: string,
+  drillId: string,
+  fn: (blocks: DrillBlock[]) => DrillBlock[]
+) {
+  update(pillarId, categoryId, (drills) =>
+    drills.map((d) => (d.id === drillId ? { ...d, blocks: fn([...d.blocks]) } : d))
+  );
+}
+
+/** Append a content block to a drill. Pass a fresh id (crypto.randomUUID). */
+export function addBlock(pillarId: string, categoryId: string, drillId: string, block: DrillBlock) {
+  updateBlocks(pillarId, categoryId, drillId, (blocks) => [...blocks, block]);
+}
+
+/** Edit a heading/paragraph block's text. */
+export function updateBlockText(
+  pillarId: string,
+  categoryId: string,
+  drillId: string,
+  blockId: string,
+  text: string
+) {
+  updateBlocks(pillarId, categoryId, drillId, (blocks) =>
+    blocks.map((b) =>
+      b.id === blockId && (b.type === "heading" || b.type === "paragraph") ? { ...b, text } : b
+    )
+  );
+}
+
+export function moveBlock(
+  pillarId: string,
+  categoryId: string,
+  drillId: string,
+  blockId: string,
+  dir: -1 | 1
+) {
+  updateBlocks(pillarId, categoryId, drillId, (blocks) => {
+    const i = blocks.findIndex((b) => b.id === blockId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= blocks.length) return blocks;
+    [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
+    return blocks;
+  });
+}
+
+export function removeBlock(pillarId: string, categoryId: string, drillId: string, blockId: string) {
+  updateBlocks(pillarId, categoryId, drillId, (blocks) => blocks.filter((b) => b.id !== blockId));
 }
 
 export function removeLibraryDrill(pillarId: string, categoryId: string, drillId: string) {

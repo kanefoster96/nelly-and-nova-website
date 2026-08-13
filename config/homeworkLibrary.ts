@@ -9,18 +9,35 @@
  * path. Each drill has a short name (shown on the card) and a description (shown
  * when the card is opened). Level 1 and Level 2 are templated to show the shape.
  */
-export type LibDrill = { id: string; name: string; description: string };
+/**
+ * A drill's page is built from ordered content blocks — headings, paragraphs,
+ * photos and videos — so it reads like a little blog post.
+ */
+export type DrillBlock =
+  | { id: string; type: "heading"; text: string }
+  | { id: string; type: "paragraph"; text: string }
+  | { id: string; type: "image"; url: string }
+  | { id: string; type: "video"; url: string };
+
+export type LibDrill = { id: string; name: string; blocks: DrillBlock[] };
 export type LibLevel = { level: number; drills: LibDrill[] };
 export type LibCategory = { id: string; name: string; levels: LibLevel[] };
 export type LibPillar = { id: string; name: string; blurb: string; categories: LibCategory[] };
 
-/** [name, description] pairs for a level. */
+/** [name, how-to paragraph] pairs for a level. */
 type Pair = [string, string];
 
-/** Build helper — stamps stable drill ids from the category/level. */
+/** Build helper — stamps stable drill ids; the how-to becomes a paragraph block. */
 function cat(id: string, name: string, l1: Pair[], l2: Pair[]): LibCategory {
   const drills = (level: number, pairs: Pair[]): LibDrill[] =>
-    pairs.map(([n, d], i) => ({ id: `${id}-l${level}-${i + 1}`, name: n, description: d }));
+    pairs.map(([n, d], i) => {
+      const drillId = `${id}-l${level}-${i + 1}`;
+      return {
+        id: drillId,
+        name: n,
+        blocks: d ? [{ id: `${drillId}-p1`, type: "paragraph" as const, text: d }] : [],
+      };
+    });
   return {
     id,
     name,
