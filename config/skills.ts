@@ -13,7 +13,7 @@ export const SKILL_PILLARS: SkillPillar[] = [
   {
     id: "engagement",
     name: "Engagement",
-    blurb: "Choosing to work with you",
+    blurb: "“Does my dog want to train with me?”",
     drills: [
       { id: "eng-name", name: "Responds to their name" },
       { id: "eng-checkin", name: "Checks in on walks" },
@@ -25,7 +25,7 @@ export const SKILL_PILLARS: SkillPillar[] = [
   {
     id: "skills",
     name: "Skills",
-    blurb: "The practical obedience",
+    blurb: "“Can my dog do what I ask?”",
     drills: [
       { id: "sk-sit", name: "Sit & down on cue" },
       { id: "sk-stay", name: "Stay / wait" },
@@ -38,7 +38,7 @@ export const SKILL_PILLARS: SkillPillar[] = [
   {
     id: "mindset",
     name: "Mindset",
-    blurb: "Calm, confident, resilient",
+    blurb: "“Is my dog calm and confident?”",
     drills: [
       { id: "mind-calm", name: "Calm in new places" },
       { id: "mind-frustration", name: "Handles frustration" },
