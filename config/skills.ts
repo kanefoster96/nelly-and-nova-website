@@ -38,7 +38,7 @@ export const SKILL_PILLARS: SkillPillar[] = [
   {
     id: "mindset",
     name: "Mindset",
-    blurb: "“Is my dog calm and confident?”",
+    blurb: "“How does my dog cope outside of training?”",
     drills: [
       { id: "mind-calm", name: "Calm in new places" },
       { id: "mind-frustration", name: "Handles frustration" },
