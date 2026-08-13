@@ -15,6 +15,7 @@ import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
 import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
 import { HolidayReminder } from "./profile/HolidayReminder";
 import { LatestCommunityPost } from "./profile/LatestCommunityPost";
+import { CompleteHomework } from "./profile/CompleteHomework";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
 
@@ -106,19 +107,22 @@ export function ProfileView({
         )}
       </div>
 
-      {/* Report card button — badged when a new card is waiting. */}
-      <Link
-        href="/profile/reports"
-        className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
-        <ReportIcon width={18} height={18} />
-        Report cards
-        {unseen > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-            {unseen}
-          </span>
-        )}
-      </Link>
+      {/* Report cards + complete-homework — the two things they do each visit. */}
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <Link
+          href="/profile/reports"
+          className="relative flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-semibold leading-tight text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <ReportIcon width={18} height={18} className="shrink-0" />
+          Report cards
+          {unseen > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+              {unseen}
+            </span>
+          )}
+        </Link>
+        <CompleteHomework dogId={session.dogId} todayISO={todayISO} />
+      </div>
 
       {/* Holiday reminder — session-off notice, or a heads-up a week before */}
       <HolidayReminder
