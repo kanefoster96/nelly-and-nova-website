@@ -46,6 +46,23 @@ export function categoryDrills(
   return overlay.categories[catKey(pillarId, categoryId)] ?? baseCategory(pillarId, categoryId);
 }
 
+/** Find a library drill (with its blocks) by name — for the owner's drill page. */
+export function findLibraryDrillByName(
+  overlay: LibraryOverlay,
+  name: string
+): LibDrillState | undefined {
+  const key = name.trim().toLowerCase();
+  for (const pillar of HOMEWORK_LIBRARY) {
+    for (const cat of pillar.categories) {
+      const hit = categoryDrills(overlay, pillar.id, cat.id).find(
+        (d) => d.name.toLowerCase() === key
+      );
+      if (hit) return hit;
+    }
+  }
+  return undefined;
+}
+
 /** Index of drill name → { pillar, level } across the whole library arrangement. */
 export function libraryNameIndex(overlay: LibraryOverlay): Map<string, { pillar: string; level: number }> {
   const map = new Map<string, { pillar: string; level: number }>();

@@ -8,7 +8,9 @@ import { sampleReportCards } from "@/lib/reports/sample";
 import { useOutboxCards } from "@/lib/reports/outbox";
 import { useHomeworkOverrides } from "@/lib/reports/homework";
 import { practiceByPillar } from "@/lib/practice";
-import { useLibrary, libraryNameIndex } from "@/lib/homework-library/store";
+import { useLibrary, libraryNameIndex, findLibraryDrillByName } from "@/lib/homework-library/store";
+import { DrillPage } from "./DrillPage";
+import type { DrillBlock } from "@/config/homeworkLibrary";
 import type { ReportCard } from "@/lib/reports/types";
 
 /**
@@ -23,8 +25,14 @@ export function PracticeLibrary({ dogId }: { dogId?: string }) {
   const overrides = useHomeworkOverrides();
   const [open, setOpen] = useState(false);
   const [pillarId, setPillarId] = useState<string | null>(null);
+  const [openDrill, setOpenDrill] = useState<{ name: string; blocks: DrillBlock[] } | null>(null);
 
   const learnt = learntSet(skills, dogId);
+
+  function openDrillPage(name: string) {
+    const lib = findLibraryDrillByName(library, name);
+    setOpenDrill({ name, blocks: lib?.blocks ?? [] });
+  }
 
   const byPillar = useMemo(() => {
     const byId = new Map<string, ReportCard>();
@@ -98,6 +106,7 @@ export function PracticeLibrary({ dogId }: { dogId?: string }) {
                   name={pillar.name}
                   drills={byPillar[pillar.id] ?? []}
                   onBack={() => setPillarId(null)}
+                  onOpen={openDrillPage}
                 />
               ) : (
                 <div className="space-y-2.5">
@@ -136,19 +145,29 @@ export function PracticeLibrary({ dogId }: { dogId?: string }) {
           </div>
         </div>
       )}
+
+      {openDrill && (
+        <DrillPage
+          name={openDrill.name}
+          blocks={openDrill.blocks}
+          onClose={() => setOpenDrill(null)}
+        />
+      )}
     </>
   );
 }
 
-/** A pillar's given drills, lowest level first. */
+/** A pillar's given drills, lowest level first. Each opens its full page. */
 function PillarDrills({
   name,
   drills,
   onBack,
+  onOpen,
 }: {
   name: string;
   drills: { name: string; level: number }[];
   onBack: () => void;
+  onOpen: (name: string) => void;
 }) {
   return (
     <div>
@@ -168,17 +187,23 @@ function PillarDrills({
       ) : (
         <ul className="mt-4 space-y-1.5">
           {drills.map((d, i) => (
-            <li
-              key={i}
-              className="flex items-start justify-between gap-3 rounded-xl bg-white/[0.04] px-3.5 py-2.5 ring-1 ring-white/10"
-            >
-              <span className="flex items-start gap-2 text-sm text-paper/90">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                {d.name}
-              </span>
-              <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper-dim">
-                Lvl {d.level}
-              </span>
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => onOpen(d.name)}
+                className="flex w-full items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3.5 py-2.5 text-left ring-1 ring-white/10 transition-colors hover:ring-white/25"
+              >
+                <span className="flex items-start gap-2 text-sm text-paper/90">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                  {d.name}
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper-dim">
+                    Lvl {d.level}
+                  </span>
+                  <ArrowRightIcon width={15} height={15} className="text-paper-dim" />
+                </span>
+              </button>
             </li>
           ))}
         </ul>
