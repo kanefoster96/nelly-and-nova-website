@@ -1,23 +1,26 @@
 /**
  * Homework drill library, organised the way the training is built:
  *   Pillar (Engagement / Skills / Mindset)
- *     → Category (e.g. Heeling, Luring, Recall)
+ *     → Category (e.g. Luring, Spatial pressure, Sit)
  *       → Level (Level 1, Level 2 …)
- *         → Drills (how to practise)
+ *         → Drills (a short name + a full "how to" description)
  *
- * Trainers browse this on the dashboard and add drills. Level 1 and Level 2 are
- * templated below to show the shape; add more levels/categories as the library
- * grows. The three pillars mirror config/skills.ts.
+ * Trainers browse this on the dashboard, reorder the drills and build the level
+ * path. Each drill has a short name (shown on the card) and a description (shown
+ * when the card is opened). Level 1 and Level 2 are templated to show the shape.
  */
-export type LibDrill = { id: string; name: string };
+export type LibDrill = { id: string; name: string; description: string };
 export type LibLevel = { level: number; drills: LibDrill[] };
 export type LibCategory = { id: string; name: string; levels: LibLevel[] };
 export type LibPillar = { id: string; name: string; blurb: string; categories: LibCategory[] };
 
+/** [name, description] pairs for a level. */
+type Pair = [string, string];
+
 /** Build helper — stamps stable drill ids from the category/level. */
-function cat(id: string, name: string, l1: string[], l2: string[]): LibCategory {
-  const drills = (level: number, names: string[]): LibDrill[] =>
-    names.map((n, i) => ({ id: `${id}-l${level}-${i + 1}`, name: n }));
+function cat(id: string, name: string, l1: Pair[], l2: Pair[]): LibCategory {
+  const drills = (level: number, pairs: Pair[]): LibDrill[] =>
+    pairs.map(([n, d], i) => ({ id: `${id}-l${level}-${i + 1}`, name: n, description: d }));
   return {
     id,
     name,
@@ -35,39 +38,39 @@ export const HOMEWORK_LIBRARY: LibPillar[] = [
     blurb: "Choosing to work with you",
     categories: [
       cat(
-        "marker-words",
-        "Marker words",
+        "ready",
+        "Ready",
         [
-          "Charge your marker: say “yes”, then treat — 10 reps, twice a day.",
-          "Mark and reward one calm behaviour the dog offers on your walk.",
+          ["Introduce the ready cue", "Say “ready?” in a happy voice, then immediately reward. Repeat 10 times so the word predicts good things and switches your dog on."],
+          ["Ready before meals", "Ask “ready?” just before putting the food bowl down. Reward the focus, then release to eat."],
         ],
         [
-          "Use your marker for a behaviour at a short distance, then reward.",
-          "Mark a behaviour, delay the treat by 2–3 seconds, then reward.",
+          ["Ready with movement", "Say “ready?” then take a few steps; reward your dog for coming with you and staying engaged."],
+          ["Ready near a distraction", "Use the ready cue with a low-level distraction nearby; reward them for choosing you."],
         ]
       ),
       cat(
-        "name-response",
-        "Name response",
+        "finish",
+        "Finish",
         [
-          "Say the dog's name in a quiet room; reward the instant they look.",
-          "10 name reps before each meal — name, look, treat.",
+          ["Lure to your side", "Lure your dog around behind you into a sit at your left side. Reward in position. 5 reps."],
+          ["Add the word “finish”", "Say “finish”, then lure into position and reward. Repeat until the word starts the movement."],
         ],
         [
-          "Say their name with a mild distraction present, reward the look.",
-          "Name response from another room — reward coming to find you.",
+          ["Finish without a lure", "Say “finish” and use just a hand signal; reward the tuck into position."],
+          ["Finish from in front", "With your dog sitting in front of you, cue “finish” so they swing round to your side."],
         ]
       ),
       cat(
-        "focus-play",
-        "Focus & play",
+        "yes-marker",
+        "Yes marker",
         [
-          "30 seconds of tug, then ask for a sit to restart — builds an on/off switch.",
-          "Reward eye contact (“watch me”) for 5 seconds, 5 reps a day.",
+          ["Charge the marker", "Say “yes”, then treat — 10 reps, twice a day — so “yes” always means a reward is coming."],
+          ["Mark a known behaviour", "Ask for a sit; the instant they sit, say “yes” and reward."],
         ],
         [
-          "Play, pause, and reward the dog re-engaging with you unprompted.",
-          "Hold eye contact past a low-level distraction, then release to play.",
+          ["Mark then delay", "Say “yes”, pause 2–3 seconds, then reward — building a gap between the marker and the treat."],
+          ["Mark a free choice", "Catch and mark a good behaviour your dog offers on a walk (a check-in, a sit)."],
         ]
       ),
     ],
@@ -81,48 +84,36 @@ export const HOMEWORK_LIBRARY: LibPillar[] = [
         "luring",
         "Luring",
         [
-          "Lure a sit and a down with a treat at the nose — 5 reps each.",
-          "Lure a 180° turn following the treat, reward at the end.",
+          ["How to hold a treat", "Hold the treat flat against your fingers with your thumb so your dog can smell it but not snatch it. Keep your hand relaxed and lead their nose."],
+          ["Lure a sit", "With the treat at your dog’s nose, slowly raise it up over their head. As their nose goes up, their bottom goes down. Reward the sit."],
         ],
         [
-          "Fade the lure: same movement with an empty hand, reward after.",
-          "Lure into a stand from a sit and back down, rewarding smoothly.",
+          ["Lure a down", "From a sit, lure the treat straight down between their paws, then out along the floor. Reward the down."],
+          ["Fade the lure", "Make the same movement with an empty hand and reward from the other hand — the food comes after, not as a bribe."],
         ]
       ),
       cat(
-        "heeling",
-        "Heeling",
+        "spatial-pressure",
+        "Spatial pressure",
         [
-          "5 minutes of heelwork on your usual walk, rewarding every few steps.",
-          "10 changes of direction, keeping the dog in the heel position.",
+          ["Step in, step out", "Take a calm step toward your dog to ask them to move back a step, then step away to release the pressure. Reward the movement."],
+          ["Body block a threshold", "Use your body to calmly block a doorway; reward your dog for waiting rather than barging through."],
         ],
         [
-          "Heel past a mild distraction (a bin, a parked car) and reward focus.",
-          "Add a halt: heel, stop, reward an automatic sit at your side.",
+          ["Pressure to position", "Use a small step of pressure to guide your dog into a sit or back to your side without a lure."],
+          ["Release on a loose lead", "Use gentle pressure and release on the lead to show your dog where to be; reward the slack."],
         ]
       ),
       cat(
-        "recall",
-        "Recall",
+        "sit",
+        "Sit",
         [
-          "Call the dog back 3 times in the garden with a happy voice and treat.",
-          "Recall between two people 2m apart, rewarding each arrival.",
+          ["Capture a sit", "Wait for your dog to sit on their own; the moment they do, mark and reward. Repeat so sitting earns rewards."],
+          ["Add the cue", "Say “sit” just as they begin to sit, then reward — building the word onto the action."],
         ],
         [
-          "Recall away from a low-level distraction, then release back to it.",
-          "Recall on a long line at distance, rewarding a fast return.",
-        ]
-      ),
-      cat(
-        "loose-lead",
-        "Loose lead",
-        [
-          "10 minutes of loose-lead walking — stop the moment the lead tightens.",
-          "Reward every time the dog chooses to walk at your side unasked.",
-        ],
-        [
-          "Loose lead past another dog across the street, rewarding slack.",
-          "Change pace (slow/normal/fast) keeping the lead loose throughout.",
+          ["Sit at a distance", "Ask for a sit from a step or two away; reward them for staying put."],
+          ["Sit with a distraction", "Ask for a sit with a mild distraction present; reward the focus."],
         ]
       ),
     ],
@@ -133,39 +124,39 @@ export const HOMEWORK_LIBRARY: LibPillar[] = [
     blurb: "Calm, confident, resilient",
     categories: [
       cat(
-        "settle",
-        "Settle & calm",
+        "settling",
+        "Settling",
         [
-          "Place/settle on a mat for 5 minutes each evening while you relax.",
-          "Reward a calm down-stay while you make a cup of tea.",
+          ["Settle on a mat", "Reward your dog for lying calmly on a mat for a few minutes while you relax. Build the duration up slowly."],
+          ["Calm on cue", "Reward a relaxed down-stay while you make a cup of tea; keep the energy low and quiet."],
         ],
         [
-          "Settle on the mat in a busier room, rewarding calmness.",
-          "Settle at a café or outside a shop for a few minutes.",
+          ["Settle in a busy room", "Practise the mat settle somewhere busier at home; reward calmness."],
+          ["Settle out and about", "Settle at a café or outside a shop for a few minutes; reward staying relaxed."],
         ]
       ),
       cat(
-        "impulse-control",
-        "Impulse control",
+        "arousal",
+        "Arousal",
         [
-          "“Leave it” with a treat on the floor — 5 reps daily.",
-          "Wait at thresholds — ask for a wait before going through every door.",
+          ["Up and down game", "Do a few seconds of tug, then ask for a sit to stop. Reward the “off switch” — this teaches your dog to come back down from excitement."],
+          ["Sniffing to settle", "Scatter a few treats in the grass after play so your dog can sniff and bring their arousal down."],
         ],
         [
-          "“Leave it” with the treat in an open hand, reward from the other hand.",
-          "Wait while you place the food bowl down, release to eat.",
+          ["Recover faster", "After a burst of play, ask for calm and reward how quickly they settle."],
+          ["Arousal around dogs", "At a distance from another dog, reward your dog for staying under threshold and disengaging."],
         ]
       ),
       cat(
-        "confidence",
-        "Confidence",
+        "triggers",
+        "Triggers",
         [
-          "Reward calm curiosity toward a novel object at home.",
-          "Walk over a new surface (a mat, a grate) and reward.",
+          ["Find the distance", "Work out how far from a trigger your dog can stay calm, and reward relaxed behaviour at that distance."],
+          ["Mark the trigger", "The moment your dog notices the trigger calmly, mark and reward — so it starts to predict good things."],
         ],
         [
-          "Approach and investigate a novel object in a new place, reward.",
-          "Reward relaxed body language around a sudden but mild noise.",
+          ["Close the gap slowly", "Over several sessions, reduce the distance to the trigger a little at a time, keeping your dog calm."],
+          ["Disengage from a trigger", "Reward your dog for looking away from the trigger and back to you."],
         ]
       ),
     ],

@@ -1,28 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import {
-  PlusIcon,
-  CloseIcon,
-  ArrowRightIcon,
-  ChevronDownIcon,
-} from "@/components/ui/Icons";
+import { PlusIcon, CloseIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/ui/Icons";
 import { HOMEWORK_LIBRARY, type LibCategory, type LibPillar } from "@/config/homeworkLibrary";
 import {
   useLibrary,
   categoryDrills,
-  reorderDrill,
-  changeDrillLevel,
+  moveDrill,
   addLibraryDrill,
   removeLibraryDrill,
+  MAX_LEVEL,
   type LibDrillState,
 } from "@/lib/homework-library/store";
 
 /**
- * The drill library: pillar cards → category cards (with counts) → the drills
- * as reorderable cards, grouped by level. Trainers move a drill up/down within
- * its level, promote/demote it a level, add and remove — building the order and
- * levels that work. Changes show here and on the owner's practice screen.
+ * The drill library: pillar cards → category cards → the drills as one ordered
+ * list with a "Level N" title before each level's drills. Each drill is a card
+ * the trainer moves up/down through the whole list (crossing a title moves it a
+ * level), opens to read the full how-to, adds or removes.
  */
 export function HomeworkLibrary() {
   const overlay = useLibrary();
@@ -34,27 +29,29 @@ export function HomeworkLibrary() {
 
   const count = (p: LibPillar, c: LibCategory) => categoryDrills(overlay, p.id, c.id).length;
 
-  // --- View 3: a category's drills, as cards by level ----------------------
+  // --- View 3: a category's drills — one list with level titles ------------
   if (pillar && category) {
     const drills = categoryDrills(overlay, pillar.id, category.id);
     const maxLevel = Math.max(2, ...drills.map((d) => d.level));
     const levels = Array.from({ length: maxLevel }, (_, i) => i + 1);
+    const firstId = drills[0]?.id;
+    const lastId = drills[drills.length - 1]?.id;
 
     return (
       <div className="mt-8">
         <BackButton label={pillar.name} onClick={() => setCategoryId(null)} />
         <h2 className="mt-3 display-heading text-2xl text-paper">{category.name}</h2>
         <p className="mt-1 text-sm text-paper-dim">
-          {pillar.name} · {drills.length} drills · drag through the levels to build
-          the path
+          {pillar.name} · {drills.length} drills · move a card up or down to
+          reorder it or cross into another level
         </p>
 
-        <div className="mt-5 space-y-5">
+        <div className="mt-5 space-y-2">
           {levels.map((level) => {
             const levelDrills = drills.filter((d) => d.level === level);
             return (
-              <div key={level} className="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
-                <div className="flex items-center justify-between">
+              <div key={level}>
+                <div className="flex items-center justify-between pb-1.5 pt-3">
                   <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
                     Level {level}
                   </h3>
@@ -63,22 +60,17 @@ export function HomeworkLibrary() {
                   </span>
                 </div>
 
-                <div className="mt-3 space-y-2">
-                  {levelDrills.map((drill, i) => (
+                <div className="space-y-2">
+                  {levelDrills.map((drill) => (
                     <DrillCard
                       key={drill.id}
                       drill={drill}
                       pillarId={pillar.id}
                       categoryId={category.id}
-                      isFirst={i === 0}
-                      isLast={i === levelDrills.length - 1}
+                      isFirst={drill.id === firstId}
+                      isLast={drill.id === lastId}
                     />
                   ))}
-                  {levelDrills.length === 0 && (
-                    <p className="text-sm text-paper-dim">
-                      No drills at this level — add one, or promote one from below.
-                    </p>
-                  )}
                 </div>
 
                 <AddDrill pillarId={pillar.id} categoryId={category.id} level={level} />
@@ -152,7 +144,7 @@ function BackButton({ label, onClick }: { label: string; onClick: () => void }) 
   );
 }
 
-/** One drill as a card — reorder within its level, promote/demote, remove. */
+/** One drill card — move up/down through the list, open the how-to, remove. */
 function DrillCard({
   drill,
   pillarId,
@@ -166,62 +158,64 @@ function DrillCard({
   isFirst: boolean;
   isLast: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const ctrl =
     "flex h-7 w-7 items-center justify-center rounded-lg text-paper-dim transition-colors hover:bg-white/10 hover:text-paper disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-paper-dim";
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-white/[0.03] p-2.5 ring-1 ring-white/10">
-      {/* Reorder within the level */}
-      <div className="flex flex-col">
-        <button
-          type="button"
-          aria-label="Move up"
-          disabled={isFirst}
-          onClick={() => reorderDrill(pillarId, categoryId, drill.id, -1)}
-          className={ctrl}
-        >
-          <ChevronDownIcon width={15} height={15} className="rotate-180" />
-        </button>
-        <button
-          type="button"
-          aria-label="Move down"
-          disabled={isLast}
-          onClick={() => reorderDrill(pillarId, categoryId, drill.id, 1)}
-          className={ctrl}
-        >
-          <ChevronDownIcon width={15} height={15} />
-        </button>
-      </div>
+    <div className="rounded-xl bg-white/[0.03] ring-1 ring-white/10">
+      <div className="flex items-center gap-2 p-2.5">
+        <div className="flex flex-col">
+          <button
+            type="button"
+            aria-label="Move up"
+            disabled={isFirst}
+            onClick={() => moveDrill(pillarId, categoryId, drill.id, -1)}
+            className={ctrl}
+          >
+            <ChevronDownIcon width={15} height={15} className="rotate-180" />
+          </button>
+          <button
+            type="button"
+            aria-label="Move down"
+            disabled={isLast && drill.level >= MAX_LEVEL}
+            onClick={() => moveDrill(pillarId, categoryId, drill.id, 1)}
+            className={ctrl}
+          >
+            <ChevronDownIcon width={15} height={15} />
+          </button>
+        </div>
 
-      <p className="min-w-0 flex-1 text-sm text-paper/90">{drill.name}</p>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-paper">
+            {drill.name}
+          </span>
+          <ChevronDownIcon
+            width={15}
+            height={15}
+            className={`shrink-0 text-paper-dim transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
 
-      {/* Move between levels */}
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          aria-label="Move down a level"
-          disabled={drill.level <= 1}
-          onClick={() => changeDrillLevel(pillarId, categoryId, drill.id, -1)}
-          className="rounded-full border border-white/15 px-2 py-1 text-[11px] font-medium text-paper-dim transition-colors hover:border-white/40 hover:text-paper disabled:opacity-30"
-        >
-          Lvl −
-        </button>
-        <button
-          type="button"
-          aria-label="Move up a level"
-          onClick={() => changeDrillLevel(pillarId, categoryId, drill.id, 1)}
-          className="rounded-full border border-white/15 px-2 py-1 text-[11px] font-medium text-paper-dim transition-colors hover:border-white/40 hover:text-paper"
-        >
-          Lvl +
-        </button>
         <button
           type="button"
           aria-label="Remove drill"
           onClick={() => removeLibraryDrill(pillarId, categoryId, drill.id)}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-paper-dim transition-colors hover:bg-white/10 hover:text-paper"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-paper-dim transition-colors hover:bg-white/10 hover:text-paper"
         >
           <CloseIcon width={15} height={15} />
         </button>
       </div>
+
+      {open && (
+        <p className="border-t border-white/10 px-3.5 py-3 text-sm leading-relaxed text-paper/80">
+          {drill.description || "No how-to added yet."}
+        </p>
+      )}
     </div>
   );
 }
@@ -235,23 +229,23 @@ function AddDrill({
   categoryId: string;
   level: number;
 }) {
-  const [text, setText] = useState("");
+  const [name, setName] = useState("");
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    addLibraryDrill(pillarId, categoryId, level, text);
-    setText("");
+    addLibraryDrill(pillarId, categoryId, level, name);
+    setName("");
   }
   return (
-    <form onSubmit={submit} className="mt-3 flex items-center gap-2">
+    <form onSubmit={submit} className="mt-2 flex items-center gap-2">
       <input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
         placeholder={`Add a Level ${level} drill…`}
         className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2 text-sm text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       />
       <button
         type="submit"
-        disabled={!text.trim()}
+        disabled={!name.trim()}
         className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full bg-accent px-3 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         <PlusIcon width={14} height={14} /> Add

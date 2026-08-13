@@ -12,8 +12,11 @@
 import { useSyncExternalStore } from "react";
 import { HOMEWORK_LIBRARY } from "@/config/homeworkLibrary";
 
-export type LibDrillState = { id: string; name: string; level: number };
+export type LibDrillState = { id: string; name: string; description: string; level: number };
 export type LibraryOverlay = { categories: Record<string, LibDrillState[]> };
+
+/** Highest level a drill can be promoted to (a safety cap on new levels). */
+export const MAX_LEVEL = 5;
 
 const EMPTY: LibraryOverlay = { categories: {} };
 const KEY = "nn-homework-lib-v2";
@@ -30,7 +33,7 @@ function baseCategory(pillarId: string, categoryId: string): LibDrillState[] {
   );
   if (!cat) return [];
   return cat.levels.flatMap((lvl) =>
-    lvl.drills.map((d) => ({ id: d.id, name: d.name, level: lvl.level }))
+    lvl.drills.map((d) => ({ id: d.id, name: d.name, description: d.description, level: lvl.level }))
   );
 }
 
@@ -91,44 +94,49 @@ function endOfLevel(drills: LibDrillState[], level: number): number {
   return idx;
 }
 
-/** Move a drill up (-1) or down (+1) among the drills at its own level. */
-export function reorderDrill(pillarId: string, categoryId: string, drillId: string, dir: -1 | 1) {
+/**
+ * Move a drill up (-1) or down (+1) through the one ordered list. Within its
+ * level it swaps with the neighbour; at a level boundary it crosses into the
+ * next level (down promotes, up demotes) — so a card walks up and down the
+ * whole list and the level headings sort themselves out. The last drill moving
+ * down opens a new level (up to MAX_LEVEL).
+ */
+export function moveDrill(pillarId: string, categoryId: string, drillId: string, dir: -1 | 1) {
   update(pillarId, categoryId, (drills) => {
     const i = drills.findIndex((d) => d.id === drillId);
     if (i < 0) return drills;
     const level = drills[i].level;
-    let j = i + dir;
-    while (j >= 0 && j < drills.length && drills[j].level !== level) j += dir;
-    if (j < 0 || j >= drills.length || drills[j].level !== level) return drills;
-    [drills[i], drills[j]] = [drills[j], drills[i]];
+    const j = i + dir;
+
+    if (j < 0) return drills; // already at the very top
+    if (j >= drills.length) {
+      // At the very bottom — moving down starts a new (higher) level.
+      if (dir === 1 && level < MAX_LEVEL) drills[i].level = level + 1;
+      return drills;
+    }
+    if (drills[j].level === level) {
+      [drills[i], drills[j]] = [drills[j], drills[i]]; // reorder within the level
+    } else if (dir === -1) {
+      drills[i].level = drills[j].level; // demote across the boundary above
+    } else {
+      drills[i].level = drills[j].level; // promote across the boundary below
+    }
     return drills;
   });
 }
 
-/** Promote (+1) or demote (-1) a drill to an adjacent level (min level 1). */
-export function changeDrillLevel(
+export function addLibraryDrill(
   pillarId: string,
   categoryId: string,
-  drillId: string,
-  delta: -1 | 1
+  level: number,
+  name: string,
+  description = ""
 ) {
-  update(pillarId, categoryId, (drills) => {
-    const i = drills.findIndex((d) => d.id === drillId);
-    if (i < 0) return drills;
-    const newLevel = Math.max(1, drills[i].level + delta);
-    const [drill] = drills.splice(i, 1);
-    drill.level = newLevel;
-    drills.splice(endOfLevel(drills, newLevel), 0, drill);
-    return drills;
-  });
-}
-
-export function addLibraryDrill(pillarId: string, categoryId: string, level: number, name: string) {
   const text = name.trim();
   if (!text) return;
   update(pillarId, categoryId, (drills) => {
     const id = `custom-${pillarId}-${categoryId}-${level}-${drills.length}-${text.length}`;
-    drills.splice(endOfLevel(drills, level), 0, { id, name: text, level });
+    drills.splice(endOfLevel(drills, level), 0, { id, name: text, description: description.trim(), level });
     return drills;
   });
 }
