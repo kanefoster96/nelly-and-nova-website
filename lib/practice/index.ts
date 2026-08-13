@@ -43,8 +43,16 @@ function pillarForCategory(name: string): string | undefined {
   return CATEGORY_INDEX.get(key) ?? CATEGORY_INDEX.get(key.split(" ")[0]);
 }
 
-/** The dog's given homework drills, grouped by pillar and sorted by level. */
-export function practiceByPillar(cards: ReportCard[], dogId?: string): PracticeByPillar {
+/**
+ * The dog's given homework drills, grouped by pillar and sorted by level.
+ * Pass `libIndex` (the trainer's live library arrangement, by drill name) so a
+ * drill's level here follows any moves the trainer makes in the library.
+ */
+export function practiceByPillar(
+  cards: ReportCard[],
+  dogId?: string,
+  libIndex?: Map<string, { pillar: string; level: number }>
+): PracticeByPillar {
   const out: PracticeByPillar = {};
   for (const p of SKILL_PILLARS) out[p.id] = [];
   const seen = new Set<string>();
@@ -56,7 +64,7 @@ export function practiceByPillar(cards: ReportCard[], dogId?: string): PracticeB
       for (const drill of cat.drills) {
         const name = drill.name.trim();
         if (!name) continue;
-        const byName = NAME_INDEX.get(name.toLowerCase());
+        const byName = libIndex?.get(name.toLowerCase()) ?? NAME_INDEX.get(name.toLowerCase());
         const pillarId = byName?.pillar ?? catPillar;
         if (!pillarId || !out[pillarId]) continue;
         const key = `${pillarId}|${name.toLowerCase()}`;

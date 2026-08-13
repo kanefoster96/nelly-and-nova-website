@@ -8,6 +8,7 @@ import { sampleReportCards } from "@/lib/reports/sample";
 import { useOutboxCards } from "@/lib/reports/outbox";
 import { useHomeworkOverrides } from "@/lib/reports/homework";
 import { practiceByPillar } from "@/lib/practice";
+import { useLibrary, libraryNameIndex } from "@/lib/homework-library/store";
 import type { ReportCard } from "@/lib/reports/types";
 
 /**
@@ -17,6 +18,7 @@ import type { ReportCard } from "@/lib/reports/types";
  */
 export function PracticeLibrary({ dogId }: { dogId?: string }) {
   const skills = useSkills();
+  const library = useLibrary();
   const outbox = useOutboxCards();
   const overrides = useHomeworkOverrides();
   const [open, setOpen] = useState(false);
@@ -28,8 +30,9 @@ export function PracticeLibrary({ dogId }: { dogId?: string }) {
     const byId = new Map<string, ReportCard>();
     for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
     const merged = [...byId.values()].map((c) => ({ ...c, homework: overrides[c.id] ?? c.homework }));
-    return practiceByPillar(merged, dogId);
-  }, [outbox, overrides, dogId]);
+    // The trainer's live library arrangement drives each drill's level here.
+    return practiceByPillar(merged, dogId, libraryNameIndex(library));
+  }, [outbox, overrides, dogId, library]);
 
   useEffect(() => {
     if (!open) return;
