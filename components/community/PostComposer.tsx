@@ -97,16 +97,16 @@ export function PostComposer({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Add a title (optional)"
-        className="mt-4 w-full bg-transparent text-base font-medium text-paper outline-none placeholder:text-paper-dim"
+        className="mt-4 w-full rounded-xl bg-white/[0.03] px-4 py-3 text-base font-medium text-paper outline-none ring-1 ring-white/10 transition placeholder:text-paper-dim focus:ring-2 focus:ring-white/30"
       />
 
       <textarea
-        rows={3}
+        rows={4}
         autoFocus
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="Share something…"
-        className="mt-1 w-full resize-none bg-transparent text-sm text-paper outline-none placeholder:text-paper-dim"
+        className="mt-3 min-h-[8rem] w-full resize-none rounded-xl bg-white/[0.03] px-4 py-3.5 text-sm leading-relaxed text-paper outline-none ring-1 ring-white/10 transition placeholder:text-paper-dim focus:ring-2 focus:ring-white/30"
       />
 
       {media.length > 0 && (

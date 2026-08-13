@@ -205,7 +205,7 @@ function CommentsSection({
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-4">
+    <div className="mt-4 flex flex-col gap-3">
       {comments.length > 0 && (
         <p className="text-sm font-medium text-paper-dim">
           {comments.length} Comment{comments.length === 1 ? "" : "s"}
