@@ -157,13 +157,8 @@ export function ProfileView({
               {stats}
             </div>
           </div>
-
-          <div className="mt-4">
-            <h2 className="display-heading text-xl text-paper">{name}</h2>
-            {active.breed && (
-              <p className="mt-0.5 text-sm text-paper/70">{active.breed}</p>
-            )}
-          </div>
+          {/* No name/breed here — the pack name is at the top and the selected
+              dog is shown on the toggle. */}
         </>
       ) : (
         <>
@@ -185,88 +180,8 @@ export function ProfileView({
         </>
       )}
 
-      {/* Report cards + complete-homework — the two things they do each visit. */}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Link
-          href="/profile/reports"
-          className="relative flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-semibold leading-tight text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <ReportIcon width={18} height={18} className="shrink-0" />
-          Report cards
-          {unseen > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-              {unseen}
-            </span>
-          )}
-        </Link>
-        <CompleteHomework dogId={session.dogId} todayISO={todayISO} />
-      </div>
-
-      {/* Holiday reminder — session-off notice, or a heads-up a week before */}
-      <HolidayReminder
-        dayId={active.plan?.dayId}
-        cadence={active.plan?.cadence}
-        dogName={name}
-      />
-
-      {/* Weather reminder — only when the session day looks wet/icy/snowy */}
-      {weather && (
-        <div className="mt-8 flex items-start gap-3 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
-          <span className="text-2xl leading-none" aria-hidden>{weather.emoji}</span>
-          <p className="text-sm text-paper/85">
-            <span className="font-semibold text-paper">{weather.label}</span> for{" "}
-            {sessionLabel || "your next session"} — remember to pack a coat for{" "}
-            {name}. {weather.emoji}
-          </p>
-        </div>
-      )}
-
-      {/* Training plan */}
-      <div className="mt-10">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          Training plan
-        </h2>
-        {active.plan ? (
-          <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
-            <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
-                <CalendarIcon width={22} height={22} />
-              </span>
-              <div>
-                <p className="font-semibold text-paper">
-                  {active.plan.service} · {active.plan.day}
-                </p>
-                {active.plan.note && (
-                  <p className="mt-1 text-sm text-paper/70">{active.plan.note}</p>
-                )}
-              </div>
-            </div>
-            <Link
-              href="/profile/sessions"
-              className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/35"
-            >
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-paper">Upcoming sessions</span>
-                <span className="block text-xs text-paper-dim">
-                  Reschedule or book an extra session
-                </span>
-              </span>
-              <ArrowRightIcon width={16} height={16} className="shrink-0 text-paper-dim" />
-            </Link>
-          </div>
-        ) : (
-          <div className="rounded-2xl bg-white/[0.04] p-5 text-sm text-paper/70 ring-1 ring-white/10">
-            No training day set yet — we&apos;ll confirm this once you&apos;re
-            onboarded.
-          </div>
-        )}
-      </div>
-
-      {/* Their latest community post, or a nudge to share their first */}
-      <LatestCommunityPost />
-
-      {/* Stats & skills — placeholder */}
-      <div className="mt-8">
+      {/* Stats & skills — a block directly under the age/homework stats. */}
+      <div className="mt-6">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
           Stats &amp; skills
         </h2>
@@ -294,6 +209,87 @@ export function ProfileView({
           </p>
         </div>
       </div>
+
+      {/* Report cards + complete-homework — the two things they do each visit. */}
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <Link
+          href="/profile/reports"
+          className="relative flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-semibold leading-tight text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <ReportIcon width={18} height={18} className="shrink-0" />
+          Report cards
+          {unseen > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+              {unseen}
+            </span>
+          )}
+        </Link>
+        <CompleteHomework dogId={session.dogId} todayISO={todayISO} />
+      </div>
+
+      {/* Your next session — type + day, any notices (holiday/weather), then
+          rescheduling / booking extra sessions. */}
+      <div className="mt-10">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          Your next session
+        </h2>
+        {active.plan ? (
+          <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
+            {/* Session type, with the day underneath. */}
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
+                <CalendarIcon width={22} height={22} />
+              </span>
+              <div>
+                <p className="font-semibold text-paper">{active.plan.service}</p>
+                <p className="text-sm text-paper/70">{active.plan.day}</p>
+                {active.plan.note && (
+                  <p className="mt-1 text-xs text-paper-dim">{active.plan.note}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Important notices — closure or wet-weather heads-up. */}
+            <HolidayReminder
+              dayId={active.plan?.dayId}
+              cadence={active.plan?.cadence}
+              dogName={name}
+            />
+            {weather && (
+              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-white/[0.03] p-4 ring-1 ring-white/10">
+                <span className="text-2xl leading-none" aria-hidden>{weather.emoji}</span>
+                <p className="text-sm text-paper/85">
+                  <span className="font-semibold text-paper">{weather.label}</span> for{" "}
+                  {sessionLabel || "your next session"} — remember to pack a coat for{" "}
+                  {name}. {weather.emoji}
+                </p>
+              </div>
+            )}
+
+            {/* Reschedule or book an extra session. */}
+            <Link
+              href="/profile/sessions"
+              className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/35"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-paper">Upcoming sessions</span>
+                <span className="block text-xs text-paper-dim">
+                  Reschedule or book an extra session
+                </span>
+              </span>
+              <ArrowRightIcon width={16} height={16} className="shrink-0 text-paper-dim" />
+            </Link>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-white/[0.04] p-5 text-sm text-paper/70 ring-1 ring-white/10">
+            No session day set yet — we&apos;ll confirm this once you&apos;re
+            onboarded.
+          </div>
+        )}
+      </div>
+
+      {/* Their latest community post, or a nudge to share their first */}
+      <LatestCommunityPost />
 
       {/* Account holder information — the overall account manager. */}
       <div className="mt-10">

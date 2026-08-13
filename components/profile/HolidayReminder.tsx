@@ -72,7 +72,7 @@ export function HolidayReminder({
 
 function Banner({ emoji, children }: { emoji: string; children: React.ReactNode }) {
   return (
-    <div className="mt-8 flex items-start gap-3 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+    <div className="mt-4 flex items-start gap-3 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
       <span className="text-2xl leading-none" aria-hidden>
         {emoji}
       </span>
