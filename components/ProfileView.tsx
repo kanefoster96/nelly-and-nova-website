@@ -33,6 +33,7 @@ import { HolidayReminder } from "./profile/HolidayReminder";
 import { HeatReminder } from "./profile/HeatReminder";
 import { LatestCommunityPost } from "./profile/LatestCommunityPost";
 import { CompleteHomework } from "./profile/CompleteHomework";
+import { PracticeLibrary } from "./profile/PracticeLibrary";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
 
@@ -229,14 +230,14 @@ export function ProfileView({
         </div>
       </div>
 
-      {/* Report cards + complete-homework — the two things they do each visit. */}
-      <div className="mt-8 grid grid-cols-2 gap-3">
+      {/* Reports · Homework · Practice — the three things they do each visit. */}
+      <div className="mt-8 grid grid-cols-3 gap-2.5">
         <Link
           href="/profile/reports"
-          className="relative flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-semibold leading-tight text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="relative flex w-full items-center justify-center gap-1.5 rounded-xl bg-accent px-3 py-2.5 text-center text-sm font-semibold leading-tight text-accent-ink transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <ReportIcon width={18} height={18} className="shrink-0" />
-          Report cards
+          Reports
           {unseen > 0 && (
             <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
               {unseen}
@@ -244,6 +245,7 @@ export function ProfileView({
           )}
         </Link>
         <CompleteHomework dogId={session.dogId} todayISO={todayISO} />
+        <PracticeLibrary dogId={session.dogId} />
       </div>
 
       {/* Your next session — type + day, any notices (holiday/weather), then

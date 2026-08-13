@@ -92,10 +92,10 @@ export function CompleteHomework({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-center text-sm font-semibold leading-tight text-paper transition-colors hover:border-white/35"
+        className="relative flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2.5 text-center text-sm font-semibold leading-tight text-paper transition-colors hover:border-white/35"
       >
         <CheckCircleIcon width={18} height={18} className="shrink-0" />
-        Complete homework
+        Homework
         {todo > 0 && (
           <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-bold text-accent-ink">
             {todo}
