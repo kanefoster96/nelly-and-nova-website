@@ -14,7 +14,7 @@ export function Avatar({
   const dimension = size === "sm" ? "h-7 w-7" : size === "lg" ? "h-10 w-10" : "h-9 w-9";
   if (avatarUrl) {
     return (
-      <div className={`${dimension} shrink-0 overflow-hidden rounded-full ring-1 ring-white/15`}>
+      <div className={`${dimension} shrink-0 overflow-hidden rounded-full`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
       </div>

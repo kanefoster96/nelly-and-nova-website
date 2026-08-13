@@ -75,7 +75,7 @@ export function ContactDetail({
       {/* Header */}
       <div className="mt-4 flex items-center gap-4">
         {photo && (
-          <span className="h-16 w-16 shrink-0 overflow-hidden rounded-full ring-2 ring-accent">
+          <span className="h-16 w-16 shrink-0 overflow-hidden rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo} alt="" className="h-full w-full object-cover" />
           </span>

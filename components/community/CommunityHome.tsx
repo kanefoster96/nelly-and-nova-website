@@ -27,7 +27,7 @@ export function CommunityHome({ posts }: { posts: Post[] }) {
             {/* Personalised header — dog avatar + quick actions */}
             <div className="flex items-center gap-4">
               {photo ? (
-                <span className="h-14 w-14 shrink-0 overflow-hidden rounded-full ring-2 ring-accent">
+                <span className="h-14 w-14 shrink-0 overflow-hidden rounded-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={photo} alt={dogName} className="h-full w-full object-cover" />
                 </span>

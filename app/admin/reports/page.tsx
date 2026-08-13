@@ -43,7 +43,7 @@ export default async function AdminReportsPage() {
                       key={c.id}
                       className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10"
                     >
-                      <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+                      <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={sampleDog.photo} alt="" className="h-full w-full object-cover" />
                       </span>

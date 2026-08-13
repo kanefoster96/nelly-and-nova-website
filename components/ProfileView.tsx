@@ -87,7 +87,7 @@ export function ProfileView({
     <div>
       {/* Dog header — Instagram-style: photo left, stats right. */}
       <div className="flex items-center gap-6">
-        <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full ring-2 ring-accent sm:h-24 sm:w-24">
+        <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full sm:h-24 sm:w-24">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photo} alt={name} className="h-full w-full object-cover" />
         </span>
@@ -227,7 +227,7 @@ export function ProfileView({
                 onClick={() => setActiveDog(d.id)}
                 className="group flex flex-1 items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-white/35"
               >
-                <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/25 transition group-hover:ring-accent">
+                <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={d.photo} alt={d.name} className="h-full w-full object-cover" />
                 </span>

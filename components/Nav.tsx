@@ -81,7 +81,7 @@ export function Nav() {
               <Link
                 href="/admin"
                 aria-label="Trainer dashboard"
-                className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/10 p-2 ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/10 p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -98,7 +98,7 @@ export function Nav() {
                     ? `${session.dogName}'s profile — ${unseenReports} new report card${unseenReports > 1 ? "s" : ""}`
                     : `${session.dogName}'s profile`
                 }
-                className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/20 transition-shadow hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

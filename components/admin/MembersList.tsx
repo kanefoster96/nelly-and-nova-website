@@ -28,7 +28,7 @@ export function MembersList({ members }: { members: Member[] }) {
               href={`/admin/members/${m.id}`}
               className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10 transition-colors hover:ring-white/25"
             >
-              <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+              <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={m.photo} alt="" className="h-full w-full object-cover" />
               </span>

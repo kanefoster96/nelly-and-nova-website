@@ -223,7 +223,7 @@ export function AdminDashboard({
                   key={d.id}
                   className="flex items-center gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10"
                 >
-                  <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+                  <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={d.photo} alt="" className="h-full w-full object-cover" />
                   </span>
@@ -464,7 +464,7 @@ function ReportEntryModal({
       <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-ink ring-1 ring-white/15 sm:rounded-3xl">
         {/* Header */}
         <div className="sticky top-0 flex items-center gap-3 border-b border-white/10 bg-ink px-5 py-4">
-          <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+          <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={dog.photo} alt="" className="h-full w-full object-cover" />
           </span>

@@ -36,7 +36,9 @@ export function AvatarUpload({
         type="button"
         onClick={() => fileRef.current?.click()}
         aria-label="Add a photo of your dog"
-        className="group relative overflow-hidden rounded-full ring-2 ring-white/15 transition-colors hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className={`group relative overflow-hidden rounded-full transition-colors hover:ring-2 hover:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+          value ? "" : "ring-2 ring-white/15"
+        }`}
         style={{ height: size, width: size }}
       >
         {value ? (

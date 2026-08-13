@@ -119,7 +119,7 @@ export function SignupForm() {
     return (
       <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
         {photo ? (
-          <span className="mx-auto block h-20 w-20 overflow-hidden rounded-full ring-2 ring-accent">
+          <span className="mx-auto block h-20 w-20 overflow-hidden rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photo} alt="" className="h-full w-full object-cover" />
           </span>

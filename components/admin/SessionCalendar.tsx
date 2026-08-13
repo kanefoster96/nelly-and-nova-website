@@ -62,7 +62,7 @@ export function SessionCalendar({ todayISO, week: baseWeek }: { todayISO: string
                 key={item.dog.id}
                 className="flex items-center gap-3 rounded-xl bg-white/[0.03] p-2.5"
               >
-                <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+                <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.dog.photo} alt="" className="h-full w-full object-cover" />
                 </span>

@@ -73,7 +73,7 @@ export function HomeworkBoard({
         <div key={g.dogId}>
           <div className="mb-2 flex items-center gap-2">
             {g.photo && (
-              <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+              <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={g.photo} alt="" className="h-full w-full object-cover" />
               </span>

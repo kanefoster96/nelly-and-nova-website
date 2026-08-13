@@ -29,7 +29,7 @@ export function AvatarMarquee({
           <ul key={copy} className="flex shrink-0 items-center gap-4">
             {avatars.map((src, i) => (
               <li key={`${copy}-${i}`} className="shrink-0">
-                <span className="block h-12 w-12 overflow-hidden rounded-full ring-1 ring-white/10 sm:h-14 sm:w-14">
+                <span className="block h-12 w-12 overflow-hidden rounded-full sm:h-14 sm:w-14">
                   <Image
                     src={src}
                     alt=""

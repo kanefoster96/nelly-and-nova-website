@@ -22,7 +22,7 @@ function Stars({ rating }: { rating: number }) {
 
 function Avatar({ review }: { review: Review }) {
   return (
-    <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink ring-1 ring-white/10">
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink">
       {review.avatar ? (
         <Image
           src={review.avatar}
