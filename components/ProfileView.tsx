@@ -20,7 +20,9 @@ import { useOutboxCards } from "@/lib/reports/outbox";
 import { useHomeworkProgress } from "@/lib/reports/progress";
 import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
 import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
+import { nextDateForDay, dayIdFromISO, formatSessionDate } from "@/lib/schedule/sessions";
 import { HolidayReminder } from "./profile/HolidayReminder";
+import { HeatReminder } from "./profile/HeatReminder";
 import { LatestCommunityPost } from "./profile/LatestCommunityPost";
 import { CompleteHomework } from "./profile/CompleteHomework";
 import type { DogProfile } from "@/lib/reports/types";
@@ -91,6 +93,15 @@ export function ProfileView({
   const photo = session.dogPhoto || active.photo;
   const dogs = session.dogs ?? [];
   const multiDog = dogs.length > 1;
+
+  // The active dog's next session date (today if it's their training day).
+  // Computed client-side from todayISO so it follows the dog switcher.
+  const sessionIsToday = active.plan ? dayIdFromISO(todayISO) === active.plan.dayId : false;
+  const sessionDate = active.plan
+    ? sessionIsToday
+      ? todayISO
+      : nextDateForDay(todayISO, active.plan.dayId)
+    : "";
 
   const stats = (
     <div className="flex flex-1 items-center justify-around">
@@ -235,21 +246,25 @@ export function ProfileView({
         </h2>
         {active.plan ? (
           <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
-            {/* Session type, with the day underneath. */}
+            {/* Session type, with the date of the next session underneath. */}
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-accent">
                 <CalendarIcon width={22} height={22} />
               </span>
               <div>
                 <p className="font-semibold text-paper">{active.plan.service}</p>
-                <p className="text-sm text-paper/70">{active.plan.day}</p>
+                <p className="text-sm text-paper/70">
+                  {sessionIsToday ? "Today · " : ""}
+                  {sessionDate ? formatSessionDate(sessionDate) : active.plan.day}
+                </p>
                 {active.plan.note && (
                   <p className="mt-1 text-xs text-paper-dim">{active.plan.note}</p>
                 )}
               </div>
             </div>
 
-            {/* Important notices — closure or wet-weather heads-up. */}
+            {/* Important notices — heat-day time change (bold), closure, weather. */}
+            <HeatReminder sessionDate={sessionDate} />
             <HolidayReminder
               dayId={active.plan?.dayId}
               cadence={active.plan?.cadence}
@@ -260,8 +275,11 @@ export function ProfileView({
                 <span className="text-2xl leading-none" aria-hidden>{weather.emoji}</span>
                 <p className="text-sm text-paper/85">
                   <span className="font-semibold text-paper">{weather.label}</span> for{" "}
-                  {sessionLabel || "your next session"} — remember to pack a coat for{" "}
-                  {name}. {weather.emoji}
+                  {sessionLabel || "your next session"} —{" "}
+                  {weather.condition === "heat"
+                    ? `keep ${name} cool and pack water`
+                    : `remember to pack a coat for ${name}`}
+                  . {weather.emoji}
                 </p>
               </div>
             )}

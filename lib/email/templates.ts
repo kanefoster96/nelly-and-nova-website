@@ -247,3 +247,37 @@ export function holidaySessionSkipped(d: {
   ].join("\n");
   return { to: d.email, subject: `No session ${d.dateLabel} — we're closed — ${BRAND}`, html, text };
 }
+
+// --- Customer: severe heat day — earlier collection / drop-off -------------
+
+export function heatDayNotice(d: {
+  ownerName?: string;
+  email: string;
+  dateLabel: string; // e.g. "Thursday 5 March"
+  collectionLabel: string; // e.g. "Collection from 6:00am"
+  dropoffLabel: string; // e.g. "Drop-off from 2:00pm"
+}): EmailMessage {
+  const name = (d.ownerName || "there").split(" ")[0];
+  const html = layout("Hot day — earlier collection & drop-off", `
+    <p>Hi ${escape(name)},</p>
+    <p><strong>${escape(d.dateLabel)}</strong> is forecast to be very hot, so to keep the dogs safe we're walking early and avoiding the midday heat.</p>
+    <p>For that day only, the times change:</p>
+    <p style="margin:8px 0;"><strong>${escape(d.collectionLabel)}</strong><br/><strong>${escape(d.dropoffLabel)}</strong></p>
+    <p>Everything else stays the same, and normal times resume at your next session. Any questions, just reply.</p>
+    <p style="margin-top:20px;">Thanks,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${name},`,
+    "",
+    `${d.dateLabel} is forecast to be very hot, so to keep the dogs safe we're walking early and avoiding the midday heat.`,
+    "",
+    `For that day only, the times change:`,
+    `${d.collectionLabel}`,
+    `${d.dropoffLabel}`,
+    "",
+    "Normal times resume at your next session.",
+    "",
+    `Thanks, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Hot day ${d.dateLabel} — earlier times — ${BRAND}`, html, text };
+}
