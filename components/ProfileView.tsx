@@ -27,7 +27,7 @@ import { useHomeworkProgress } from "@/lib/reports/progress";
 import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
 import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
 import { nextDateForDay, dayIdFromISO, formatSessionDate } from "@/lib/schedule/sessions";
-import { SKILL_PILLARS, pillarProgress } from "@/config/skills";
+import { SKILL_PILLARS, pillarProgress, pillarLevel, accountLevel } from "@/config/skills";
 import { useSkills, learntSet } from "@/lib/skills/store";
 import { HolidayReminder } from "./profile/HolidayReminder";
 import { HeatReminder } from "./profile/HeatReminder";
@@ -103,6 +103,11 @@ export function ProfileView({
   const dogs = session.dogs ?? [];
   const multiDog = dogs.length > 1;
 
+  // Skill levels: each pillar has its own level; the account level is the
+  // rounded-up average of the three (so strong pillars aren't dragged down).
+  const learnt = learntSet(skills, session.dogId);
+  const level = accountLevel(learnt);
+
   // The active dog's next session date (today if it's their training day).
   // Computed client-side from todayISO so it follows the dog switcher.
   const sessionIsToday = active.plan ? dayIdFromISO(todayISO) === active.plan.dayId : false;
@@ -114,8 +119,7 @@ export function ProfileView({
 
   const stats = (
     <div className="flex flex-1 items-center justify-around">
-      {/* Level isn't wired up yet — placeholder until levels launch. */}
-      <Stat label="Level" value="—" />
+      <Stat label="Level" value={level} />
       <Stat label="Age" value={active.age} />
       <Stat label="Homework" value={`${homeworkPercent}%`} />
     </div>
@@ -207,16 +211,14 @@ export function ProfileView({
         <div className="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
           <div className="space-y-2.5">
             {SKILL_PILLARS.map((pillar) => {
-              const { learnt, total } = pillarProgress(
-                pillar,
-                learntSet(skills, session.dogId)
-              );
+              const { learnt: done, total } = pillarProgress(pillar, learnt);
               return (
                 <PillarStat
                   key={pillar.id}
                   name={pillar.name}
                   blurb={pillar.blurb}
-                  pct={total ? (learnt / total) * 100 : 0}
+                  level={pillarLevel(pillar, learnt)}
+                  pct={total ? (done / total) * 100 : 0}
                 />
               );
             })}
@@ -347,7 +349,17 @@ export function ProfileView({
  * One skill pillar — name + a thin progress line. An info icon reveals what the
  * pillar is based on, keeping the row compact. No numeric score is shown.
  */
-function PillarStat({ name, blurb, pct }: { name: string; blurb: string; pct: number }) {
+function PillarStat({
+  name,
+  blurb,
+  level,
+  pct,
+}: {
+  name: string;
+  blurb: string;
+  level: number;
+  pct: number;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div>
@@ -362,6 +374,9 @@ function PillarStat({ name, blurb, pct }: { name: string; blurb: string; pct: nu
         >
           <HelpCircleIcon width={14} height={14} />
         </button>
+        <span className="ml-auto rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
+          Level {level}
+        </span>
       </div>
       {open && <p className="mt-0.5 text-xs text-paper-dim">{blurb}</p>}
       <div className="mt-1 h-1 rounded-full bg-white/10">
