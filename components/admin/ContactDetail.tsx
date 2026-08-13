@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/Icons";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { PaymentsBoard } from "./PaymentsBoard";
+import { SkillsTracker } from "./SkillsTracker";
 import {
   applyOverrides,
   useScheduleOverrides,
@@ -178,6 +179,9 @@ export function ContactDetail({
                   Move a session
                 </Link>
               </div>
+
+              {/* Trainer-only skills tracker for this dog. */}
+              <SkillsTracker dogId={dog.id} dogName={name} />
             </div>
           );
         })}

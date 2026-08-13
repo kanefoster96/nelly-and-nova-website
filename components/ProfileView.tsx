@@ -21,6 +21,8 @@ import { useHomeworkProgress } from "@/lib/reports/progress";
 import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
 import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
 import { nextDateForDay, dayIdFromISO, formatSessionDate } from "@/lib/schedule/sessions";
+import { SKILL_PILLARS, pillarProgress } from "@/config/skills";
+import { useSkills, learntSet } from "@/lib/skills/store";
 import { HolidayReminder } from "./profile/HolidayReminder";
 import { HeatReminder } from "./profile/HeatReminder";
 import { LatestCommunityPost } from "./profile/LatestCommunityPost";
@@ -51,6 +53,7 @@ export function ProfileView({
   const outbox = useOutboxCards();
   const progress = useHomeworkProgress();
   const resets = useHomeworkResets();
+  const skills = useSkills();
   const router = useRouter();
 
   // Homework completion over the past 6 months (shown as a header stat). Cards
@@ -191,32 +194,41 @@ export function ProfileView({
         </>
       )}
 
-      {/* Stats & skills — a block directly under the age/homework stats. */}
+      {/* Stats & skills — three pillars, each showing how many skills the dog
+          has learnt out of the total. The trainer sets these; owners see the
+          level only. */}
       <div className="mt-6">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
           Stats &amp; skills
         </h2>
         <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
-          <div className="space-y-3">
-            {active.skills.map((s) => (
-              <div key={s.label}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-paper/80">{s.label}</span>
-                  <span className="text-paper-dim">
-                    {s.level}/{s.of}
-                  </span>
+          <div className="space-y-4">
+            {SKILL_PILLARS.map((pillar) => {
+              const { learnt, total } = pillarProgress(
+                pillar,
+                learntSet(skills, session.dogId)
+              );
+              return (
+                <div key={pillar.id}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="font-medium text-paper">{pillar.name}</span>
+                    <span className="text-paper-dim">
+                      {learnt}/{total} learnt
+                    </span>
+                  </div>
+                  <p className="text-xs text-paper-dim">{pillar.blurb}</p>
+                  <div className="mt-1.5 h-2 rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-accent transition-all"
+                      style={{ width: `${total ? (learnt / total) * 100 : 0}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="mt-1 h-1.5 rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${(s.level / s.of) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <p className="mt-4 text-xs font-medium uppercase tracking-wide text-paper-dim">
-            Preview · full skills tracking coming soon
+            Skills are assessed and marked off by your trainer
           </p>
         </div>
       </div>
