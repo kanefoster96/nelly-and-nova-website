@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   PlusIcon,
   CloseIcon,
@@ -56,6 +56,18 @@ export function HomeworkLibrary() {
     const lastId = drills[drills.length - 1]?.id;
     const editing = drills.find((d) => d.id === editingId) ?? null;
 
+    // View 4: a drill's page editor (full page, not a pop-up).
+    if (editing) {
+      return (
+        <DrillEditorView
+          pillarId={pillar.id}
+          categoryId={category.id}
+          drill={editing}
+          onBack={() => setEditingId(null)}
+        />
+      );
+    }
+
     return (
       <div className="mt-8">
         <BackButton label={pillar.name} onClick={() => setCategoryId(null)} />
@@ -98,15 +110,6 @@ export function HomeworkLibrary() {
             );
           })}
         </div>
-
-        {editing && (
-          <DrillEditor
-            pillarId={pillar.id}
-            categoryId={category.id}
-            drill={editing}
-            onClose={() => setEditingId(null)}
-          />
-        )}
       </div>
     );
   }
@@ -275,30 +278,19 @@ function AddDrill({
 /* Drill page editor — blog-style blocks                                      */
 /* -------------------------------------------------------------------------- */
 
-function DrillEditor({
+function DrillEditorView({
   pillarId,
   categoryId,
   drill,
-  onClose,
+  onBack,
 }: {
   pillarId: string;
   categoryId: string;
   drill: LibDrillState;
-  onClose: () => void;
+  onBack: () => void;
 }) {
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
 
   function addText(type: "heading" | "paragraph") {
     addBlock(pillarId, categoryId, drill.id, { id: crypto.randomUUID(), type, text: "" });
@@ -321,79 +313,57 @@ function DrillEditor({
     "inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:border-white/40";
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${drill.name} page`}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-3xl bg-ink-soft ring-1 ring-white/15 sm:rounded-3xl"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Drill page</p>
-            <h2 className="display-heading truncate text-xl text-paper">{drill.name}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-paper/70 hover:bg-white/10 hover:text-paper"
-          >
-            <CloseIcon width={20} height={20} />
-          </button>
-        </header>
+    <div className="mt-8">
+      <BackButton label="Drills" onClick={onBack} />
+      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-accent">Drill page</p>
+      <h2 className="display-heading text-2xl text-paper">{drill.name}</h2>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-5">
-          {drill.blocks.length === 0 && (
-            <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-paper-dim ring-1 ring-white/10">
-              Empty page — add a title, paragraph, photo or video below.
-            </p>
-          )}
-          {drill.blocks.map((block, i) => (
-            <BlockEditor
-              key={block.id}
-              block={block}
-              isFirst={i === 0}
-              isLast={i === drill.blocks.length - 1}
-              onMove={(dir) => moveBlock(pillarId, categoryId, drill.id, block.id, dir)}
-              onRemove={() => removeBlock(pillarId, categoryId, drill.id, block.id)}
-              onText={(text) => updateBlockText(pillarId, categoryId, drill.id, block.id, text)}
-            />
-          ))}
-        </div>
+      <div className="mt-5 space-y-3">
+        {drill.blocks.length === 0 && (
+          <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-paper-dim ring-1 ring-white/10">
+            Empty page — add a title, paragraph, photo or video below.
+          </p>
+        )}
+        {drill.blocks.map((block, i) => (
+          <BlockEditor
+            key={block.id}
+            block={block}
+            isFirst={i === 0}
+            isLast={i === drill.blocks.length - 1}
+            onMove={(dir) => moveBlock(pillarId, categoryId, drill.id, block.id, dir)}
+            onRemove={() => removeBlock(pillarId, categoryId, drill.id, block.id)}
+            onText={(text) => updateBlockText(pillarId, categoryId, drill.id, block.id, text)}
+          />
+        ))}
+      </div>
 
-        <footer className="flex flex-wrap gap-2 border-t border-white/10 px-5 py-4">
-          <button type="button" onClick={() => addText("heading")} className={tool}>
-            <PlusIcon width={13} height={13} /> Title
-          </button>
-          <button type="button" onClick={() => addText("paragraph")} className={tool}>
-            <PlusIcon width={13} height={13} /> Paragraph
-          </button>
-          <button type="button" onClick={() => photoRef.current?.click()} className={tool}>
-            <CameraIcon width={14} height={14} /> Photo
-          </button>
-          <button type="button" onClick={() => videoRef.current?.click()} className={tool}>
-            <VideoIcon width={14} height={14} /> Video
-          </button>
-          <input
-            ref={photoRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => onPickMedia("image", e.target.files)}
-          />
-          <input
-            ref={videoRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={(e) => onPickMedia("video", e.target.files)}
-          />
-        </footer>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={() => addText("heading")} className={tool}>
+          <PlusIcon width={13} height={13} /> Title
+        </button>
+        <button type="button" onClick={() => addText("paragraph")} className={tool}>
+          <PlusIcon width={13} height={13} /> Paragraph
+        </button>
+        <button type="button" onClick={() => photoRef.current?.click()} className={tool}>
+          <CameraIcon width={14} height={14} /> Photo
+        </button>
+        <button type="button" onClick={() => videoRef.current?.click()} className={tool}>
+          <VideoIcon width={14} height={14} /> Video
+        </button>
+        <input
+          ref={photoRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => onPickMedia("image", e.target.files)}
+        />
+        <input
+          ref={videoRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={(e) => onPickMedia("video", e.target.files)}
+        />
       </div>
     </div>
   );

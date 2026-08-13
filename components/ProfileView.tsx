@@ -10,6 +10,7 @@ import {
   ArrowRightIcon,
   UserIcon,
   HelpCircleIcon,
+  StarIcon,
 } from "./ui/Icons";
 import {
   useSession,
@@ -33,7 +34,6 @@ import { HolidayReminder } from "./profile/HolidayReminder";
 import { HeatReminder } from "./profile/HeatReminder";
 import { LatestCommunityPost } from "./profile/LatestCommunityPost";
 import { CompleteHomework } from "./profile/CompleteHomework";
-import { PracticeLibrary } from "./profile/PracticeLibrary";
 import type { DogProfile } from "@/lib/reports/types";
 import type { WeatherReminder } from "@/lib/weather/data";
 
@@ -245,7 +245,13 @@ export function ProfileView({
           )}
         </Link>
         <CompleteHomework dogId={session.dogId} todayISO={todayISO} />
-        <PracticeLibrary dogId={session.dogId} />
+        <Link
+          href="/profile/practice"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2.5 text-center text-sm font-semibold leading-tight text-paper transition-colors hover:border-white/35"
+        >
+          <StarIcon width={18} height={18} className="shrink-0" />
+          Practice
+        </Link>
       </div>
 
       {/* Your next session — type + day, any notices (holiday/weather), then

@@ -1,73 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CloseIcon, CheckIcon, ChevronDownIcon, PlusIcon } from "@/components/ui/Icons";
+import { useState } from "react";
+import { CheckIcon, ChevronDownIcon, PlusIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { SKILL_PILLARS, pillarProgress, pillarLevel, pillarLevels } from "@/config/skills";
 import { useSkills, learntSet, toggleSkill } from "@/lib/skills/store";
 
 /**
- * A dog's live skills status, opened from the today's-dogs list. Each pillar
- * shows its percentage; open one to tick skills off as the dog learns them
- * (which drives the level on the owner's profile). Every skill also has an
- * "Add to homework" pill that drops it straight into the report-card draft.
+ * A dog's live skills status as a full page (opened from the today's-dogs list).
+ * Each pillar shows its percentage and level; open one to tick skills off as the
+ * dog learns them (which drives the level on the owner's profile). Every skill
+ * also has an "Add to homework" pill that drops it into the report-card draft.
  */
-export function DogStatusModal({
+export function DogStatusView({
   dogId,
   dogName,
   onAddToHomework,
-  onClose,
+  onBack,
 }: {
   dogId: string;
   dogName: string;
   onAddToHomework: (pillar: string, drill: string) => void;
-  onClose: () => void;
+  onBack: () => void;
 }) {
   const skills = useSkills();
   const learnt = learntSet(skills, dogId);
   const [openPillar, setOpenPillar] = useState<string | null>(SKILL_PILLARS[0]?.id ?? null);
   const [added, setAdded] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${dogName} skills status`}
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-3xl bg-ink-soft ring-1 ring-white/15 sm:rounded-3xl"
+    <div>
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-paper-dim transition-colors hover:text-accent"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
-          <div>
-            <h2 className="display-heading text-xl text-paper">{dogName}</h2>
-            <p className="mt-0.5 text-sm text-paper-dim">
-              Tick skills as they land · adds to their level
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-paper/70 hover:bg-white/10 hover:text-paper"
-          >
-            <CloseIcon width={20} height={20} />
-          </button>
-        </header>
+        <ArrowRightIcon width={16} height={16} className="rotate-180" /> Today&apos;s dogs
+      </button>
+      <h1 className="mt-3 display-heading text-2xl text-paper sm:text-3xl">{dogName}</h1>
+      <p className="mt-1 text-sm text-paper-dim">Tick skills as they land · adds to their level</p>
 
-        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-5 py-4">
+      <div className="mt-5 space-y-2.5">
           {SKILL_PILLARS.map((pillar) => {
             const { learnt: done, total } = pillarProgress(pillar, learnt);
             const pct = total ? Math.round((done / total) * 100) : 0;
@@ -158,7 +130,6 @@ export function DogStatusModal({
               </div>
             );
           })}
-        </div>
       </div>
     </div>
   );

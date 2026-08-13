@@ -34,7 +34,7 @@ import { SessionCalendar } from "./SessionCalendar";
 import { AddCustomer } from "./AddCustomer";
 import { HolidayManager } from "./HolidayManager";
 import { HeatDayManager } from "./HeatDayManager";
-import { DogStatusModal } from "./DogStatusModal";
+import { DogStatusView } from "./DogStatusModal";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 import { DRILL_LIBRARY, drillsForCategory } from "@/config/drills";
@@ -218,6 +218,18 @@ export function AdminDashboard({
     window.setTimeout(() => setSent(false), 2500);
   }
 
+  // Skills status opens as a full page (not a pop-up); back returns here.
+  if (statusId) {
+    return (
+      <DogStatusView
+        dogId={statusId}
+        dogName={dogs.find((d) => d.id === statusId)?.name ?? "Dog"}
+        onAddToHomework={(pillar, drill) => addDrillToDraft(statusId, pillar, drill)}
+        onBack={() => setStatusId(null)}
+      />
+    );
+  }
+
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
@@ -376,16 +388,6 @@ export function AdminDashboard({
           Log out
         </Button>
       </div>
-
-      {/* Skills status — tick skills off, add drills to the report draft */}
-      {statusId && (
-        <DogStatusModal
-          dogId={statusId}
-          dogName={dogs.find((d) => d.id === statusId)?.name ?? "Dog"}
-          onAddToHomework={(pillar, drill) => addDrillToDraft(statusId, pillar, drill)}
-          onClose={() => setStatusId(null)}
-        />
-      )}
 
       {/* Report entry modal */}
       {openDog && (
