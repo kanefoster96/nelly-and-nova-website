@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
-import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
+import {
+  CalendarIcon,
+  ReportIcon,
+  ArrowRightIcon,
+  UserIcon,
+  HelpCircleIcon,
+} from "./ui/Icons";
 import {
   useSession,
   signOut,
@@ -119,27 +125,24 @@ export function ProfileView({
     <div>
       {multiDog ? (
         <>
-          {/* Shared account header — the pack's name + a joint photo that
-              becomes the account avatar across the community. */}
-          <div className="flex flex-col items-center text-center">
-            <h1 className="display-heading text-2xl text-paper">
-              {accountDisplayName(session)}
-            </h1>
-            <p className="mt-1 text-sm text-paper/70">Your pack</p>
-            <div className="mt-4">
-              <AvatarUpload
-                value={session.accountPhoto ?? null}
-                onSelect={setAccountPhoto}
-                size={96}
-                label="Joint photo"
-              />
+          {/* Shared account header — joint photo left, pack name beside it to
+              keep it compact. The photo becomes the account avatar everywhere. */}
+          <div className="flex items-center gap-4">
+            <AvatarUpload
+              value={session.accountPhoto ?? null}
+              onSelect={setAccountPhoto}
+              size={64}
+              label="Add"
+            />
+            <div className="min-w-0">
+              <h1 className="display-heading text-2xl text-paper">
+                {accountDisplayName(session)}
+              </h1>
+              <p className="text-sm text-paper/70">Your pack · tap photo to add</p>
             </div>
-            <p className="mt-2 text-xs text-paper-dim">
-              Tap to upload a joint photo
-            </p>
           </div>
 
-          <hr className="my-6 border-t border-white/10" />
+          <hr className="my-5 border-t border-white/10" />
 
           {/* Per-dog: name pills to toggle between dogs, stats for the active one. */}
           <div className="flex items-stretch gap-4">
@@ -201,29 +204,25 @@ export function ProfileView({
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
           Stats &amp; skills
         </h2>
-        <div className="rounded-2xl bg-white/[0.04] p-5 ring-1 ring-white/10">
-          <div className="space-y-4">
+        <div className="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+          <div className="space-y-2.5">
             {SKILL_PILLARS.map((pillar) => {
               const { learnt, total } = pillarProgress(
                 pillar,
                 learntSet(skills, session.dogId)
               );
               return (
-                <div key={pillar.id}>
-                  <span className="text-sm font-medium text-paper">{pillar.name}</span>
-                  <p className="text-xs text-paper-dim">{pillar.blurb}</p>
-                  <div className="mt-1.5 h-2 rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-accent transition-all"
-                      style={{ width: `${total ? (learnt / total) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
+                <PillarStat
+                  key={pillar.id}
+                  name={pillar.name}
+                  blurb={pillar.blurb}
+                  pct={total ? (learnt / total) * 100 : 0}
+                />
               );
             })}
           </div>
-          <p className="mt-4 text-xs font-medium uppercase tracking-wide text-paper-dim">
-            Skills are assessed and marked off by your trainer
+          <p className="mt-3 text-[11px] text-paper-dim">
+            Assessed and marked off by your trainer.
           </p>
         </div>
       </div>
@@ -339,6 +338,37 @@ export function ProfileView({
         <Button variant="ghost" radius="xl" onClick={logout}>
           Log out
         </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One skill pillar — name + a thin progress line. An info icon reveals what the
+ * pillar is based on, keeping the row compact. No numeric score is shown.
+ */
+function PillarStat({ name, blurb, pct }: { name: string; blurb: string; pct: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-medium text-paper">{name}</span>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-label={`What is ${name} based on?`}
+          aria-expanded={open}
+          className="text-paper-dim transition-colors hover:text-paper"
+        >
+          <HelpCircleIcon width={14} height={14} />
+        </button>
+      </div>
+      {open && <p className="mt-0.5 text-xs text-paper-dim">{blurb}</p>}
+      <div className="mt-1 h-1 rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-accent transition-all"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
