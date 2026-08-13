@@ -3,25 +3,25 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { ArrowRightIcon } from "@/components/ui/Icons";
-import { useSession } from "@/lib/auth/session";
+import { useSession, accountDisplayName } from "@/lib/auth/session";
 import { useCommunityOverlay, mergeFeed } from "@/lib/community/store";
 import { sampleCommunityPosts } from "@/lib/community/sample";
 
 /**
- * The dog owner's latest community post, shown on their profile. If they
- * haven't posted yet, a friendly nudge invites them to share their first post
- * so everyone can meet their dog. Tapping either opens the community.
+ * The account's latest community post, shown on their profile. If they haven't
+ * posted yet, a friendly nudge invites them to share their first so everyone
+ * can meet their dog(s). Tapping either opens the community.
  */
-export function LatestCommunityPost({ dogName }: { dogName: string }) {
+export function LatestCommunityPost() {
   const session = useSession();
   const overlay = useCommunityOverlay();
+  const accountName = accountDisplayName(session);
 
   const mine = useMemo(() => {
-    const name = session?.ownerName;
     return mergeFeed(sampleCommunityPosts, overlay)
-      .filter((p) => p.mine || (name && p.authorName === name))
+      .filter((p) => p.mine || (accountName && p.authorName === accountName))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
-  }, [overlay, session?.ownerName]);
+  }, [overlay, accountName]);
 
   return (
     <div className="mt-10">
@@ -69,7 +69,7 @@ export function LatestCommunityPost({ dogName }: { dogName: string }) {
         >
           <p className="text-sm font-semibold text-paper">Share your first post</p>
           <p className="mx-auto mt-1 max-w-xs text-sm text-paper-dim">
-            Post a photo and let everyone meet {dogName}! 🐾
+            Post a photo and let everyone meet {accountName || "your dog"}! 🐾
           </p>
           <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">
             Say hello <ArrowRightIcon width={16} height={16} />

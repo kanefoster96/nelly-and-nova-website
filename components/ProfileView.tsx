@@ -263,7 +263,7 @@ export function ProfileView({
       </div>
 
       {/* Their latest community post, or a nudge to share their first */}
-      <LatestCommunityPost dogName={name} />
+      <LatestCommunityPost />
 
       {/* Stats & skills — placeholder */}
       <div className="mt-8">
