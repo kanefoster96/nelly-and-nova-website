@@ -6,46 +6,43 @@
  * environments the outbound call may be blocked; we fall back to a deterministic
  * sample so the feature still renders. In production the live forecast is used.
  */
+/**
+ * The only coat-worthy conditions: rain, or cold (under 5°C). Extreme heat is
+ * handled separately — trainers mark hot days by hand (see lib/heat), so there
+ * is no automatic heat reminder here.
+ */
 export type WeatherReminder = {
-  condition: "rain" | "ice" | "snow" | "heat";
+  condition: "rain" | "cold";
   emoji: string;
   label: string;
 } | null;
 
 const TYNEMOUTH = { lat: 55.017, lon: -1.423 };
 
-const RAIN = [51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82, 95, 96, 99];
+const RAIN = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
 const SNOW = [71, 73, 75, 77, 85, 86];
-const FREEZING = [66, 67];
-/** At or above this max temp (°C) counts as a hot day for a NE-coast walk. */
-const HOT_C = 25;
+/** Below this min temp (°C) it's cold enough to want a coat. */
+const COLD_C = 5;
 
-function classify(
-  code: number,
-  tmin: number | undefined,
-  tmax: number | undefined
-): WeatherReminder {
-  if (SNOW.includes(code)) return { condition: "snow", emoji: "❄️", label: "Snow forecast" };
-  if (FREEZING.includes(code) || (RAIN.includes(code) && (tmin ?? 99) <= 0))
-    return { condition: "ice", emoji: "🧊", label: "Icy conditions" };
+function classify(code: number, tmin: number | undefined): WeatherReminder {
   if (RAIN.includes(code)) return { condition: "rain", emoji: "🌧️", label: "Rain forecast" };
-  if ((tmax ?? -99) >= HOT_C) return { condition: "heat", emoji: "🌡️", label: "Hot day forecast" };
-  return null; // clear / mild — nothing to flag
+  if (SNOW.includes(code) || (tmin ?? 99) < COLD_C)
+    return { condition: "cold", emoji: "🧥", label: "Cold — under 5°C" };
+  return null; // dry and mild — no coat needed
 }
 
 async function fetchLive(dateISO: string): Promise<WeatherReminder | undefined> {
   try {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${TYNEMOUTH.lat}&longitude=${TYNEMOUTH.lon}` +
-      `&daily=weathercode,temperature_2m_min,temperature_2m_max&timezone=Europe%2FLondon&start_date=${dateISO}&end_date=${dateISO}`;
+      `&daily=weathercode,temperature_2m_min&timezone=Europe%2FLondon&start_date=${dateISO}&end_date=${dateISO}`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return undefined;
     const j = await res.json();
     const code: number | undefined = j?.daily?.weathercode?.[0];
     const tmin: number | undefined = j?.daily?.temperature_2m_min?.[0];
-    const tmax: number | undefined = j?.daily?.temperature_2m_max?.[0];
     if (code == null) return undefined;
-    return classify(code, tmin, tmax);
+    return classify(code, tmin);
   } catch {
     return undefined; // blocked / offline → fall back
   }
@@ -54,8 +51,7 @@ async function fetchLive(dateISO: string): Promise<WeatherReminder | undefined> 
 /** Deterministic stand-in when the live forecast can't be reached. */
 function sample(dateISO: string): WeatherReminder {
   const h = [...dateISO].reduce((n, c) => n + c.charCodeAt(0), 0);
-  if (h % 13 === 0) return { condition: "ice", emoji: "🧊", label: "Icy conditions" };
-  if (h % 7 === 0) return { condition: "heat", emoji: "🌡️", label: "Hot day forecast" };
+  if (h % 5 === 0) return { condition: "cold", emoji: "🧥", label: "Cold — under 5°C" };
   if (h % 2 === 0) return { condition: "rain", emoji: "🌧️", label: "Rain forecast" };
   return null;
 }

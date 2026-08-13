@@ -210,12 +210,7 @@ export function ProfileView({
               );
               return (
                 <div key={pillar.id}>
-                  <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="font-medium text-paper">{pillar.name}</span>
-                    <span className="text-paper-dim">
-                      {learnt}/{total} learnt
-                    </span>
-                  </div>
+                  <span className="text-sm font-medium text-paper">{pillar.name}</span>
                   <p className="text-xs text-paper-dim">{pillar.blurb}</p>
                   <div className="mt-1.5 h-2 rounded-full bg-white/10">
                     <div
@@ -283,15 +278,12 @@ export function ProfileView({
               dogName={name}
             />
             {weather && (
-              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-white/[0.03] p-4 ring-1 ring-white/10">
+              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-sky-500/10 p-4 ring-1 ring-sky-400/25">
                 <span className="text-2xl leading-none" aria-hidden>{weather.emoji}</span>
                 <p className="text-sm text-paper/85">
-                  <span className="font-semibold text-paper">{weather.label}</span> for{" "}
-                  {sessionLabel || "your next session"} —{" "}
-                  {weather.condition === "heat"
-                    ? `keep ${name} cool and pack water`
-                    : `remember to pack a coat for ${name}`}
-                  . {weather.emoji}
+                  <span className="font-semibold text-sky-200">{weather.label}</span> for{" "}
+                  {sessionLabel || "your next session"} — remember to pack a coat for{" "}
+                  {name}. {weather.emoji}
                 </p>
               </div>
             )}
