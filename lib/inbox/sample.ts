@@ -21,10 +21,11 @@ export const sampleConversations: Conversation[] = [
     status: "new",
   },
   {
-    // An account is known by its dog(s) in chat too — this member owns Nova & Rex.
-    // TODO(backend): derive the conversation title from the account's dogs.
+    // Staff see the owner + their dog(s) so they know exactly who they're
+    // talking to — see accountAdminLabel() in lib/auth/session.ts.
+    // TODO(backend): derive the conversation title from owner + account dogs.
     id: "c2",
-    user: { id: "u2", name: "Nova & Rex" },
+    user: { id: "u2", name: "Rachel T. (Nova & Rex)" },
     lastMessageAt: "2026-08-11T12:10:00Z",
     lastMessagePreview: "Perfect, see you Thursday for the meet & greet 🐾",
     unread: false,
@@ -32,7 +33,7 @@ export const sampleConversations: Conversation[] = [
   },
   {
     id: "c3",
-    user: { id: "u3", name: "James P." },
+    user: { id: "u3", name: "James P. (Rex)" },
     lastMessageAt: "2026-08-10T17:22:00Z",
     lastMessagePreview: "Thanks so much — Nova's recall is so much better!",
     unread: false,

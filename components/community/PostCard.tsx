@@ -45,7 +45,20 @@ export function PostCard({
           <Avatar name={post.authorName} avatarUrl={post.authorAvatarUrl} />
           <div>
             <p className="text-sm font-medium text-paper">{post.authorName}</p>
-            <p className="text-xs text-paper-dim">{formatWhen(post.createdAt)}</p>
+            {post.authorDogs && post.authorDogs.length > 0 && (
+              <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                {post.authorDogs.map((d, i) => (
+                  <span
+                    key={i}
+                    title={d.name}
+                    className="inline-flex items-center rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent"
+                  >
+                    Level {d.level}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="mt-0.5 text-xs text-paper-dim">{formatWhen(post.createdAt)}</p>
           </div>
         </div>
         {post.mine && (

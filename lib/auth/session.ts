@@ -96,6 +96,18 @@ export function accountDisplayName(session: Session | null): string {
   return joinNames(names) || session.dogName || session.ownerName;
 }
 
+/**
+ * How staff see an account in chat — the owner's name with their dog(s) in
+ * brackets, e.g. "Rachel T. (Nova & Rex)", so the trainer knows exactly who
+ * (and whose dog) they're talking to. Public/community surfaces use
+ * accountDisplayName (dogs only) instead.
+ */
+export function accountAdminLabel(session: Session | null): string {
+  if (!session) return "";
+  const dogs = joinNames((session.dogs ?? []).map((d) => d.name)) || session.dogName;
+  return dogs ? `${session.ownerName} (${dogs})` : session.ownerName;
+}
+
 /** The account's avatar — the joint photo if one's been set, else the dog's. */
 export function accountAvatar(session: Session | null): string {
   if (!session) return "";

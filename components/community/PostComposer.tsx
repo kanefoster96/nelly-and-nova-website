@@ -8,7 +8,11 @@ import { fileToMedia } from "@/lib/community/data";
 import type { MediaItem, Post } from "@/lib/community/types";
 
 /** The composer — a collapsed pill that expands into a full post form. */
-export function PostComposer({ user }: { user: { name: string; avatarUrl?: string } }) {
+export function PostComposer({
+  user,
+}: {
+  user: { name: string; avatarUrl?: string; dogs?: { name: string; level: number }[] };
+}) {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -34,6 +38,7 @@ export function PostComposer({ user }: { user: { name: string; avatarUrl?: strin
       id: `post-${crypto.randomUUID()}`,
       authorName: user.name,
       authorAvatarUrl: user.avatarUrl,
+      authorDogs: user.dogs?.length ? user.dogs : undefined,
       mine: true,
       title: title.trim() || undefined,
       body: body.trim(),

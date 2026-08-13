@@ -9,6 +9,10 @@ export const sampleCommunityPosts: Post[] = [
     id: "p3",
     authorName: "Nova & Rex",
     authorAvatarUrl: "/placeholders/dog-avatar-01.svg",
+    authorDogs: [
+      { name: "Nova", level: 2 },
+      { name: "Rex", level: 1 },
+    ],
     title: "Loose lead win 🎉",
     body:
       "Nova walked the whole seafront on a loose lead this morning — past two other dogs and a jogger! All that homework is paying off. Thank you Charlotte 🐾",

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useSession, accountDisplayName, accountAvatar } from "@/lib/auth/session";
+import { ACCOUNT_DOG_PROFILES } from "@/lib/dogs/account";
 import { useCommunityOverlay, mergeFeed } from "@/lib/community/store";
 import type { Post } from "@/lib/community/types";
 import { PostComposer } from "./PostComposer";
@@ -14,9 +15,17 @@ export function CommunityFeed({ initial }: { initial: Post[] }) {
   const overlay = useCommunityOverlay();
 
   // In the community an account is known by its dog(s) — "Nova & Rex" — not the
-  // owner's name. New posts and comments are authored under that.
+  // owner's name. New posts and comments are authored under that, with a level
+  // badge per dog (in name order).
   const user = session
-    ? { name: accountDisplayName(session), avatarUrl: accountAvatar(session) }
+    ? {
+        name: accountDisplayName(session),
+        avatarUrl: accountAvatar(session),
+        dogs: (session.dogs ?? []).map((d) => ({
+          name: d.name,
+          level: ACCOUNT_DOG_PROFILES[d.id]?.level ?? 1,
+        })),
+      }
     : null;
 
   const posts = useMemo(() => mergeFeed(initial, overlay), [initial, overlay]);

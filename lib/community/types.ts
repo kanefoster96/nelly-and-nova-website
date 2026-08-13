@@ -16,10 +16,16 @@ export type Comment = {
   createdAt: string; // ISO
 };
 
+/** A dog on the posting account, with its training level (for the badge). */
+export type AuthorDog = { name: string; level: number };
+
 export type Post = {
   id: string;
   authorName: string;
   authorAvatarUrl?: string;
+  /** The account's dog(s) + level, shown as level badges under the name.
+   * In order of the name ("Nova & Rex" → Nova's level, then Rex's). */
+  authorDogs?: AuthorDog[];
   /** Whether the signed-in user wrote it (can delete it). */
   mine?: boolean;
   title?: string;
