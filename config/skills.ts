@@ -52,15 +52,12 @@ export const SKILL_PILLARS: SkillPillar[] = [
 /** Total trackable skills across all pillars. */
 export const TOTAL_SKILLS = SKILL_PILLARS.reduce((n, p) => n + p.drills.length, 0);
 
-/** Seeded "learnt" skills per dog so the profile shows progress in the demo. */
-export const SAMPLE_LEARNT: Record<string, string[]> = {
-  "d-nova": [
-    "eng-name", "eng-checkin", "eng-watch",
-    "sk-sit", "sk-recall", "sk-loose",
-    "mind-settle", "mind-calm",
-  ],
-  "d-rex": ["eng-name", "sk-sit", "mind-settle"],
-};
+/**
+ * Every dog starts with no skills ticked — the trainer marks them off as the
+ * dog learns each one (from the Status panel on the dashboard), which is what
+ * drives the level shown on the profile. Empty by design.
+ */
+export const SAMPLE_LEARNT: Record<string, string[]> = {};
 
 /** Learnt / total for one pillar, given the dog's learnt set. */
 export function pillarProgress(pillar: SkillPillar, learnt: Set<string>): {

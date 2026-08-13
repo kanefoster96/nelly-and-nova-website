@@ -34,6 +34,7 @@ import { SessionCalendar } from "./SessionCalendar";
 import { AddCustomer } from "./AddCustomer";
 import { HolidayManager } from "./HolidayManager";
 import { HeatDayManager } from "./HeatDayManager";
+import { DogStatusModal } from "./DogStatusModal";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 import { DRILL_LIBRARY, drillsForCategory } from "@/config/drills";
@@ -91,6 +92,7 @@ export function AdminDashboard({
     Object.fromEntries(dogs.map((d) => [d.id, blankForm()]))
   );
   const [openId, setOpenId] = useState<string | null>(null);
+  const [statusId, setStatusId] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [payToast, setPayToast] = useState<string | null>(null);
   const payments = usePayments();
@@ -150,6 +152,34 @@ export function AdminDashboard({
 
   function patch(id: string, p: Partial<Form>) {
     setForms((f) => ({ ...f, [id]: { ...f[id], ...p } }));
+  }
+
+  /** Drop a skill/drill straight into a dog's report-card draft homework,
+   *  grouped under its pillar (from the Status panel's "Add to homework"). */
+  function addDrillToDraft(id: string, category: string, drill: string) {
+    setForms((f) => {
+      const form = f[id] ?? blankForm();
+      const hw = form.homework.map((c) => ({ ...c, drills: [...c.drills] }));
+      const isBlankCat = (c: EntryCategory) =>
+        !c.name.trim() && c.drills.every((d) => !d.name.trim());
+      const idx = hw.findIndex((c) => c.name.trim().toLowerCase() === category.toLowerCase());
+      if (idx === -1) {
+        const blank = hw.findIndex(isBlankCat);
+        const cat: EntryCategory = { name: category, drills: [{ name: drill }] };
+        if (blank === -1) hw.push(cat);
+        else hw[blank] = cat;
+      } else {
+        const cat = hw[idx];
+        const dup = cat.drills.some((d) => d.name.trim().toLowerCase() === drill.toLowerCase());
+        if (!dup) {
+          const blankDrill = cat.drills.findIndex((d) => !d.name.trim());
+          if (blankDrill === -1) cat.drills.push({ name: drill });
+          else cat.drills[blankDrill] = { name: drill };
+        }
+      }
+      const status: ReportEntryStatus = form.status === "todo" ? "draft" : form.status;
+      return { ...f, [id]: { ...form, homework: hw, status } };
+    });
   }
 
   function saveDraft(id: string) {
@@ -243,6 +273,13 @@ export function AdminDashboard({
                       {STATUS_LABEL[status]}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setStatusId(d.id)}
+                    className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-xs font-semibold text-paper transition-colors hover:bg-accent hover:text-accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    Status
+                  </button>
                   <button
                     type="button"
                     onClick={() => setOpenId(d.id)}
@@ -339,6 +376,16 @@ export function AdminDashboard({
           Log out
         </Button>
       </div>
+
+      {/* Skills status — tick skills off, add drills to the report draft */}
+      {statusId && (
+        <DogStatusModal
+          dogId={statusId}
+          dogName={dogs.find((d) => d.id === statusId)?.name ?? "Dog"}
+          onAddToHomework={(pillar, drill) => addDrillToDraft(statusId, pillar, drill)}
+          onClose={() => setStatusId(null)}
+        />
+      )}
 
       {/* Report entry modal */}
       {openDog && (
