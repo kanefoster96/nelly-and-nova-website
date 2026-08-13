@@ -2,8 +2,23 @@
 
 import { useState } from "react";
 import { CheckIcon, ChevronDownIcon, PlusIcon, ArrowRightIcon } from "@/components/ui/Icons";
-import { SKILL_PILLARS, pillarProgress, pillarLevel, pillarLevels } from "@/config/skills";
+import {
+  SKILL_PILLARS,
+  pillarProgress,
+  pillarLevel,
+  pillarLevels,
+  type SkillItem,
+} from "@/config/skills";
 import { useSkills, learntSet, toggleSkill } from "@/lib/skills/store";
+import {
+  useSkillDrills,
+  skillBlocks,
+  addSkillBlock,
+  updateSkillBlockText,
+  moveSkillBlock,
+  removeSkillBlock,
+} from "@/lib/skill-drills/store";
+import { DrillBlockEditor } from "./DrillBlockEditor";
 
 /**
  * A dog's live skills status as a full page (opened from the today's-dogs list).
@@ -24,8 +39,37 @@ export function DogStatusView({
 }) {
   const skills = useSkills();
   const learnt = learntSet(skills, dogId);
+  const drillPages = useSkillDrills();
   const [openPillar, setOpenPillar] = useState<string | null>(SKILL_PILLARS[0]?.id ?? null);
   const [added, setAdded] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<SkillItem | null>(null);
+
+  // A skill's drill page — the "how to train this" content, shared across dogs.
+  if (editing) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setEditing(null)}
+          className="inline-flex items-center gap-1.5 text-sm text-paper-dim transition-colors hover:text-accent"
+        >
+          <ArrowRightIcon width={16} height={16} className="rotate-180" /> {dogName}
+        </button>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-accent">Drill page</p>
+        <h1 className="display-heading text-2xl text-paper sm:text-3xl">{editing.name}</h1>
+        <p className="mt-1 text-sm text-paper-dim">
+          How to train this skill — owners see this page on their drill.
+        </p>
+        <DrillBlockEditor
+          blocks={skillBlocks(drillPages, editing.id)}
+          onAdd={(block) => addSkillBlock(editing.id, block)}
+          onText={(blockId, text) => updateSkillBlockText(editing.id, blockId, text)}
+          onMove={(blockId, dir) => moveSkillBlock(editing.id, blockId, dir)}
+          onRemove={(blockId) => removeSkillBlock(editing.id, blockId)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -37,7 +81,9 @@ export function DogStatusView({
         <ArrowRightIcon width={16} height={16} className="rotate-180" /> Today&apos;s dogs
       </button>
       <h1 className="mt-3 display-heading text-2xl text-paper sm:text-3xl">{dogName}</h1>
-      <p className="mt-1 text-sm text-paper-dim">Tick skills as they land · adds to their level</p>
+      <p className="mt-1 text-sm text-paper-dim">
+        Tick skills as they land · tap a skill to build its drill page
+      </p>
 
       <div className="mt-5 space-y-2.5">
           {SKILL_PILLARS.map((pillar) => {
@@ -78,6 +124,7 @@ export function DogStatusView({
                             .map((drill) => {
                               const on = learnt.has(drill.id);
                               const isAdded = added.has(drill.id);
+                              const media = skillBlocks(drillPages, drill.id).length;
                               return (
                                 <div key={drill.id} className="flex items-center gap-2.5">
                                   <button
@@ -93,9 +140,25 @@ export function DogStatusView({
                                   >
                                     {on && <CheckIcon width={13} height={13} />}
                                   </button>
-                                  <span className="min-w-0 flex-1 text-sm text-paper/85">
-                                    {drill.name}
-                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditing(drill)}
+                                    className="group flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                                  >
+                                    <span className="min-w-0 truncate text-sm text-paper/85 transition-colors group-hover:text-paper">
+                                      {drill.name}
+                                    </span>
+                                    {media > 0 && (
+                                      <span className="shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] text-paper-dim">
+                                        {media}
+                                      </span>
+                                    )}
+                                    <ArrowRightIcon
+                                      width={13}
+                                      height={13}
+                                      className="shrink-0 text-paper-dim opacity-0 transition-opacity group-hover:opacity-100"
+                                    />
+                                  </button>
                                   <button
                                     type="button"
                                     disabled={isAdded}
