@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MenuIcon, CloseIcon, MessageIcon, UserIcon } from "./ui/Icons";
 import { navLinks, site } from "@/config/site";
 import { media } from "@/config/media";
-import { useSession } from "@/lib/auth/session";
+import { useSession, accountAvatar } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 
 export function Nav() {
@@ -102,7 +102,7 @@ export function Nav() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={session.dogPhoto}
+                  src={accountAvatar(session)}
                   alt={`${session.dogName}`}
                   className="h-full w-full object-cover"
                 />

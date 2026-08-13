@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Footer } from "../Footer";
 import { ReportIcon, PawIcon } from "@/components/ui/Icons";
-import { useSession } from "@/lib/auth/session";
+import { useSession, accountAvatar, accountDisplayName } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import { CommunityFeed } from "./CommunityFeed";
 import type { Post } from "@/lib/community/types";
@@ -17,7 +17,8 @@ export function CommunityHome({ posts }: { posts: Post[] }) {
   const session = useSession();
   const unseen = useUnseenReportCount(session?.dogId);
   const dogName = session?.dogName || "your dog";
-  const photo = session?.dogPhoto;
+  const communityName = accountDisplayName(session) || dogName;
+  const photo = accountAvatar(session);
 
   return (
     <>
@@ -29,7 +30,7 @@ export function CommunityHome({ posts }: { posts: Post[] }) {
               {photo ? (
                 <span className="h-14 w-14 shrink-0 overflow-hidden rounded-full">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo} alt={dogName} className="h-full w-full object-cover" />
+                  <img src={photo} alt={communityName} className="h-full w-full object-cover" />
                 </span>
               ) : (
                 <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg font-semibold text-paper">
@@ -38,7 +39,7 @@ export function CommunityHome({ posts }: { posts: Post[] }) {
               )}
               <div className="min-w-0 flex-1">
                 <h1 className="display-heading text-2xl text-paper">Welcome back</h1>
-                <p className="text-sm text-paper-dim">{dogName}&apos;s community</p>
+                <p className="text-sm text-paper-dim">{communityName}&apos;s community</p>
               </div>
             </div>
 

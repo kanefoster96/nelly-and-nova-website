@@ -5,9 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "./ui/Button";
 import { CalendarIcon, ReportIcon, ArrowRightIcon, UserIcon } from "./ui/Icons";
-import { useSession, signOut, setActiveDog } from "@/lib/auth/session";
+import {
+  useSession,
+  signOut,
+  setActiveDog,
+  setAccountPhoto,
+  accountDisplayName,
+} from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import { accountDogProfile } from "@/lib/dogs/account";
+import { AvatarUpload } from "./ui/AvatarUpload";
 import { sampleReportCards } from "@/lib/reports/sample";
 import { useOutboxCards } from "@/lib/reports/outbox";
 import { useHomeworkProgress } from "@/lib/reports/progress";
@@ -82,30 +89,101 @@ export function ProfileView({
   const active = accountDogProfile(session.dogId, profile);
   const name = session.dogName || active.name;
   const photo = session.dogPhoto || active.photo;
-  const otherDogs = (session.dogs ?? []).filter((d) => d.id !== session.dogId);
+  const dogs = session.dogs ?? [];
+  const multiDog = dogs.length > 1;
+
+  const stats = (
+    <div className="flex flex-1 items-center justify-around">
+      {/* Level isn't wired up yet — placeholder until levels launch. */}
+      <Stat label="Level" value="—" />
+      <Stat label="Age" value={active.age} />
+      <Stat label="Homework" value={`${homeworkPercent}%`} />
+    </div>
+  );
 
   return (
     <div>
-      {/* Dog header — Instagram-style: photo left, stats right. */}
-      <div className="flex items-center gap-6">
-        <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full sm:h-24 sm:w-24">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt={name} className="h-full w-full object-cover" />
-        </span>
-        <div className="flex flex-1 items-center justify-around">
-          {/* Level isn't wired up yet — placeholder until levels launch. */}
-          <Stat label="Level" value="—" />
-          <Stat label="Age" value={active.age} />
-          <Stat label="Homework" value={`${homeworkPercent}%`} />
-        </div>
-      </div>
+      {multiDog ? (
+        <>
+          {/* Shared account header — the pack's name + a joint photo that
+              becomes the account avatar across the community. */}
+          <div className="flex flex-col items-center text-center">
+            <h1 className="display-heading text-2xl text-paper">
+              {accountDisplayName(session)}
+            </h1>
+            <p className="mt-1 text-sm text-paper/70">Your pack</p>
+            <div className="mt-4">
+              <AvatarUpload
+                value={session.accountPhoto ?? null}
+                onSelect={setAccountPhoto}
+                size={96}
+                label="Joint photo"
+              />
+            </div>
+            <p className="mt-2 text-xs text-paper-dim">
+              Tap to upload a joint photo
+            </p>
+          </div>
 
-      <div className="mt-4">
-        <h1 className="display-heading text-2xl text-paper">{name}</h1>
-        {active.breed && (
-          <p className="mt-0.5 text-sm text-paper/70">{active.breed}</p>
-        )}
-      </div>
+          <hr className="my-6 border-t border-white/10" />
+
+          {/* Per-dog: name pills to toggle between dogs, stats for the active one. */}
+          <div className="flex items-stretch gap-4">
+            <div className="flex w-32 shrink-0 flex-col gap-2">
+              {dogs.map((d) => {
+                const isActive = d.id === session.dogId;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setActiveDog(d.id)}
+                    aria-pressed={isActive}
+                    className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
+                      isActive
+                        ? "bg-accent text-accent-ink"
+                        : "bg-white/[0.04] text-paper hover:bg-white/[0.08]"
+                    }`}
+                  >
+                    <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={d.photo} alt="" className="h-full w-full object-cover" />
+                    </span>
+                    <span className="truncate text-sm font-semibold">{d.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-1 items-center rounded-2xl bg-white/[0.04] px-1 ring-1 ring-white/10">
+              {stats}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <h2 className="display-heading text-xl text-paper">{name}</h2>
+            {active.breed && (
+              <p className="mt-0.5 text-sm text-paper/70">{active.breed}</p>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Single dog — Instagram-style: photo left, stats right. */}
+          <div className="flex items-center gap-6">
+            <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full sm:h-24 sm:w-24">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo} alt={name} className="h-full w-full object-cover" />
+            </span>
+            {stats}
+          </div>
+
+          <div className="mt-4">
+            <h1 className="display-heading text-2xl text-paper">{name}</h1>
+            {active.breed && (
+              <p className="mt-0.5 text-sm text-paper/70">{active.breed}</p>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Report cards + complete-homework — the two things they do each visit. */}
       <div className="mt-4 grid grid-cols-2 gap-3">
@@ -217,35 +295,7 @@ export function ProfileView({
         </div>
       </div>
 
-      {/* Dog switcher — other dogs on the account, grouped with account controls. */}
-      {otherDogs.length > 0 && (
-        <div className="mt-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            Your other dogs
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {otherDogs.map((d) => (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setActiveDog(d.id)}
-                className="group flex flex-1 items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-white/35"
-              >
-                <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={d.photo} alt={d.name} className="h-full w-full object-cover" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-paper">{d.name}</span>
-                  <span className="block text-xs text-paper-dim">Switch to this profile</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Account holder information */}
+      {/* Account holder information — the overall account manager. */}
       <div className="mt-10">
         <Link
           href="/profile/account"

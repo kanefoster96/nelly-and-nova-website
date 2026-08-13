@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { useSession, accountDisplayName } from "@/lib/auth/session";
+import { useSession, accountDisplayName, accountAvatar } from "@/lib/auth/session";
 import { useCommunityOverlay, mergeFeed } from "@/lib/community/store";
 import type { Post } from "@/lib/community/types";
 import { PostComposer } from "./PostComposer";
@@ -16,7 +16,7 @@ export function CommunityFeed({ initial }: { initial: Post[] }) {
   // In the community an account is known by its dog(s) — "Nova & Rex" — not the
   // owner's name. New posts and comments are authored under that.
   const user = session
-    ? { name: accountDisplayName(session), avatarUrl: session.dogPhoto }
+    ? { name: accountDisplayName(session), avatarUrl: accountAvatar(session) }
     : null;
 
   const posts = useMemo(() => mergeFeed(initial, overlay), [initial, overlay]);

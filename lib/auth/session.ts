@@ -28,6 +28,9 @@ export type Session = {
   dogId?: string;
   /** All dogs on the account. The active one is mirrored into dogName/Photo/Id. */
   dogs?: SessionDog[];
+  /** A joint photo for the whole account — overrides the dog photo as the
+   * account avatar (community, header). Set on a multi-dog profile. */
+  accountPhoto?: string;
   role: Role;
 };
 
@@ -91,6 +94,21 @@ export function accountDisplayName(session: Session | null): string {
   if (!session) return "";
   const names = (session.dogs ?? []).map((d) => d.name);
   return joinNames(names) || session.dogName || session.ownerName;
+}
+
+/** The account's avatar — the joint photo if one's been set, else the dog's. */
+export function accountAvatar(session: Session | null): string {
+  if (!session) return "";
+  return session.accountPhoto || session.dogPhoto;
+}
+
+/** Set the account's shared/joint photo (used as the account avatar). */
+export function setAccountPhoto(dataUrl: string) {
+  const s = read();
+  if (!s) return;
+  localStorage.setItem(KEY, JSON.stringify({ ...s, accountPhoto: dataUrl }));
+  window.dispatchEvent(new Event(EVENT));
+  // TODO(backend): upload to storage and persist accounts.avatar_url.
 }
 
 /** Switch the account's active dog — mirrors it into dogName/dogPhoto/dogId. */
