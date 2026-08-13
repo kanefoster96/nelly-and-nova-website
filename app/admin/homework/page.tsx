@@ -3,9 +3,7 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
-import { HomeworkBoard } from "@/components/admin/HomeworkBoard";
-import { getReportCards } from "@/lib/reports/data";
-import { getWeekSchedule } from "@/lib/schedule/data";
+import { HomeworkLibrary } from "@/components/admin/HomeworkLibrary";
 
 export const metadata: Metadata = {
   title: "Homework",
@@ -13,8 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default async function HomeworkPage() {
-  const [cards, week] = await Promise.all([getReportCards(), getWeekSchedule()]);
-
   return (
     <>
       <Nav />
@@ -28,15 +24,16 @@ export default async function HomeworkPage() {
               ← Back to dashboard
             </Link>
             <h1 className="display-heading mt-4 text-3xl text-paper sm:text-4xl">
-              Homework
+              Homework library
             </h1>
             <p className="mt-3 text-paper/75">
-              Every dog&apos;s homework by category. Edit the drills here, or from a
-              report card — changes show on the owner&apos;s card.
+              Your drills, organised by pillar → category → level. Open a pillar to
+              see its categories, then a category to view and add drills at each
+              level.
             </p>
 
             <RequireAdmin>
-              <HomeworkBoard cards={cards} week={week} />
+              <HomeworkLibrary />
             </RequireAdmin>
           </div>
         </section>
