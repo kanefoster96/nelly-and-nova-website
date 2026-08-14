@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { MenuIcon, CloseIcon, MessageIcon, UserIcon } from "./ui/Icons";
 import { navLinks, site } from "@/config/site";
 import { media } from "@/config/media";
-import { useSession, accountAvatar } from "@/lib/auth/session";
+import { useSession, accountAvatar, accountDisplayName, signOut } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 
 export function Nav() {
@@ -16,6 +17,13 @@ export function Nav() {
   const reduce = useReducedMotion();
   const session = useSession();
   const unseenReports = useUnseenReportCount();
+  const router = useRouter();
+
+  function logout() {
+    setOpen(false);
+    void signOut();
+    router.push("/");
+  }
 
   // Solidify the bar once the hero has begun to scroll away.
   useEffect(() => {
@@ -165,6 +173,61 @@ export function Nav() {
                 ))
               )}
             </ul>
+
+            {/* Sign in / log out — a pill so it stands out from the links. */}
+            <div className="mx-auto max-w-6xl px-4 pb-6 pt-2 sm:px-6">
+              {session ? (
+                <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
+                      {accountAvatar(session) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={accountAvatar(session)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <UserIcon width={20} height={20} className="text-paper" />
+                      )}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-paper">
+                        {accountDisplayName(session) || session.ownerName || "Your account"}
+                      </span>
+                      <span className="block text-xs text-paper-dim">
+                        {session.role === "admin" ? "Trainer" : "Member"}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="inline-flex h-10 shrink-0 items-center rounded-full border border-white/20 px-4 text-sm font-semibold text-paper transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    Log out
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-stretch gap-2">
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-accent px-6 text-base font-semibold text-accent-ink transition-colors hover:bg-accent-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <UserIcon width={18} height={18} />
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/create-account"
+                    onClick={() => setOpen(false)}
+                    className="text-center text-sm text-paper-dim transition-colors hover:text-accent"
+                  >
+                    New here? Create an account
+                  </Link>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -202,6 +202,9 @@ export async function signUpNewAccount(input: {
   email: string;
   password: string;
   ownerName: string;
+  /** Account avatar as a data URL. Persisted to profiles.avatar_url (kept out
+   *  of user_metadata so it never bloats the JWT). */
+  avatarUrl?: string;
   dogs?: SignUpDog[];
 }): Promise<{ error: string | null; needsConfirmation: boolean }> {
   const { data, error } = await sb().auth.signUp({
@@ -217,8 +220,16 @@ export async function signUpNewAccount(input: {
     },
   });
   if (error) return { error: error.message, needsConfirmation: false };
+
   const needsConfirmation = !data.session;
-  if (!needsConfirmation) await hydrate();
+  if (!needsConfirmation) {
+    // Signed in straight away — persist the avatar and build the session.
+    if (input.avatarUrl && data.user) {
+      // TODO(backend): upload to Storage; for now store the URL on the profile.
+      await sb().from("profiles").update({ avatar_url: input.avatarUrl }).eq("id", data.user.id);
+    }
+    await hydrate();
+  }
   return { error: null, needsConfirmation };
 }
 
