@@ -14,7 +14,7 @@ import {
   PlusIcon,
   CardIcon,
 } from "@/components/ui/Icons";
-import { useSession, signOut } from "@/lib/auth/session";
+import { useSession, useAuthStatus, signOut } from "@/lib/auth/session";
 import { formatDate } from "@/lib/inbox/format";
 import {
   entryToReportCard,
@@ -80,11 +80,12 @@ export function AdminDashboard({
   customers: OnboardingEntry[];
 }) {
   const session = useSession();
+  const authStatus = useAuthStatus();
   const router = useRouter();
   const coach = session?.ownerName ?? "Trainer";
 
   function logout() {
-    signOut();
+    void signOut();
     router.push("/");
   }
 
@@ -128,6 +129,14 @@ export function AdminDashboard({
     }
     setPayToast(`Payment request sent to ${dog.name}'s owner.`);
     window.setTimeout(() => setPayToast(null), 3000);
+  }
+
+  if (authStatus === "loading") {
+    return (
+      <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+        <p className="text-paper-dim">Loading…</p>
+      </div>
+    );
   }
 
   if (!session || session.role !== "admin") {

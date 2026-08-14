@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
-import { useSession, signOut } from "@/lib/auth/session";
+import { useSession, useAuthStatus, signOut, updatePassword } from "@/lib/auth/session";
 import { useRouter } from "next/navigation";
 import { AddressPin } from "./maps/AddressPin";
 
@@ -17,18 +17,28 @@ import { AddressPin } from "./maps/AddressPin";
 export function AccountInfo() {
   const router = useRouter();
   const session = useSession();
+  const authStatus = useAuthStatus();
 
-  const [firstName, setFirstName] = useState("Rachel");
-  const [lastName, setLastName] = useState("T.");
-  const [email, setEmail] = useState("rachel@example.com");
-  const [phone, setPhone] = useState("07123 456789");
-  const [address, setAddress] = useState("14 Beach Rd, Whitley Bay, NE26");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [saved, setSaved] = useState(false);
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pwMsg, setPwMsg] = useState("");
   const [pwErr, setPwErr] = useState("");
+  // TODO(backend): load name/email/phone/address from the profiles row.
+
+  if (authStatus === "loading") {
+    return (
+      <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+        <p className="text-paper-dim">Loading…</p>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
@@ -49,7 +59,7 @@ export function AccountInfo() {
     window.setTimeout(() => setSaved(false), 2500);
   }
 
-  function changePassword() {
+  async function changePassword() {
     setPwMsg("");
     setPwErr("");
     if (password.length < 8) {
@@ -60,14 +70,18 @@ export function AccountInfo() {
       setPwErr("Passwords don't match.");
       return;
     }
-    // TODO(backend): supabase.auth.updateUser({ password }).
+    const { error } = await updatePassword(password);
+    if (error) {
+      setPwErr(error);
+      return;
+    }
     setPassword("");
     setConfirm("");
     setPwMsg("Password updated.");
   }
 
   function logout() {
-    signOut();
+    void signOut();
     router.push("/");
   }
 
@@ -107,7 +121,7 @@ export function AccountInfo() {
           <Field label="New password" name="newPassword" type="password" value={password} onChange={setPassword} placeholder="At least 8 characters" error={pwErr} />
           <Field label="Confirm new password" name="confirmPassword" type="password" value={confirm} onChange={setConfirm} />
           <div className="flex items-center gap-3">
-            <Button radius="xl" variant="secondary" onClick={changePassword}>
+            <Button radius="xl" variant="secondary" onClick={() => void changePassword()}>
               Update password
             </Button>
             {pwMsg && <span className="text-sm text-accent">{pwMsg}</span>}

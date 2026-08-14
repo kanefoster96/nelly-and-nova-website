@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
-import { signIn, SAMPLE_ADMIN } from "@/lib/auth/session";
+import { signInWithPassword } from "@/lib/auth/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -14,9 +14,10 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting">("idle");
 
-  function submit() {
+  async function submit() {
     const e: Record<string, string> = {};
     if (!EMAIL_RE.test(email)) e.email = "Enter a valid email address.";
     if (!password) e.password = "Enter your password.";
@@ -25,32 +26,27 @@ export function LoginForm() {
       return;
     }
     setErrors({});
+    setFormError(null);
     setStatus("submitting");
-    // TODO(backend): supabase.auth.signInWithPassword({ email, password }), then
-    // route by role (is_staff() → /admin, otherwise /profile).
-    // Scaffold: a trainer/admin email signs in as staff; anyone else as a member.
-    if (/coach|trainer|admin|charlotte/i.test(email)) {
-      signIn(SAMPLE_ADMIN);
-      router.push("/admin");
-    } else {
-      signIn();
-      router.push("/profile");
+
+    const { error, role } = await signInWithPassword(email.trim(), password);
+    if (error) {
+      setStatus("idle");
+      setFormError(error);
+      return;
     }
-  }
-
-  function loginAsTrainer() {
-    signIn(SAMPLE_ADMIN);
-    router.push("/admin");
-  }
-
-  function loginAsOwner() {
-    signIn(); // defaults to the sample member (dog owner)
-    router.push("/profile");
+    router.push(role === "admin" ? "/admin" : "/profile");
   }
 
   return (
     <div className="rounded-3xl bg-white/[0.04] p-6 ring-1 ring-white/10 sm:p-8">
-      <div className="grid gap-5">
+      <form
+        className="grid gap-5"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          void submit();
+        }}
+      >
         <Field
           label="Email"
           name="email"
@@ -71,14 +67,19 @@ export function LoginForm() {
           onChange={setPassword}
           error={errors.password}
         />
+        {formError && (
+          <p className="rounded-xl bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300 ring-1 ring-red-500/20">
+            {formError}
+          </p>
+        )}
         <Button
+          type="submit"
           size="lg"
           radius="xl"
-          onClick={submit}
           disabled={status === "submitting"}
           className="disabled:opacity-60"
         >
-          Log in
+          {status === "submitting" ? "Logging in…" : "Log in"}
         </Button>
         <p className="text-center text-sm text-paper-dim">
           New here?{" "}
@@ -89,25 +90,7 @@ export function LoginForm() {
             Create an account
           </Link>
         </p>
-        {/* Scaffold shortcuts — remove once real auth is wired. */}
-        <div className="flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={loginAsOwner}
-            className="text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
-          >
-            Log in as dog owner (demo)
-          </button>
-          <span aria-hidden className="text-paper-dim/50">·</span>
-          <button
-            type="button"
-            onClick={loginAsTrainer}
-            className="text-xs text-paper-dim underline underline-offset-2 hover:text-accent"
-          >
-            Log in as trainer (demo)
-          </button>
-        </div>
-      </div>
+      </form>
     </div>
   );
 }

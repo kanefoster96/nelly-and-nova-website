@@ -1,14 +1,24 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { useSession } from "@/lib/auth/session";
+import { useSession, useAuthStatus } from "@/lib/auth/session";
 
 /**
- * Gate admin pages to signed-in staff. Scaffold-only — real access control
- * happens server-side once Supabase auth + is_staff() RLS is wired.
+ * Gate admin pages to signed-in trainers. The client-side gate is a UX guard;
+ * the real protection is Row Level Security (is_admin()) on every table.
  */
 export function RequireAdmin({ children }: { children: React.ReactNode }) {
   const session = useSession();
+  const authStatus = useAuthStatus();
+
+  if (authStatus === "loading") {
+    return (
+      <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+        <p className="text-paper-dim">Loading…</p>
+      </div>
+    );
+  }
+
   if (!session || session.role !== "admin") {
     return (
       <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">

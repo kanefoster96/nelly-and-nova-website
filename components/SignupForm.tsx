@@ -8,6 +8,7 @@ import { Field } from "./ui/Field";
 import { AvatarUpload } from "./ui/AvatarUpload";
 import { CheckCircleIcon } from "./ui/Icons";
 import { DOG_PHOTO_HANDOFF_KEY } from "@/lib/storage/photos";
+import { signUpNewAccount } from "@/lib/auth/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const STEPS = ["Your details", "Your dog"];
@@ -77,6 +78,8 @@ export function SignupForm() {
   const [editDog, setEditDog] = useState(!dogFromForm);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [needsConfirm, setNeedsConfirm] = useState(false);
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
 
   function next() {
@@ -95,27 +98,64 @@ export function SignupForm() {
     setStep(1);
   }
 
-  function create() {
+  async function create() {
     if (!dogName.trim()) {
       setEditDog(true);
       setErrors({ dogName: "Please add your dog's name." });
       return;
     }
     setErrors({});
+    setFormError(null);
     setStatus("submitting");
-    // TODO(backend): supabase.auth.signUp({ email, password, options: { data:
-    //   { first_name: firstName } } }), then create the dog profile (name,
-    //   breed, age, notes) and, if `photo` is set, uploadDogPhoto(photo, userId)
-    //   from lib/storage/photos.ts to set the account image.
+
+    // The DB trigger (handle_new_user) reads owner_name + dogs from metadata to
+    // build the profile and dog rows. Photo upload to Storage is a later phase.
+    const { error, needsConfirmation } = await signUpNewAccount({
+      email: email.trim(),
+      password,
+      ownerName: `${firstName} ${lastName}`.trim(),
+      dogs: [{ name: dogName, breed }],
+    });
+
+    if (error) {
+      setStatus("idle");
+      setFormError(error);
+      return;
+    }
+
     try {
       sessionStorage.removeItem(DOG_PHOTO_HANDOFF_KEY);
     } catch {
       /* ignore */
     }
+    setNeedsConfirm(needsConfirmation);
     setStatus("success");
   }
 
   if (status === "success") {
+    // Email confirmation is on — the account exists but can't sign in until the
+    // link is clicked, so send them to their inbox rather than the waiver.
+    if (needsConfirm) {
+      return (
+        <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+          <CheckCircleIcon width={40} height={40} className="mx-auto text-accent" />
+          <h2 className="display-heading mt-4 text-2xl text-paper">Confirm your email</h2>
+          <p className="mx-auto mt-3 max-w-sm text-paper/75">
+            We&apos;ve sent a confirmation link to <span className="text-paper">{email}</span>.
+            Click it to activate your account, then log in.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button href="/login" radius="xl">
+              Go to log in
+            </Button>
+            <Button href="/" variant="secondary" radius="xl">
+              Back to home
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
         {photo ? (
@@ -262,11 +302,22 @@ export function SignupForm() {
               </div>
             )}
 
+            {formError && (
+              <p className="rounded-xl bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300 ring-1 ring-red-500/20">
+                {formError}
+              </p>
+            )}
             <div className="flex items-center justify-between gap-4">
               <Button variant="secondary" radius="xl" onClick={() => setStep(0)}>
                 Back
               </Button>
-              <Button size="lg" radius="xl" onClick={create} disabled={status === "submitting"} className="disabled:opacity-60">
+              <Button
+                size="lg"
+                radius="xl"
+                onClick={() => void create()}
+                disabled={status === "submitting"}
+                className="disabled:opacity-60"
+              >
                 Confirm &amp; create account
               </Button>
             </div>

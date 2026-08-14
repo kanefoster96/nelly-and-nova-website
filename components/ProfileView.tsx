@@ -14,6 +14,7 @@ import {
 } from "./ui/Icons";
 import {
   useSession,
+  useAuthStatus,
   signOut,
   setActiveDog,
   setAccountPhoto,
@@ -56,6 +57,7 @@ export function ProfileView({
   todayISO: string;
 }) {
   const session = useSession();
+  const authStatus = useAuthStatus();
   const unseen = useUnseenReportCount(session?.dogId);
   const outbox = useOutboxCards();
   const progress = useHomeworkProgress();
@@ -75,8 +77,16 @@ export function ProfileView({
   }, [outbox, progress, resets, session?.dogId, todayISO]);
 
   function logout() {
-    signOut();
+    void signOut();
     router.push("/");
+  }
+
+  if (authStatus === "loading") {
+    return (
+      <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+        <p className="text-paper-dim">Loading…</p>
+      </div>
+    );
   }
 
   if (!session) {
