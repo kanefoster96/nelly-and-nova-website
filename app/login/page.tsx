@@ -26,12 +26,6 @@ export default function LoginPage() {
               chat with us directly.
             </p>
 
-            <div className="mt-6 rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-paper/75">
-              <strong className="text-paper">Scaffold</strong> — accounts
-              aren&apos;t switched on yet, so any email and password logs you in
-              as a sample member so you can preview the profile.
-            </div>
-
             <div className="mt-8">
               <LoginForm />
             </div>
