@@ -78,20 +78,69 @@ their own dogs/cards; staff see all). This is the biggest, most important step.
 
 ---
 
-## Phase 3 — Authentication
+## Phase 3 — Authentication  ✅ wired
 
-1. **Enable email/password** — *Authentication → Providers → Email*.
-2. **Wire the scaffolded spots** (all have `TODO(backend)` markers):
-   - `components/LoginForm.tsx` → `supabase.auth.signInWithPassword({ email, password })`, route by role.
-   - `components/SignupForm.tsx` → `supabase.auth.signUp(...)`, then create the dog row(s).
-   - `components/AccountInfo.tsx` → `supabase.auth.updateUser({ password })`.
-   - `lib/auth/session.ts` → replace localStorage `signIn`/`signOut`/`useSession`
-     with `supabase.auth.getSession()` + `onAuthStateChange()`. The `Session`
-     type maps to the user + their dogs.
-3. **Roles** — the app checks `session.role === "admin"`. Store a `role`
-   (or `is_staff`) in user metadata or a `profiles` table and read it there.
-   `proxy.ts` already refreshes the session, so protected pages work once auth
-   is real.
+Email/password auth is live. `lib/auth/session.ts` sources the account from
+`supabase.auth` + the `profiles`/`dogs` tables; `LoginForm`, `SignupForm` and
+`AccountInfo` call `signInWithPassword` / `signUp` / `updateUser`; role comes
+from `profiles.role` (trainer = `admin`). The `handle_new_user` trigger creates
+the profile (and any dogs from sign-up metadata) and assigns the trainer role
+to allowlisted emails.
+
+**Remaining dashboard toggle — email confirmation.** Supabase defaults to
+requiring email confirmation before a user can log in. Two options:
+
+- **Off (quick start):** *Authentication → Providers → Email* → turn off
+  **Confirm email**. New sign-ups log in immediately, no email needed. Fine for
+  early testing; anyone can register with any address.
+- **On (recommended for launch):** keep it on and give Supabase a real email
+  sender — see Phase 3b. Until a sender is configured, Supabase's built-in mailer
+  is heavily rate-limited and unreliable, so confirmations often never arrive.
+
+---
+
+## Phase 3b — Email (Resend)
+
+There are **two independent email paths** — set up whichever you need:
+
+**1. Supabase auth emails** (confirm-email, magic links, password resets).
+Sent by Supabase's servers, so Resend is configured as Supabase's **SMTP
+provider** in the dashboard — *not* via the app's `RESEND_API_KEY`.
+
+- *Authentication → Emails → SMTP Settings* → **Enable Custom SMTP**:
+  - Host: `smtp.resend.com`
+  - Port: `465`
+  - Username: `resend`
+  - Password: your Resend API key (`re_…`)
+  - Sender email: an address on a **verified domain** (e.g.
+    `hello@nellyandnova.co.uk`), or `onboarding@resend.dev` for testing
+  - Sender name: `Nelly & Nova`
+- Then raise *Authentication → Rate Limits → emails per hour* off the default.
+
+**2. App transactional emails** (contact form, booking + onboarding
+confirmations). Sent by the Next app via Resend's HTTP API in
+`lib/email/resend.ts` (best-effort — skipped if no key). Set env vars:
+
+```
+RESEND_API_KEY=re_…
+CONTACT_FROM_EMAIL=Nelly & Nova <hello@nellyandnova.co.uk>   # verified domain, or onboarding@resend.dev
+CONTACT_TO_EMAIL=charlotte@nellyandnova.co.uk
+```
+
+Add these in **Vercel → Settings → Environment Variables** for production, and
+in `.env.local` for local dev.
+
+> **Resend prerequisites** (do once at resend.com):
+> 1. Create an account and an **API key**.
+> 2. To email *anyone*, **verify your domain** (Resend → Domains → add
+>    `nellyandnova.co.uk`, then add the DNS records it shows). Without a
+>    verified domain you can only send from `onboarding@resend.dev` and only to
+>    the address you signed up with — fine for testing, not for real customers.
+>
+> **Sandbox note:** this cloud dev environment's egress is locked down, so the
+> app can't actually reach `api.resend.com` from here — app emails send only
+> from production (Vercel). Supabase's SMTP sending happens on Supabase's
+> servers, so confirmation emails are unaffected by the sandbox.
 
 ---
 
