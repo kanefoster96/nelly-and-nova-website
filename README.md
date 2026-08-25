@@ -3,9 +3,10 @@
 Mobile-first marketing site for **Nelly & Nova**, a dog training company in the
 North East of England (Tynemouth, Backworth & surrounding areas).
 
-Phase one is the **homepage**. The project is built component-first and
-touch-friendly so it can later be wrapped as a native mobile app with
-[Capacitor](https://capacitorjs.com/).
+Phase one is the **homepage**. The member area (login, dog profiles,
+sessions, reports, chat, payments) built on top of it is what the native
+[**mobile app**](./mobile) — in `mobile/` — is being rebuilt around, screen by
+screen, sharing the same Supabase backend.
 
 ## Stack
 
@@ -132,11 +133,12 @@ All booking CTAs currently point at `#book` (see `BOOKING_HREF` in
 - All motion is disabled automatically when the user has
   `prefers-reduced-motion` set.
 
-## Native app (later)
+## Native app
 
-To wrap with Capacitor, add `output: "export"` to `next.config.ts`, run
-`npm run build`, then point Capacitor at the exported `out/` directory. The site
-already avoids browser-only assumptions that would block a native wrap.
+The iOS/Play Store app lives in **[`mobile/`](./mobile)** — a real React
+Native (Expo) app, not a wrapped version of this site. It shares this
+project's Supabase backend, so accounts, dogs and session data are the same
+on web and mobile. See `mobile/README.md` for setup.
 
 ---
 
