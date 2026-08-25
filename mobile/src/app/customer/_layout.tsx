@@ -32,6 +32,8 @@ export default function CustomerLayout() {
       <Stack.Screen name="profile" options={{ title: "Profile" }} />
       <Stack.Screen name="walks/track" options={{ title: "Track a walk", headerShown: false }} />
       <Stack.Screen name="walks/[id]" options={{ title: "Walk" }} />
+      <Stack.Screen name="pickup-location" options={{ title: "Pickup location" }} />
+      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
     </Stack>
   );
 }

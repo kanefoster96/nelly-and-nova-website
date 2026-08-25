@@ -159,6 +159,20 @@ session, or changing plan — that's the Sessions tab's job (calendar icon,
 already scaffolded), kept separate per how this was scoped. Only a
 read-only next-session summary + any notice lives on the profile card.
 
+**Pickup location**: the next-session block also shows where this account
+is collected from for Walk & Train — tap it to set/edit
+(`customer/pickup-location.tsx`: an address the owner types by hand, plus a
+"use my current location" button that drops a pin via `expo-location`, no
+geocoding key needed since only the coordinates matter for routing).
+Persisted on `profiles.pickup_address/pickup_lat/pickup_lng`
+(`lib/session.ts`, `setPickupLocation()`) — the same fields the coach's
+route planner reads (see **Collection routes** below).
+
+**Pickup ETA banner**: if the coach has sent a "you're next" notification
+today (see below), it shows right on the profile card, above the
+next-session block — real-time, not a refresh-to-see (`lib/notifications.ts`,
+Supabase Realtime).
+
 ### Walks — a Strava-style tracker (`customer/walks/` + `(tabs)/walks.tsx`)
 
 Its own tab (see above). Three screens:
@@ -234,6 +248,46 @@ by hand rather than this reverse-geocoding, which would need a geocoding
 API key). See **Maps (Android)** above for the one manual setup step this
 needs.
 
+### Collection routes & pickup ETAs (`admin/index.tsx` + `lib/collections.ts`)
+
+The first real piece of the admin/coach app: a route planner for today's
+Walk & Train collections, and the notification that reaches an owner when
+the coach is heading their way.
+
+- **`admin/index.tsx`** — today's collections (real `training_sessions`
+  where `kind = 'walk-and-train'`, scheduled today), in route order, each
+  showing the dog/owner, time, pickup address (from the owner's saved
+  `profiles.pickup_*`) and a pending/en-route/collected status. Up/down
+  arrows reorder the route (persisted to `route_order`) — deliberately
+  arrow buttons, not drag-and-drop, for reliability. **Start next pickup**
+  marks the current "en route" stop collected and sends the *next* pending
+  stop's owner a notification.
+- **No live coach location, by design** — the ask was explicitly that
+  customers shouldn't see it. Instead, the ETA is estimated the moment
+  "Start next pickup" is tapped: straight-line distance between the
+  previous stop's saved pickup coordinates and the next one
+  (`routeDistanceMeters()`, reused from `lib/walks.ts`) at an assumed
+  ~25 km/h local-driving speed. This is a real calculation from real saved
+  coordinates, but it's an estimate, not traffic-aware routing — there's no
+  Directions API key configured. The first pickup of the day gets notified
+  without a numeric ETA (no previous stop to measure from).
+- **`notifications`** (new table) carries the message ("You're next for
+  pickup — ETA ~N min") to the owner's `recipient_id`. Only staff can insert
+  (RLS); an owner can only read/mark-read their own. The table is in the
+  `supabase_realtime` publication, so `lib/notifications.ts` gets pushed
+  updates instantly via a Realtime channel — no polling — and drives both
+  the top-bar bell's unread badge (`useUnreadNotificationCount()`) and the
+  profile card's ETA banner (`useLatestPickupEta()`). `customer/notifications.tsx`
+  is the full list (tap to mark read, "mark all as read").
+
+**Not built:** real OS push notifications (the phone buzzing when the app
+is closed/backgrounded) — that needs `expo-notifications` plus the project
+linked to an EAS project (`eas init`) for a push token, which hasn't been
+set up. What's here is fully real *in-app*: instant while the app is open,
+and there the next time it's opened, since it's just reading the
+`notifications` table. Also not built: the rest of the admin app beyond
+this one screen, and drag-and-drop route reordering (arrows only, for now).
+
 ## Project structure
 
 ```
@@ -246,10 +300,12 @@ src/
     forgot-password.tsx         # Password reset request
     pending.tsx                  # member, no dog on the account yet
     admin/
-      index.tsx                  # admin app placeholder
+      index.tsx                  # today's collection route planner (see above) — rest is placeholder
     customer/
-      _layout.tsx                  # Stack: guard + (tabs) + profile + walks/*
+      _layout.tsx                  # Stack: guard + (tabs) + profile + walks/* + pickup-location + notifications
       profile.tsx                   # dog profile card (pushed, from top-bar avatar)
+      pickup-location.tsx            # set/edit the account's collection pickup point
+      notifications.tsx               # full notification list (from the bell)
       walks/
         track.tsx                     # live recording screen: map, timer, homework, share
         [id].tsx                       # one walk's detail — route map, stats, photos
@@ -264,7 +320,7 @@ src/
   components/              # reusable UI primitives
     Logo.tsx                 # PLACEHOLDER logo mark — swap for the real logo
     Avatar.tsx                # round avatar (photo or initial fallback)
-    TopBar.tsx                 # avatar · title · notification bell
+    TopBar.tsx                 # avatar · title · notification bell (real unread badge)
     Button.tsx                  # primary/secondary/ghost pill button
     TextField.tsx                # labelled input, matches the website's <Field>
     PlaceholderScreen.tsx          # "not built yet" stub for a tab
@@ -272,18 +328,21 @@ src/
       Composer.tsx                  # collapsed pill -> post form (members only)
       PostCard.tsx                   # one feed post — edge-to-edge media, inline comments
     walks/
-      RouteMap.tsx                    # route polyline + live/start/finish markers
+      RouteMap.tsx                    # route polyline + live/start/finish markers — also used
+                                        # for a single pickup pin on pickup-location.tsx
 
   config/
     skills.ts                  # skill pillars/levels — mirrors the website's + the real `skills` table
 
   lib/
     supabase.ts               # Supabase client (AsyncStorage-backed session)
-    session.ts                 # live account (role, owner, dogs, active dog) — see above
+    session.ts                 # live account (role, owner, dogs, active dog, pickup location)
     community.ts                # feed reads/writes — posts, likes, comments (+ photos)
     dogs.ts                      # per-dog stats, next session + notices
     walks.ts                      # walk/training log, route, photos, homework mark-off, share
     storage.ts                     # image upload → the `media` Storage bucket
+    notifications.ts                # real-time notifications store (Supabase Realtime)
+    collections.ts                   # coach route planning + "Start next pickup" / ETA
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -316,6 +375,14 @@ Every screen picks up the change automatically since they all render `<Logo />`.
   timer, distance, homework mark-off mid-session, place + notes + photos,
   a history list, per-walk detail pages, and sharing a finished walk to
   the community feed (as a real post, with photos).
+- **Pickup location** on the profile card, owner-editable, feeding straight
+  into the coach's route planner.
+- **Real, live notification bell** — unread badge + full list, pushed
+  instantly over Supabase Realtime.
+- **Collection route planner** (`admin/index.tsx`, the first real admin
+  screen): today's Walk & Train stops in order, reorderable, "Start next
+  pickup" sends the next owner an estimated-ETA notification. No live
+  coach location — by design, per the ask.
 
 ## What's next
 
@@ -329,14 +396,14 @@ profile card. Also queued:
 - Background location for walks (currently foreground-only — the tracking
   screen has to stay open) and editing/deleting a past walk.
 - Automatic place lookup from coordinates (currently a manual text field) —
-  needs a geocoding API key.
+  needs a geocoding API key. Same applies to the pickup-location screen.
 - A photo picker on the community composer itself (`createPost()` already
   accepts `mediaUrls[]` — the walk-share flow uses it; the composer UI just
   doesn't have a picker yet).
-- The admin app (currently a placeholder screen).
-- Wiring the notification bell up to real data once a `notifications` table
-  exists (the website's own inbox is still sample data too — see
-  `lib/inbox/data.ts` in the root project).
+- The rest of the admin app beyond the collection route planner.
+- Real OS push notifications (phone buzzes when the app is closed) — needs
+  `expo-notifications` + an EAS project (`eas init`) for a push token.
+  What's built is real in-app/Realtime notifications, not device push.
 - Real app icon, splash screen and store listing assets.
 - An Android Google Maps API key (see **Maps (Android)** above) — iOS maps
   work out of the box.
@@ -352,8 +419,10 @@ website's `lib/*` sample-data scaffolding reflects what's actually in the
 database — in several places (community, sessions, reports) the real tables
 are already ahead of the website's own UI.
 
-`walks`, `walk_points`, `walk_photos` and `homework_completions` (plus the
-public `media` Storage bucket) exist only because this app added them —
-there's no equivalent on the website yet. If the website ever gets its own
-walk-tracking UI, it should read/write these same tables rather than
-inventing a parallel schema.
+`walks`, `walk_points`, `walk_photos`, `homework_completions` and
+`notifications` (plus the public `media` Storage bucket, and
+`profiles.pickup_*`/`training_sessions.route_order`+`pickup_status`) exist
+only because this app added them — there's no equivalent on the website
+yet. If the website ever gets its own walk-tracking or route-planning UI,
+it should read/write these same tables rather than inventing a parallel
+schema.

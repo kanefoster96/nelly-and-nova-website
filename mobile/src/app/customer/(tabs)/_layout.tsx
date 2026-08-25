@@ -27,9 +27,7 @@ export default function CustomerTabsLayout() {
       <TopBar
         title="Nelly & Nova"
         onAvatarPress={() => router.push("/customer/profile")}
-        onBellPress={() => {
-          // TODO: notifications screen once notifications are wired up.
-        }}
+        onBellPress={() => router.push("/customer/notifications")}
       />
       <Tabs
         screenOptions={{

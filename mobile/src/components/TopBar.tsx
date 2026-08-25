@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar } from "./Avatar";
 import { useSession } from "@/lib/session";
+import { useUnreadNotificationCount } from "@/lib/notifications";
 import { colors } from "@/theme/colors";
 
 /**
@@ -17,6 +18,7 @@ export function TopBar({ title, onAvatarPress, onBellPress }: {
 }) {
   const session = useSession();
   const insets = useSafeAreaInsets();
+  const unread = useUnreadNotificationCount();
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top + 8 }]}>
@@ -41,8 +43,11 @@ export function TopBar({ title, onAvatarPress, onBellPress }: {
         style={styles.bell}
       >
         <Ionicons name="notifications-outline" size={24} color={colors.paper} />
-        {/* TODO(backend): badge this once notifications are wired to Supabase
-            (see lib/inbox on the website — still sample data there too). */}
+        {unread > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
+          </View>
+        )}
       </Pressable>
     </View>
   );
@@ -69,5 +74,22 @@ const styles = StyleSheet.create({
   bell: {
     width: 32,
     alignItems: "flex-end",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#ffffff",
   },
 });

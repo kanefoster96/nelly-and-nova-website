@@ -12,6 +12,7 @@ import {
   sessionKindLabel,
   type NextSession,
 } from "@/lib/dogs";
+import { useLatestPickupEta } from "@/lib/notifications";
 import { activeDog, setActiveDog, useSession, type SessionDog } from "@/lib/session";
 import { colors } from "@/theme/colors";
 
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const dog = activeDog(session);
 
   const [stats, setStats] = useState<DogStats | null>(null);
+  const pickupEta = useLatestPickupEta();
 
   useEffect(() => {
     if (!dog) return;
@@ -102,6 +104,21 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {pickupEta && (
+        <View style={styles.paddedRow}>
+          <Pressable
+            style={styles.etaBanner}
+            onPress={() => router.push("/customer/notifications")}
+          >
+            <Ionicons name="car" size={20} color={colors.accentInk} />
+            <View style={styles.etaText}>
+              <Text style={styles.etaTitle}>{pickupEta.title}</Text>
+              <Text style={styles.etaBody}>{pickupEta.body}</Text>
+            </View>
+          </Pressable>
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next session</Text>
         {!shown ? (
@@ -122,6 +139,21 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
             </View>
+
+            <Pressable
+              style={styles.pickupRow}
+              onPress={() => router.push("/customer/pickup-location")}
+            >
+              <Ionicons name="location-outline" size={16} color={colors.accent} />
+              {session.pickupLocation ? (
+                <Text style={styles.pickupText} numberOfLines={1}>
+                  {session.pickupLocation.address || "Pickup location set"}
+                </Text>
+              ) : (
+                <Text style={styles.pickupPrompt}>Set your pickup location</Text>
+              )}
+              <Ionicons name="chevron-forward" size={14} color={colors.paperDim} />
+            </Pressable>
 
             {shown.nextSession.notices.map((notice) => (
               <View key={notice.id} style={styles.notice}>
@@ -264,6 +296,50 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 14,
     color: colors.paperDim,
+  },
+  paddedRow: {
+    paddingHorizontal: H_PADDING,
+  },
+  etaBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: colors.accent,
+  },
+  etaText: {
+    flex: 1,
+    gap: 1,
+  },
+  etaTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.accentInk,
+  },
+  etaBody: {
+    fontSize: 12,
+    color: colors.accentInk,
+    opacity: 0.85,
+  },
+  pickupRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 12,
+  },
+  pickupText: {
+    flex: 1,
+    fontSize: 13,
+    color: "rgba(245,242,234,0.9)",
+  },
+  pickupPrompt: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.accent,
   },
   section: {
     paddingHorizontal: H_PADDING,
