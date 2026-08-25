@@ -1,0 +1,82 @@
+/**
+ * Training skills, grouped into three pillars — mirrors the website's
+ * config/skills.ts (and the real `skills` table's seed data exactly: same
+ * ids/pillars/levels). Kept as static config like the website does, since
+ * this list rarely changes; which skills a given dog has *learnt* is the
+ * real per-dog data, read from `dog_skills` (see lib/dogs.ts).
+ */
+export type SkillItem = { id: string; name: string; level: number };
+export type SkillPillar = { id: string; name: string; blurb: string; drills: SkillItem[] };
+
+export const SKILL_PILLARS: SkillPillar[] = [
+  {
+    id: "engagement",
+    name: "Engagement",
+    blurb: "“Does my dog want to train with me?”",
+    drills: [
+      { id: "eng-name", name: "Responds to their name", level: 1 },
+      { id: "eng-checkin", name: "Checks in on walks", level: 1 },
+      { id: "eng-watch", name: "Eye contact / watch me", level: 1 },
+      { id: "eng-disengage", name: "Disengages from distractions", level: 2 },
+      { id: "eng-play", name: "Engages in play with you", level: 2 },
+    ],
+  },
+  {
+    id: "skills",
+    name: "Skills",
+    blurb: "“Can my dog do what I ask?”",
+    drills: [
+      { id: "sk-sit", name: "Sit & down on cue", level: 1 },
+      { id: "sk-stay", name: "Stay / wait", level: 1 },
+      { id: "sk-recall", name: "Reliable recall", level: 1 },
+      { id: "sk-loose", name: "Loose-lead walking", level: 2 },
+      { id: "sk-heel", name: "Heelwork", level: 2 },
+      { id: "sk-place", name: "Place / settle on a mat", level: 2 },
+    ],
+  },
+  {
+    id: "mindset",
+    name: "Mindset",
+    blurb: "“How does my dog cope outside of training?”",
+    drills: [
+      { id: "mind-calm", name: "Calm in new places", level: 1 },
+      { id: "mind-settle", name: "Settles in the home", level: 1 },
+      { id: "mind-frustration", name: "Handles frustration", level: 2 },
+      { id: "mind-noise", name: "Confident with noises", level: 2 },
+      { id: "mind-impulse", name: "Impulse control", level: 2 },
+    ],
+  },
+];
+
+/** The distinct levels defined in a pillar, ascending (e.g. [1, 2]). */
+function pillarLevels(pillar: SkillPillar): number[] {
+  return [...new Set(pillar.drills.map((d) => d.level))].sort((a, b) => a - b);
+}
+
+/** Learnt / total for one pillar, given the dog's learnt set. */
+export function pillarProgress(pillar: SkillPillar, learnt: Set<string>): { learnt: number; total: number } {
+  return {
+    learnt: pillar.drills.filter((d) => learnt.has(d.id)).length,
+    total: pillar.drills.length,
+  };
+}
+
+/**
+ * A pillar's level. Every dog starts on Level 1; once every skill at their
+ * current level is learnt they move up a level (so Level 1 complete → Level 2).
+ */
+export function pillarLevel(pillar: SkillPillar, learnt: Set<string>): number {
+  let level = 1;
+  for (const lvl of pillarLevels(pillar)) {
+    const done = pillar.drills.filter((d) => d.level === lvl).every((d) => learnt.has(d.id));
+    if (!done) break;
+    level = lvl + 1;
+  }
+  return level;
+}
+
+/** The account level shown on the profile — the average of the three pillar levels, rounded up. */
+export function accountLevel(learnt: Set<string>): number {
+  const levels = SKILL_PILLARS.map((p) => pillarLevel(p, learnt));
+  return Math.ceil(levels.reduce((a, b) => a + b, 0) / levels.length);
+}

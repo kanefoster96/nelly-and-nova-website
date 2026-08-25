@@ -76,10 +76,18 @@ similar) field once one exists.
 
 An Instagram-style shell:
 
-- **Top bar** (`components/TopBar.tsx`) — account avatar top-left, app name
-  centred, notifications bell top-right.
-- **Bottom tabs** (`customer/_layout.tsx`) — 5 items: Home, Sessions,
+- **Top bar** (`components/TopBar.tsx`) — account avatar top-left (opens the
+  dog profile card, see below), app name centred, notifications bell
+  top-right.
+- **Bottom tabs** (`customer/(tabs)/_layout.tsx`) — 5 items: Home, Sessions,
   Reports, Community, Messages.
+
+`customer/` is a Stack (`customer/_layout.tsx`, holds the auth/membership
+guard) with two children: the `(tabs)` group above, and `profile` — a screen
+pushed on top of the tabs (its own back button, tab bar hidden), reached by
+tapping the top-bar avatar. Any future screen that shouldn't be a 6th tab
+(session detail, report card detail, …) belongs here alongside `profile`,
+not inside `(tabs)`.
 
 **Layout rule for every screen in the app:** nothing sits inside a padded
 "container" unless it's a genuinely intentional card (a notice, a comment
@@ -109,8 +117,30 @@ own-account-only), since the feed needs to show *other* members' dog names
 and photos — `profiles` stays locked to each account's own row (it holds
 email/phone, unlike `dogs`).
 
-The other four tabs are intentionally stubs (`components/PlaceholderScreen.tsx`)
-until their pages are built.
+Sessions, Reports, Community (as a separate tab) and Messages are still
+stubs (`components/PlaceholderScreen.tsx`).
+
+### The dog profile card (`customer/profile.tsx`)
+
+Reached from the top-bar avatar. Real data throughout — `lib/dogs.ts` reads
+`dogs` (breed, age from `date_of_birth`), `skills`/`dog_skills` (an overall
+level — same pillar/level algorithm as the website's `config/skills.ts`,
+ported to `src/config/skills.ts`, driven by the dog's real learnt-skills
+row), and `training_sessions`/`session_notices` (the next/today's session,
+with any notice attached — `session_notices.kind` covers weather, heat,
+cancellation and general info; a trainer-written weather notice is the
+"remember to pack a coat" reminder, rather than an external weather API
+call).
+
+Multi-dog accounts get a switcher (pills, mirrors the website's); the
+selected dog persists across launches (`lib/session.ts`, `activeDog()` /
+`setActiveDog()`, AsyncStorage-backed like the website's localStorage
+version). A "Reports" button hands off to the Reports tab.
+
+Deliberately **not** on this card: rescheduling or booking an extra
+session, or changing plan — that's the Sessions tab's job (calendar icon,
+already scaffolded), kept separate per how this was scoped. Only a
+read-only next-session summary + any notice lives on the profile card.
 
 ## Project structure
 
@@ -126,12 +156,15 @@ src/
     admin/
       index.tsx                  # admin app placeholder
     customer/
-      _layout.tsx                 # tab shell (top bar + 5 tabs), guarded
-      index.tsx                    # Home — real Supabase data
-      sessions.tsx                  # stub
-      reports.tsx                    # stub
-      community.tsx                   # stub
-      messages.tsx                     # stub
+      _layout.tsx                  # Stack: guard + (tabs) + profile
+      profile.tsx                   # dog profile card (pushed, from top-bar avatar)
+      (tabs)/
+        _layout.tsx                   # tab shell (top bar + 5 tabs)
+        index.tsx                      # Home — the community feed
+        sessions.tsx                    # stub (reschedule/book extra/change plan → here)
+        reports.tsx                      # stub
+        community.tsx                     # stub
+        messages.tsx                       # stub
 
   components/              # reusable UI primitives
     Logo.tsx                 # PLACEHOLDER logo mark — swap for the real logo
@@ -144,10 +177,14 @@ src/
       Composer.tsx                  # collapsed pill -> post form (members only)
       PostCard.tsx                   # one feed post — edge-to-edge media, inline comments
 
+  config/
+    skills.ts                  # skill pillars/levels — mirrors the website's + the real `skills` table
+
   lib/
     supabase.ts               # Supabase client (AsyncStorage-backed session)
-    session.ts                 # live account (role, owner, dogs) — see above
+    session.ts                 # live account (role, owner, dogs, active dog) — see above
     community.ts                # feed reads/writes — posts, likes, comments
+    dogs.ts                      # per-dog stats, next session + notices
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -172,6 +209,9 @@ Every screen picks up the change automatically since they all render `<Logo />`.
 - The customer app shell — top bar + 5-tab bottom nav.
 - Home: a live community feed (posts, likes, comments), membership-gated to
   post/comment at both the UI and the database layer.
+- The dog profile card (avatar → `/customer/profile`): stats, breed,
+  multi-dog switcher, next/today's session with any real trainer notice
+  (weather/heat/cancellation/info), and a hand-off to Reports.
 
 ## What's next
 
@@ -179,7 +219,9 @@ Menu pages for Sessions, Reports and Messages (the Community tab may fold
 into Home now that Home *is* the feed — to be decided) — mirroring the
 website's member area (see `app/profile/`, `app/messages/` and `lib/` in the
 root project for the shape of the data). Held off deliberately until asked
-for, per the current build order. Also queued:
+for, per the current build order. Sessions in particular now owns
+rescheduling, booking an extra session and changing plan — deliberately kept
+off the profile card. Also queued:
 
 - Photo/video attachments on posts — `post_media` and the display side (the
   edge-to-edge media grid) are ready; there's no image picker/upload flow
