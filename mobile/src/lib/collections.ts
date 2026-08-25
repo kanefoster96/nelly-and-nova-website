@@ -1,20 +1,17 @@
 /**
  * Coach-side collection route planning — today's Walk & Train pickups,
  * reordered into a route, with "Start next pickup" sending the next
- * account an ETA notification. Real tables: `training_sessions`
- * (route_order, pickup_status) + `notifications` (see the
+ * account a heads-up. Real tables: `training_sessions` (route_order,
+ * pickup_status) + `notifications` (see the
  * "collection_routes_and_notifications" migration).
  *
- * There's no routing API key configured, so the ETA is an estimate —
- * straight-line distance between consecutive stops' saved pickup
- * coordinates, at an assumed average local-driving speed — not
- * traffic-aware turn-by-turn routing. Good enough for "you're roughly
- * next", not a promise of an exact minute.
+ * No routing API — a precise ETA needs a paid Directions key for what's
+ * really just "give the next owner a few minutes' notice", so this sends a
+ * fixed ~10–20 minute window instead of computing one. Simpler, free, and
+ * honest about not being a real-time estimate.
  */
 import { supabase } from "@/lib/supabase";
-import { routeDistanceMeters, type LatLng } from "@/lib/walks";
-
-const AVG_SPEED_METERS_PER_MIN = 25_000 / 60; // 25 km/h, local roads with stops
+import { sendPushNotification } from "@/lib/push";
 
 export type PickupStatus = "pending" | "notified" | "collected";
 
@@ -26,7 +23,16 @@ export type CollectionStop = {
   scheduledAt: string;
   routeOrder: number | null;
   pickupStatus: PickupStatus;
-  pickupLocation: (LatLng & { address: string }) | null;
+  pickupLocation: { address: string; lat: number; lng: number } | null;
+  pushToken: string | null;
+};
+
+type Profile = {
+  owner_name: string | null;
+  pickup_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  push_token: string | null;
 };
 
 type StopRow = {
@@ -36,7 +42,7 @@ type StopRow = {
   route_order: number | null;
   pickup_status: PickupStatus;
   dogs: { name: string } | { name: string }[] | null;
-  profiles: { owner_name: string | null; pickup_address: string | null; pickup_lat: number | null; pickup_lng: number | null } | { owner_name: string | null; pickup_address: string | null; pickup_lat: number | null; pickup_lng: number | null }[] | null;
+  profiles: Profile | Profile[] | null;
 };
 
 function one<T>(v: T | T[] | null): T | null {
@@ -58,6 +64,7 @@ function mapStop(row: StopRow): CollectionStop {
       profile?.pickup_lat != null && profile?.pickup_lng != null
         ? { address: profile.pickup_address ?? "", lat: profile.pickup_lat, lng: profile.pickup_lng }
         : null,
+    pushToken: profile?.push_token ?? null,
   };
 }
 
@@ -71,7 +78,7 @@ export async function getTodayCollections(): Promise<CollectionStop[]> {
   const { data } = await supabase
     .from("training_sessions")
     .select(
-      "id, account_id, scheduled_at, route_order, pickup_status, dogs(name), profiles(owner_name, pickup_address, pickup_lat, pickup_lng)"
+      "id, account_id, scheduled_at, route_order, pickup_status, dogs(name), profiles(owner_name, pickup_address, pickup_lat, pickup_lng, push_token)"
     )
     .eq("kind", "walk-and-train")
     .eq("status", "scheduled")
@@ -107,15 +114,13 @@ export async function moveStop(stops: CollectionStop[], sessionId: string, direc
   return reordered;
 }
 
-function estimatedMinutes(from: LatLng, to: LatLng): number {
-  const meters = routeDistanceMeters([from, to]);
-  return Math.max(1, Math.round(meters / AVG_SPEED_METERS_PER_MIN));
-}
+const PICKUP_NOTICE = "Your dog is next to be picked up — usually around 10–20 minutes.";
 
 /**
- * Mark the current "notified" stop collected (if any) and notify the next
- * pending stop with an ETA estimated from the previous stop's location —
- * the coach's own live position isn't tracked, by design.
+ * Mark the current "notified" stop collected (if any) and give the next
+ * pending stop a heads-up — an in-app/Realtime notification always, plus a
+ * real OS push if that account has one registered (best-effort — a missing
+ * or failed push never blocks the in-app one, which is the source of truth).
  */
 export async function startNextPickup(stops: CollectionStop[]): Promise<{ notified: CollectionStop | null }> {
   const currentIndex = stops.findIndex((s) => s.pickupStatus === "notified");
@@ -127,23 +132,21 @@ export async function startNextPickup(stops: CollectionStop[]): Promise<{ notifi
   if (nextIndex < 0) return { notified: null };
 
   const next = stops[nextIndex];
-  const from = currentIndex >= 0 ? stops[currentIndex].pickupLocation : null;
-
-  let body = "Your dog is next to be picked up.";
-  if (from && next.pickupLocation) {
-    const mins = estimatedMinutes(from, next.pickupLocation);
-    body = `Your dog is next to be picked up — ETA ~${mins} min.`;
-  }
+  const title = "You're next for pickup";
 
   await supabase.from("training_sessions").update({ pickup_status: "notified" }).eq("id", next.sessionId);
 
   await supabase.from("notifications").insert({
     recipient_id: next.accountId,
     kind: "pickup_eta",
-    title: "You're next for pickup",
-    body,
+    title,
+    body: PICKUP_NOTICE,
     session_id: next.sessionId,
   });
+
+  if (next.pushToken) {
+    void sendPushNotification(next.pushToken, title, PICKUP_NOTICE, { sessionId: next.sessionId });
+  }
 
   return { notified: { ...next, pickupStatus: "notified" } };
 }

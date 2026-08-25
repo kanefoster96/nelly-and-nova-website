@@ -49,7 +49,8 @@
           "cameraPermission": "Nelly & Nova uses your camera to let you take pictures during a walk."
         }
       ],
-      "react-native-maps"
+      "react-native-maps",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

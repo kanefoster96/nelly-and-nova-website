@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Redirect, Stack } from "expo-router";
 import { hasActiveMembership, useAuthStatus, useSession } from "@/lib/session";
+import { registerForPushNotifications } from "@/lib/push";
 import { colors } from "@/theme/colors";
 
 /**
@@ -13,6 +15,12 @@ import { colors } from "@/theme/colors";
 export default function CustomerLayout() {
   const status = useAuthStatus();
   const session = useSession();
+
+  useEffect(() => {
+    if (session) void registerForPushNotifications();
+    // Register once per signed-in account, not on every session object change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
 
   if (status === "loading") return null;
   if (status === "anon" || !session) return <Redirect href="/login" />;
