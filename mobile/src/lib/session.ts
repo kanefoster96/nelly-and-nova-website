@@ -16,12 +16,21 @@ export type AuthStatus = "loading" | "authed" | "anon";
 export type SessionDog = { id: string; name: string; photo: string };
 
 export type Session = {
+  /** auth.users id — same as profiles.id / dogs.account_id. */
+  id: string;
   ownerName: string;
   /** The account's avatar (profiles.avatar_url), for the top-bar avatar. */
   avatarUrl: string;
   dogs: SessionDog[];
   role: Role;
 };
+
+/** "Nova", "Nova & Rex", "Nova, Rex & Bella" — how an account is known by its dogs. */
+export function joinNames(names: string[]): string {
+  const list = names.filter(Boolean);
+  if (list.length <= 1) return list[0] ?? "";
+  return `${list.slice(0, -1).join(", ")} & ${list[list.length - 1]}`;
+}
 
 /**
  * Whether this account should see the customer app. There's no dedicated
@@ -78,6 +87,7 @@ async function hydrate() {
   }));
 
   session = {
+    id: user.id,
     ownerName: profile?.owner_name ?? user.email ?? "",
     avatarUrl: profile?.avatar_url ?? "",
     dogs,

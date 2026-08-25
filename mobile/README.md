@@ -81,10 +81,36 @@ An Instagram-style shell:
 - **Bottom tabs** (`customer/_layout.tsx`) — 5 items: Home, Sessions,
   Reports, Community, Messages.
 
-Only Home (`customer/index.tsx`) has real content right now (the signed-in
-owner's name and their dogs, straight from Supabase) — proof the shell is
-live-wired. The other four tabs are intentionally stubs
-(`components/PlaceholderScreen.tsx`) until their pages are built.
+**Layout rule for every screen in the app:** nothing sits inside a padded
+"container" unless it's a genuinely intentional card (a notice, a comment
+bubble, the composer, a form). Feed content, images and list-style content
+run edge-to-edge like Instagram/Facebook — screens/lists carry no horizontal
+padding themselves; individual rows (text, avatars, buttons) add their own.
+See `customer/index.tsx` / `components/community/PostCard.tsx` for the
+reference implementation (media has zero inset; text/actions do).
+
+### Home = the community feed
+
+Home (`customer/index.tsx`) is a live Facebook-wall-style feed —
+`lib/community.ts` reads/writes the real `posts`, `post_media`, `post_likes`
+and `post_comments` tables (same Supabase project as the website; see
+`lib/community/types.ts` there for the reference shape this mirrors). An
+account is known in the community by its dog(s) ("Nova" / "Nova & Rex"), not
+the owner's name.
+
+Anyone who reaches the customer app can read the feed; starting a post or
+commenting requires an active membership. That's enforced in two places —
+the composer only renders for members, **and** the database itself: a
+migration (`community_feed_access`) added a `has_active_membership()`
+Postgres function and tightened the `posts`/`post_comments` insert policies
+to require it (or `is_admin()`), so a request can't route around the UI. The
+same migration opened `dogs` to read-all-for-authenticated (previously
+own-account-only), since the feed needs to show *other* members' dog names
+and photos — `profiles` stays locked to each account's own row (it holds
+email/phone, unlike `dogs`).
+
+The other four tabs are intentionally stubs (`components/PlaceholderScreen.tsx`)
+until their pages are built.
 
 ## Project structure
 
@@ -114,10 +140,14 @@ src/
     Button.tsx                  # primary/secondary/ghost pill button
     TextField.tsx                # labelled input, matches the website's <Field>
     PlaceholderScreen.tsx          # "not built yet" stub for a tab
+    community/
+      Composer.tsx                  # collapsed pill -> post form (members only)
+      PostCard.tsx                   # one feed post — edge-to-edge media, inline comments
 
   lib/
     supabase.ts               # Supabase client (AsyncStorage-backed session)
     session.ts                 # live account (role, owner, dogs) — see above
+    community.ts                # feed reads/writes — posts, likes, comments
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -139,17 +169,34 @@ Every screen picks up the change automatically since they all render `<Logo />`.
 - Login, create account and forgotten-password screens, wired up to
   Supabase auth.
 - Role/membership-based routing (admin vs. customer vs. pending).
-- The customer app shell — top bar + 5-tab bottom nav — with a live Home tab.
+- The customer app shell — top bar + 5-tab bottom nav.
+- Home: a live community feed (posts, likes, comments), membership-gated to
+  post/comment at both the UI and the database layer.
 
 ## What's next
 
-Menu pages for Sessions, Reports, Community and Messages — mirroring the
-website's member area (see `app/profile/`, `app/community/`, `app/messages/`
-and `lib/` in the root project for the shape of the data). Held off
-deliberately until asked for, per the current build order. Also queued:
+Menu pages for Sessions, Reports and Messages (the Community tab may fold
+into Home now that Home *is* the feed — to be decided) — mirroring the
+website's member area (see `app/profile/`, `app/messages/` and `lib/` in the
+root project for the shape of the data). Held off deliberately until asked
+for, per the current build order. Also queued:
 
+- Photo/video attachments on posts — `post_media` and the display side (the
+  edge-to-edge media grid) are ready; there's no image picker/upload flow
+  yet, so posting is text-only for now.
 - The admin app (currently a placeholder screen).
 - Wiring the notification bell up to real data once a `notifications` table
   exists (the website's own inbox is still sample data too — see
   `lib/inbox/data.ts` in the root project).
 - Real app icon, splash screen and store listing assets.
+
+## Database
+
+The real Supabase project ("Nelly and Nova") already has a much fuller
+schema than the website's own client code uses yet — `report_cards`,
+`training_sessions`, `skills`/`dog_skills`, `library_drills`, etc. all exist
+for real, ready for those menu pages when we get to them. Run `list_tables`
+via the Supabase MCP tools (or the dashboard) rather than assuming the
+website's `lib/*` sample-data scaffolding reflects what's actually in the
+database — in several places (community, sessions, reports) the real tables
+are already ahead of the website's own UI.
