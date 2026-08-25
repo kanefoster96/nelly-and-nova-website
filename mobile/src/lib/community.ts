@@ -134,8 +134,11 @@ export async function getFeed(): Promise<Post[]> {
   });
 }
 
-/** Start a post. Requires an active membership — enforced by RLS, not just the UI. */
-export async function createPost(body: string): Promise<{ error: string | null; postId: string | null }> {
+/** Start a post, optionally with photos already uploaded to Storage. Requires an active membership — enforced by RLS, not just the UI. */
+export async function createPost(
+  body: string,
+  mediaUrls: string[] = []
+): Promise<{ error: string | null; postId: string | null }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -146,7 +149,15 @@ export async function createPost(body: string): Promise<{ error: string | null; 
     .insert({ author_id: user.id, body: body.trim() })
     .select("id")
     .single();
-  return { error: error?.message ?? null, postId: data?.id ?? null };
+  if (error || !data) return { error: error?.message ?? null, postId: null };
+
+  if (mediaUrls.length > 0) {
+    await supabase
+      .from("post_media")
+      .insert(mediaUrls.map((url, i) => ({ post_id: data.id, url, sort_order: i })));
+  }
+
+  return { error: null, postId: data.id };
 }
 
 export async function addComment(postId: string, body: string): Promise<{ error: string | null }> {

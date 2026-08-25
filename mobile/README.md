@@ -19,7 +19,8 @@ below).
 
 - **Expo (SDK 57)** + **Expo Router** (file-based routing) + **TypeScript**
 - **React Native**
-- **Supabase** (`@supabase/supabase-js`) — same project as the website
+- **Supabase** (`@supabase/supabase-js`) — same project as the website, incl. Storage
+- **react-native-maps**, **expo-location**, **expo-image-picker** — the walk tracker
 
 ## Getting started
 
@@ -51,6 +52,16 @@ so no extra config is needed. Without a `.env`, the app still renders (a
 console warning is logged) but every Supabase call fails, which
 `lib/session.ts` treats as signed-out.
 
+### Maps (Android)
+
+The walk tracker's maps (`components/walks/RouteMap.tsx`, via
+`react-native-maps`) use Apple Maps on iOS — no key needed, it just works.
+**Android needs a Google Maps API key** to render anything. Add one under
+`plugins → ["react-native-maps", { "androidGoogleMapsApiKey": "…" }]` in
+`app.json` before testing on Android; without it the map area renders blank
+on that platform (everything else — timer, distance, saving, sharing —
+still works).
+
 ## Auth & routing
 
 `src/app/index.tsx` is the entry point and the only place that decides where
@@ -79,15 +90,22 @@ An Instagram-style shell:
 - **Top bar** (`components/TopBar.tsx`) — account avatar top-left (opens the
   dog profile card, see below), app name centred, notifications bell
   top-right.
-- **Bottom tabs** (`customer/(tabs)/_layout.tsx`) — 5 items: Home, Sessions,
-  Reports, Community, Messages.
+- **Bottom tabs** (`customer/(tabs)/_layout.tsx`) — 5 items: Home, **Walks**,
+  Sessions, Reports, Messages.
+
+The original 5 were Home/Sessions/Reports/Community/Messages; **Community
+was dropped and replaced with Walks** once Home became the community feed
+itself (see below) — a separate Community tab had nothing left to do, and
+the walk/training tracker (this session's build) explicitly needed to be
+"its own menu item", not just a button off the profile card.
 
 `customer/` is a Stack (`customer/_layout.tsx`, holds the auth/membership
-guard) with two children: the `(tabs)` group above, and `profile` — a screen
-pushed on top of the tabs (its own back button, tab bar hidden), reached by
-tapping the top-bar avatar. Any future screen that shouldn't be a 6th tab
-(session detail, report card detail, …) belongs here alongside `profile`,
-not inside `(tabs)`.
+guard) with children beyond the `(tabs)` group for anything that shouldn't
+be a 6th tab: `profile` (from the top-bar avatar), `walks/track` (the live
+recording screen — full-bleed, own close button, no header) and
+`walks/[id]` (one walk's detail page). Any future screen like this
+(session detail, report card detail, …) belongs alongside them, not inside
+`(tabs)`.
 
 **Layout rule for every screen in the app:** nothing sits inside a padded
 "container" unless it's a genuinely intentional card (a notice, a comment
@@ -117,8 +135,7 @@ own-account-only), since the feed needs to show *other* members' dog names
 and photos — `profiles` stays locked to each account's own row (it holds
 email/phone, unlike `dogs`).
 
-Sessions, Reports, Community (as a separate tab) and Messages are still
-stubs (`components/PlaceholderScreen.tsx`).
+Sessions, Reports and Messages are still stubs (`components/PlaceholderScreen.tsx`).
 
 ### The dog profile card (`customer/profile.tsx`)
 
@@ -135,46 +152,87 @@ call).
 Multi-dog accounts get a switcher (pills, mirrors the website's); the
 selected dog persists across launches (`lib/session.ts`, `activeDog()` /
 `setActiveDog()`, AsyncStorage-backed like the website's localStorage
-version). A "Reports" button hands off to the Reports tab.
+version). "Walks" and "Reports" buttons hand off to those.
 
 Deliberately **not** on this card: rescheduling or booking an extra
 session, or changing plan — that's the Sessions tab's job (calendar icon,
 already scaffolded), kept separate per how this was scoped. Only a
 read-only next-session summary + any notice lives on the profile card.
 
-### Walk/training tracker (`customer/walks/`)
+### Walks — a Strava-style tracker (`customer/walks/` + `(tabs)/walks.tsx`)
 
-Reached from a "Walks" button on the profile card. Two screens, pushed like
-`profile` (own back button, tab bar hidden):
+Its own tab (see above). Three screens:
 
-- **`walks/index.tsx`** — history for the active dog, newest first, plus a
-  "Start a walk" button.
-- **`walks/track.tsx`** — a small state machine (idle → tracking →
-  finished): pick Walk or Training, Start (tags a start location via
-  `expo-location`, best-effort — the walk still tracks fine if permission is
-  denied), a live timer, the dog's **current homework** (their most recent
-  *published* report card's items — real `report_cards`/`report_card_items`)
-  shown so items can be ticked off mid-session, then Stop → notes → optional
-  **Share to community** → Save.
+- **`(tabs)/walks.tsx`** — history for the active dog, newest first (kind,
+  date, duration, distance, place, a shared badge), plus "Start a walk".
+  Tapping a row opens its detail page.
+- **`walks/track.tsx`** — the live recording screen, full-bleed with its own
+  close button (no header/tab bar, like Strava's recording view). A small
+  state machine (idle → tracking → finished):
+  - **Start** picks Walk or Training, tags a start location via
+    `expo-location` (best-effort — tracking still works if permission is
+    denied).
+  - **Tracking** samples the route continuously (`Location.watchPositionAsync`,
+    every ~10 m / 5 s while the screen is open — foreground only, no
+    background-location entitlements needed) and draws it live on a map
+    (`components/walks/RouteMap.tsx`, `react-native-maps`) with a running
+    timer and distance (great-circle sum over the sampled points,
+    `routeDistanceMeters()` in `lib/walks.ts`). The dog's **current
+    homework** (their most recent *published* report card's items — real
+    `report_cards`/`report_card_items`) is shown so items can be ticked off
+    mid-session.
+  - **Stop → finished**: name the place, add notes, attach photos (picker or
+    camera, `expo-image-picker`), then optionally **share to the
+    community feed** → Save.
+- **`walks/[id].tsx`** — a walk's detail page: full route map, duration /
+  distance / pace, place, notes, homework practiced, and its photos —
+  plus a "Share to community" button if it wasn't shared at save time.
 
-New tables (`walk_tracker` migration): **`walks`** (own-account
-read/write/delete via RLS — the *owner* logs these, unlike the
-trainer-only-written `training_sessions`) and **`homework_completions`**, a
-repeatable log — one row per time an item is marked done, not a one-off
-checkbox, since homework gets practiced across many sessions. A `walks` row
-is inserted the moment you hit Start (so a homework mark mid-walk has
-something to link to via `walk_id`) and updated when you Stop; the history
-list only shows finished walks (`ended_at is not null`). Sharing composes a
-post from the duration/notes and reuses the existing community `createPost`
-(`lib/community.ts`) — same membership-gated insert policy as any other
-post — then links `walks.shared_post_id` back to it.
+New tables (`walk_tracker` + `walk_tracker_strava` migrations):
+
+- **`walks`** — the owner's own log (insert/update/delete gated to their
+  account via RLS, unlike the trainer-only-written `training_sessions`),
+  now also carrying `distance_meters`, `location_name`, and start/end
+  lat/lng.
+- **`walk_points`** — the sampled route, batch-inserted on save (not
+  written point-by-point during tracking, so a flaky connection mid-walk
+  can't lose progress — everything's held client-side until Stop).
+- **`walk_photos`** — photos attached to a walk regardless of whether/when
+  it's shared (sharing reuses the same uploaded URLs in `post_media`,
+  rather than re-uploading).
+- **`homework_completions`** — unchanged from before: a repeatable log, one
+  row per mark-off, not a one-off checkbox, since homework gets practiced
+  across many sessions.
+
+A `walks` row is inserted the moment you hit Start (so a homework mark
+mid-walk has something to link to via `walk_id`) and updated on Stop; the
+history list only shows finished walks (`ended_at is not null`).
+
+**Storage**: a new public `media` bucket (Supabase Storage) holds uploaded
+images — writes are scoped to the uploader's own folder
+(`{account_id}/...`) via storage RLS, reads are public since this is
+community content. `lib/storage.ts` has the upload helper
+(`uploadImage(localUri, folder)`); `lib/community.ts`'s `createPost()` now
+takes an optional `mediaUrls[]` so any post (not just a shared walk) can
+carry photos once there's a picker on the composer too.
+
+Sharing composes a post from duration/distance/place/notes and calls the
+same membership-gated `createPost()` from the community feed, with any
+photo URLs attached, then links `walks.shared_post_id` back to it — so a
+shared walk **is** a community post (recommending a place, showing
+progress/issues) and shows up in Home like any other.
 
 `lib/walks.ts` has the full data layer: `startWalk`, `finishWalk`,
-`markHomeworkDone`, `getHomeworkForDog`, `getWalks`, `shareWalkToCommunity`.
+`uploadWalkPhotos`, `markHomeworkDone`, `getHomeworkForDog`, `getWalks`,
+`getWalkDetail`, `shareWalkToCommunity`, `routeDistanceMeters`.
 
-Not built: distance/route tracking (only a single start location is
-captured, not a live path — a bigger feature, background location
-permissions included, if wanted later) and editing/deleting a past walk.
+**Scoped down deliberately:** tracking is foreground-only (the screen must
+stay open/awake — no background-location permissions, which need extra App
+Store justification and entitlements); no editing/deleting a past walk; no
+automatic place lookup from coordinates (an owner types the location name
+by hand rather than this reverse-geocoding, which would need a geocoding
+API key). See **Maps (Android)** above for the one manual setup step this
+needs.
 
 ## Project structure
 
@@ -193,14 +251,14 @@ src/
       _layout.tsx                  # Stack: guard + (tabs) + profile + walks/*
       profile.tsx                   # dog profile card (pushed, from top-bar avatar)
       walks/
-        index.tsx                     # walk/training history + "Start a walk"
-        track.tsx                      # live tracker: timer, homework, notes, share
+        track.tsx                     # live recording screen: map, timer, homework, share
+        [id].tsx                       # one walk's detail — route map, stats, photos
       (tabs)/
         _layout.tsx                   # tab shell (top bar + 5 tabs)
         index.tsx                      # Home — the community feed
-        sessions.tsx                    # stub (reschedule/book extra/change plan → here)
-        reports.tsx                      # stub
-        community.tsx                     # stub
+        walks.tsx                       # walk/training history + "Start a walk"
+        sessions.tsx                     # stub (reschedule/book extra/change plan → here)
+        reports.tsx                       # stub
         messages.tsx                       # stub
 
   components/              # reusable UI primitives
@@ -213,6 +271,8 @@ src/
     community/
       Composer.tsx                  # collapsed pill -> post form (members only)
       PostCard.tsx                   # one feed post — edge-to-edge media, inline comments
+    walks/
+      RouteMap.tsx                    # route polyline + live/start/finish markers
 
   config/
     skills.ts                  # skill pillars/levels — mirrors the website's + the real `skills` table
@@ -220,9 +280,10 @@ src/
   lib/
     supabase.ts               # Supabase client (AsyncStorage-backed session)
     session.ts                 # live account (role, owner, dogs, active dog) — see above
-    community.ts                # feed reads/writes — posts, likes, comments
+    community.ts                # feed reads/writes — posts, likes, comments (+ photos)
     dogs.ts                      # per-dog stats, next session + notices
-    walks.ts                      # walk/training log + homework mark-off + share
+    walks.ts                      # walk/training log, route, photos, homework mark-off, share
+    storage.ts                     # image upload → the `media` Storage bucket
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -244,35 +305,41 @@ Every screen picks up the change automatically since they all render `<Logo />`.
 - Login, create account and forgotten-password screens, wired up to
   Supabase auth.
 - Role/membership-based routing (admin vs. customer vs. pending).
-- The customer app shell — top bar + 5-tab bottom nav.
-- Home: a live community feed (posts, likes, comments), membership-gated to
-  post/comment at both the UI and the database layer.
+- The customer app shell — top bar + 5-tab bottom nav (Home, Walks,
+  Sessions, Reports, Messages).
+- Home: a live community feed (posts, likes, comments, photos),
+  membership-gated to post/comment at both the UI and the database layer.
 - The dog profile card (avatar → `/customer/profile`): stats, breed,
   multi-dog switcher, next/today's session with any real trainer notice
   (weather/heat/cancellation/info), and a hand-off to Reports and Walks.
-- The walk/training tracker (`/customer/walks`): timed sessions, a start
-  location, homework mark-off mid-session, notes, history, and sharing a
-  finished walk to the community feed.
+- **Walks** (its own tab): a Strava-style tracker — live route map,
+  timer, distance, homework mark-off mid-session, place + notes + photos,
+  a history list, per-walk detail pages, and sharing a finished walk to
+  the community feed (as a real post, with photos).
 
 ## What's next
 
-Menu pages for Sessions, Reports and Messages (the Community tab may fold
-into Home now that Home *is* the feed — to be decided) — mirroring the
-website's member area (see `app/profile/`, `app/messages/` and `lib/` in the
-root project for the shape of the data). Held off deliberately until asked
-for, per the current build order. Sessions in particular now owns
-rescheduling, booking an extra session and changing plan — deliberately kept
-off the profile card. Also queued:
+Menu pages for Sessions, Reports and Messages — mirroring the website's
+member area (see `app/profile/`, `app/messages/` and `lib/` in the root
+project for the shape of the data). Held off deliberately until asked for,
+per the current build order. Sessions in particular now owns rescheduling,
+booking an extra session and changing plan — deliberately kept off the
+profile card. Also queued:
 
-- Photo/video attachments on posts — `post_media` and the display side (the
-  edge-to-edge media grid) are ready; there's no image picker/upload flow
-  yet, so posting is text-only for now.
-- Route/distance tracking for walks (currently start-location-only).
+- Background location for walks (currently foreground-only — the tracking
+  screen has to stay open) and editing/deleting a past walk.
+- Automatic place lookup from coordinates (currently a manual text field) —
+  needs a geocoding API key.
+- A photo picker on the community composer itself (`createPost()` already
+  accepts `mediaUrls[]` — the walk-share flow uses it; the composer UI just
+  doesn't have a picker yet).
 - The admin app (currently a placeholder screen).
 - Wiring the notification bell up to real data once a `notifications` table
   exists (the website's own inbox is still sample data too — see
   `lib/inbox/data.ts` in the root project).
 - Real app icon, splash screen and store listing assets.
+- An Android Google Maps API key (see **Maps (Android)** above) — iOS maps
+  work out of the box.
 
 ## Database
 
@@ -284,3 +351,9 @@ via the Supabase MCP tools (or the dashboard) rather than assuming the
 website's `lib/*` sample-data scaffolding reflects what's actually in the
 database — in several places (community, sessions, reports) the real tables
 are already ahead of the website's own UI.
+
+`walks`, `walk_points`, `walk_photos` and `homework_completions` (plus the
+public `media` Storage bucket) exist only because this app added them —
+there's no equivalent on the website yet. If the website ever gets its own
+walk-tracking UI, it should read/write these same tables rather than
+inventing a parallel schema.

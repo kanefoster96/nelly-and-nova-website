@@ -8,9 +8,9 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 const TABS: { name: string; label: string; icon: IconName; iconFocused: IconName }[] = [
   { name: "index", label: "Home", icon: "home-outline", iconFocused: "home" },
+  { name: "walks", label: "Walks", icon: "walk-outline", iconFocused: "walk" },
   { name: "sessions", label: "Sessions", icon: "calendar-outline", iconFocused: "calendar" },
   { name: "reports", label: "Reports", icon: "document-text-outline", iconFocused: "document-text" },
-  { name: "community", label: "Community", icon: "people-outline", iconFocused: "people" },
   { name: "messages", label: "Messages", icon: "chatbubble-outline", iconFocused: "chatbubble" },
 ];
 

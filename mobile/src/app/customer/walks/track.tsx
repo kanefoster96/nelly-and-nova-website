@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,15 +14,20 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
+import { RouteMap } from "@/components/walks/RouteMap";
 import { activeDog, useSession } from "@/lib/session";
 import {
   finishWalk,
   getHomeworkForDog,
   markHomeworkDone,
+  routeDistanceMeters,
   shareWalkToCommunity,
   startWalk,
+  uploadWalkPhotos,
   type HomeworkItem,
+  type LatLng,
   type Walk,
   type WalkKind,
 } from "@/lib/walks";
@@ -37,8 +44,13 @@ function formatElapsed(totalSeconds: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+function formatDistance(meters: number): string {
+  return meters < 1000 ? `${meters} m` : `${(meters / 1000).toFixed(2)} km`;
+}
+
 export default function TrackWalkScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const session = useSession();
   const dog = activeDog(session);
 
@@ -47,13 +59,19 @@ export default function TrackWalkScreen() {
   const [walk, setWalk] = useState<Walk | null>(null);
   const [startedAtMs, setStartedAtMs] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [points, setPoints] = useState<LatLng[]>([]);
+  const [liveLocation, setLiveLocation] = useState<LatLng | null>(null);
   const [notes, setNotes] = useState("");
-  const [shareToCommunity, setShareToCommunity] = useState(false);
+  const [locationName, setLocationName] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [shareToCommunity, setShareToCommunity] = useState(true);
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [homework, setHomework] = useState<HomeworkItem[]>([]);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
+
+  const distanceMeters = routeDistanceMeters(points);
 
   useEffect(() => {
     if (!dog) return;
@@ -64,7 +82,6 @@ export default function TrackWalkScreen() {
     return () => {
       cancelled = true;
     };
-    // `dog` is a fresh object every render — key off its id instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dog?.id]);
 
@@ -76,11 +93,35 @@ export default function TrackWalkScreen() {
     return () => clearInterval(id);
   }, [phase, startedAtMs]);
 
+  // Continuous route sampling while tracking.
+  useEffect(() => {
+    if (phase !== "tracking") return;
+    let subscription: Location.LocationSubscription | null = null;
+    let cancelled = false;
+
+    Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.Balanced, timeInterval: 5000, distanceInterval: 10 },
+      (loc) => {
+        const point = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+        setLiveLocation(point);
+        setPoints((prev) => [...prev, point]);
+      }
+    ).then((sub) => {
+      if (cancelled) sub.remove();
+      else subscription = sub;
+    });
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [phase]);
+
   if (!dog) return null;
 
   async function start() {
     setStarting(true);
-    let location: { lat: number; lng: number } | null = null;
+    let location: LatLng | null = null;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
@@ -96,6 +137,8 @@ export default function TrackWalkScreen() {
     if (!created) return;
 
     setWalk(created);
+    setPoints(location ? [location] : []);
+    setLiveLocation(location);
     setStartedAtMs(Date.now());
     setElapsed(0);
     setPhase("tracking");
@@ -111,109 +154,209 @@ export default function TrackWalkScreen() {
     await markHomeworkDone(dog!.id, item.id, walk.id);
   }
 
+  async function pickPhotos() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+  }
+
+  async function takePhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!result.canceled) setPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+  }
+
+  function removePhoto(uri: string) {
+    setPhotos((prev) => prev.filter((p) => p !== uri));
+  }
+
   async function save() {
     if (!walk) return;
     setSaving(true);
-    await finishWalk(walk.id, { durationSeconds: elapsed, notes });
+
+    const finished: Walk = {
+      ...walk,
+      durationSeconds: elapsed,
+      distanceMeters,
+      notes,
+      locationName,
+      sharedPostId: null,
+    };
+
+    await finishWalk(walk.id, {
+      durationSeconds: elapsed,
+      distanceMeters,
+      notes,
+      locationName,
+      endLocation: liveLocation,
+      points,
+    });
+
+    const photoUrls = photos.length > 0 ? await uploadWalkPhotos(walk.id, photos) : [];
+
     if (shareToCommunity) {
-      await shareWalkToCommunity({ ...walk, durationSeconds: elapsed, notes }, dog!.name);
+      await shareWalkToCommunity(finished, dog!.name, photoUrls);
     }
+
     setSaving(false);
     router.replace("/customer/walks");
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {phase === "idle" && (
-        <View style={styles.idle}>
-          <Text style={styles.heading}>Start a session with {dog.name}</Text>
+    <View style={styles.screen}>
+      <Pressable
+        onPress={() => router.back()}
+        style={[styles.closeButton, { top: insets.top + 8 }]}
+        hitSlop={10}
+      >
+        <Ionicons name="close" size={22} color={colors.paper} />
+      </Pressable>
 
-          <View style={styles.kindToggle}>
-            {(["walk", "training"] as const).map((k) => (
-              <Pressable
-                key={k}
-                onPress={() => setKind(k)}
-                style={[styles.kindOption, kind === k && styles.kindOptionActive]}
-              >
-                <Text style={[styles.kindLabel, kind === k && styles.kindLabelActive]}>
-                  {k === "walk" ? "Walk" : "Training"}
-                </Text>
-              </Pressable>
-            ))}
+      <ScrollView contentContainerStyle={styles.content}>
+        {phase === "idle" && (
+          <View style={[styles.idle, { marginTop: insets.top + 56 }]}>
+            <Text style={styles.heading}>Start a session with {dog.name}</Text>
+
+            <View style={styles.kindToggle}>
+              {(["walk", "training"] as const).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => setKind(k)}
+                  style={[styles.kindOption, kind === k && styles.kindOptionActive]}
+                >
+                  <Text style={[styles.kindLabel, kind === k && styles.kindLabelActive]}>
+                    {k === "walk" ? "Walk" : "Training"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Button title={starting ? "Starting…" : "Start"} onPress={start} loading={starting} />
           </View>
+        )}
 
-          <Button title={starting ? "Starting…" : "Start"} onPress={start} loading={starting} />
-        </View>
-      )}
+        {phase !== "idle" && (
+          <View style={styles.tracking}>
+            <RouteMap route={points} live={phase === "tracking" ? liveLocation : null} height={260} />
 
-      {phase !== "idle" && (
-        <View style={styles.tracking}>
-          <Text style={styles.timer}>{formatElapsed(elapsed)}</Text>
-          <Text style={styles.kindNote}>{kind === "walk" ? "Walk" : "Training"} with {dog.name}</Text>
-
-          {phase === "tracking" && <Button title="Stop" variant="secondary" onPress={stop} />}
-
-          {homework.length > 0 && (
-            <View style={styles.homeworkSection}>
-              <Text style={styles.sectionTitle}>Homework</Text>
-              {homework.map((item) => {
-                const done = doneIds.has(item.id);
-                return (
-                  <Pressable
-                    key={item.id}
-                    style={styles.homeworkRow}
-                    onPress={() => toggleHomework(item)}
-                    disabled={done}
-                  >
-                    <Ionicons
-                      name={done ? "checkbox" : "square-outline"}
-                      size={22}
-                      color={done ? colors.accent : colors.paperDim}
-                    />
-                    <View style={styles.homeworkText}>
-                      <Text style={[styles.homeworkName, done && styles.homeworkNameDone]}>
-                        {item.drillName}
-                      </Text>
-                      {item.note ? <Text style={styles.homeworkNote}>{item.note}</Text> : null}
-                    </View>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.statsRow}>
+              <Stat label="Time" value={formatElapsed(elapsed)} />
+              <Stat label="Distance" value={formatDistance(distanceMeters)} />
             </View>
-          )}
 
-          {phase === "finished" && (
-            <View style={styles.finishForm}>
-              <Text style={styles.sectionTitle}>How did it go?</Text>
-              <TextInput
-                style={styles.notesInput}
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Any progress or issues worth noting…"
-                placeholderTextColor={colors.paperDim}
-                multiline
-              />
+            <Text style={styles.kindNote}>
+              {kind === "walk" ? "Walk" : "Training"} with {dog.name}
+            </Text>
 
-              <View style={styles.shareRow}>
-                <Text style={styles.shareLabel}>Share to community</Text>
-                <Switch
-                  value={shareToCommunity}
-                  onValueChange={setShareToCommunity}
-                  trackColor={{ false: colors.fieldBg, true: colors.accent }}
-                  thumbColor={colors.paper}
-                />
+            {phase === "tracking" && (
+              <View style={styles.paddedRow}>
+                <Button title="Stop" variant="secondary" onPress={stop} />
               </View>
+            )}
 
-              {saving ? (
-                <ActivityIndicator color={colors.accent} />
-              ) : (
-                <Button title="Save" onPress={save} />
-              )}
-            </View>
-          )}
-        </View>
-      )}
-    </ScrollView>
+            {homework.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Homework</Text>
+                {homework.map((item) => {
+                  const done = doneIds.has(item.id);
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={styles.homeworkRow}
+                      onPress={() => toggleHomework(item)}
+                      disabled={done}
+                    >
+                      <Ionicons
+                        name={done ? "checkbox" : "square-outline"}
+                        size={22}
+                        color={done ? colors.accent : colors.paperDim}
+                      />
+                      <View style={styles.homeworkText}>
+                        <Text style={[styles.homeworkName, done && styles.homeworkNameDone]}>
+                          {item.drillName}
+                        </Text>
+                        {item.note ? <Text style={styles.homeworkNote}>{item.note}</Text> : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            {phase === "finished" && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>How did it go?</Text>
+
+                <TextInput
+                  style={styles.locationInput}
+                  value={locationName}
+                  onChangeText={setLocationName}
+                  placeholder="Where was this? (e.g. Tynemouth Longsands)"
+                  placeholderTextColor={colors.paperDim}
+                />
+
+                <TextInput
+                  style={styles.notesInput}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Any progress or issues worth noting…"
+                  placeholderTextColor={colors.paperDim}
+                  multiline
+                />
+
+                <View style={styles.photoRow}>
+                  {photos.map((uri) => (
+                    <View key={uri} style={styles.photoThumbWrap}>
+                      <Image source={{ uri }} style={styles.photoThumb} />
+                      <Pressable style={styles.photoRemove} onPress={() => removePhoto(uri)} hitSlop={6}>
+                        <Ionicons name="close-circle" size={18} color={colors.paper} />
+                      </Pressable>
+                    </View>
+                  ))}
+                  <Pressable style={styles.photoAdd} onPress={pickPhotos}>
+                    <Ionicons name="images-outline" size={20} color={colors.paperDim} />
+                  </Pressable>
+                  <Pressable style={styles.photoAdd} onPress={takePhoto}>
+                    <Ionicons name="camera-outline" size={20} color={colors.paperDim} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.shareRow}>
+                  <Text style={styles.shareLabel}>Share to community</Text>
+                  <Switch
+                    value={shareToCommunity}
+                    onValueChange={setShareToCommunity}
+                    trackColor={{ false: colors.fieldBg, true: colors.accent }}
+                    thumbColor={colors.paper}
+                  />
+                </View>
+
+                {saving ? (
+                  <ActivityIndicator color={colors.accent} />
+                ) : (
+                  <Button title="Save" onPress={save} />
+                )}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -224,11 +367,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.ink,
   },
+  closeButton: {
+    position: "absolute",
+    left: 12,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
   content: {
-    paddingHorizontal: H_PADDING,
-    paddingVertical: 24,
+    paddingBottom: 32,
   },
   idle: {
+    paddingHorizontal: H_PADDING,
     gap: 20,
   },
   heading: {
@@ -261,23 +415,41 @@ const styles = StyleSheet.create({
     color: colors.accentInk,
   },
   tracking: {
-    gap: 24,
-    alignItems: "center",
+    gap: 20,
   },
-  timer: {
-    fontSize: 56,
+  paddedRow: {
+    paddingHorizontal: H_PADDING,
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: H_PADDING,
+  },
+  stat: {
+    alignItems: "center",
+    gap: 2,
+  },
+  statValue: {
+    fontSize: 32,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
     color: colors.paper,
   },
-  kindNote: {
-    fontSize: 14,
+  statLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
     color: colors.paperDim,
-    marginTop: -16,
   },
-  homeworkSection: {
-    alignSelf: "stretch",
-    gap: 10,
+  kindNote: {
+    textAlign: "center",
+    fontSize: 13,
+    color: colors.paperDim,
+  },
+  section: {
+    paddingHorizontal: H_PADDING,
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 12,
@@ -313,9 +485,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.paperDim,
   },
-  finishForm: {
-    alignSelf: "stretch",
-    gap: 14,
+  locationInput: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.fieldBg,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.paper,
   },
   notesInput: {
     minHeight: 90,
@@ -328,6 +506,35 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.paper,
     textAlignVertical: "top",
+  },
+  photoRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  photoThumbWrap: {
+    width: 64,
+    height: 64,
+  },
+  photoThumb: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+  },
+  photoRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+  },
+  photoAdd: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
   },
   shareRow: {
     flexDirection: "row",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { activeDog, useSession } from "@/lib/session";
 import { getWalks, type Walk } from "@/lib/walks";
@@ -12,6 +12,11 @@ function formatDuration(seconds: number | null): string {
   const mins = Math.round(seconds / 60);
   if (mins < 60) return `${mins} min`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+function formatDistance(meters: number | null): string {
+  if (!meters) return "";
+  return meters < 1000 ? `${meters} m` : `${(meters / 1000).toFixed(2)} km`;
 }
 
 function formatDate(iso: string): string {
@@ -47,13 +52,13 @@ export default function WalksListScreen() {
           <Button title="Start a walk" onPress={() => router.push("/customer/walks/track")} />
         </View>
       }
-      renderItem={({ item }) => <WalkRow walk={item} />}
+      renderItem={({ item }) => (
+        <WalkRow walk={item} onPress={() => router.push(`/customer/walks/${item.id}`)} />
+      )}
       ListEmptyComponent={
         walks !== null ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>
-              No walks logged yet for {dog.name} — start one above.
-            </Text>
+            <Text style={styles.emptyText}>No walks logged yet for {dog.name} — start one above.</Text>
           </View>
         ) : null
       }
@@ -61,9 +66,13 @@ export default function WalksListScreen() {
   );
 }
 
-function WalkRow({ walk }: { walk: Walk }) {
+function WalkRow({ walk, onPress }: { walk: Walk; onPress: () => void }) {
+  const meta = [formatDate(walk.startedAt), formatDuration(walk.durationSeconds), formatDistance(walk.distanceMeters)]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <View style={styles.row}>
+    <Pressable style={styles.row} onPress={onPress}>
       <View style={styles.rowIcon}>
         <Ionicons
           name={walk.kind === "training" ? "school-outline" : "paw-outline"}
@@ -74,11 +83,13 @@ function WalkRow({ walk }: { walk: Walk }) {
       <View style={styles.rowBody}>
         <View style={styles.rowTop}>
           <Text style={styles.rowKind}>{walk.kind === "training" ? "Training" : "Walk"}</Text>
-          <Text style={styles.rowMeta}>
-            {formatDate(walk.startedAt)}
-            {walk.durationSeconds ? ` · ${formatDuration(walk.durationSeconds)}` : ""}
-          </Text>
+          <Text style={styles.rowMeta}>{meta}</Text>
         </View>
+        {walk.locationName ? (
+          <Text style={styles.rowLocation} numberOfLines={1}>
+            📍 {walk.locationName}
+          </Text>
+        ) : null}
         {walk.notes ? (
           <Text style={styles.rowNotes} numberOfLines={2}>
             {walk.notes}
@@ -91,7 +102,8 @@ function WalkRow({ walk }: { walk: Walk }) {
           </View>
         ) : null}
       </View>
-    </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.paperDim} />
+    </Pressable>
   );
 }
 
@@ -107,6 +119,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     paddingHorizontal: H_PADDING,
     paddingVertical: 14,
@@ -136,6 +149,10 @@ const styles = StyleSheet.create({
     color: colors.paper,
   },
   rowMeta: {
+    fontSize: 12,
+    color: colors.paperDim,
+  },
+  rowLocation: {
     fontSize: 12,
     color: colors.paperDim,
   },
