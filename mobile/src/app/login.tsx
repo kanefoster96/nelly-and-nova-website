@@ -50,8 +50,8 @@ export default function LoginScreen() {
     }
 
     setStatus("idle");
-    // TODO: once /profile and /admin screens exist, route by role like the
-    // website's LoginForm does. For now this just confirms a session exists.
+    // "/" is the auth/role gate (src/app/index.tsx) — it routes to /admin,
+    // /customer or /pending once the session has hydrated.
     router.replace("/");
   }
 
