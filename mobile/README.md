@@ -142,6 +142,40 @@ session, or changing plan — that's the Sessions tab's job (calendar icon,
 already scaffolded), kept separate per how this was scoped. Only a
 read-only next-session summary + any notice lives on the profile card.
 
+### Walk/training tracker (`customer/walks/`)
+
+Reached from a "Walks" button on the profile card. Two screens, pushed like
+`profile` (own back button, tab bar hidden):
+
+- **`walks/index.tsx`** — history for the active dog, newest first, plus a
+  "Start a walk" button.
+- **`walks/track.tsx`** — a small state machine (idle → tracking →
+  finished): pick Walk or Training, Start (tags a start location via
+  `expo-location`, best-effort — the walk still tracks fine if permission is
+  denied), a live timer, the dog's **current homework** (their most recent
+  *published* report card's items — real `report_cards`/`report_card_items`)
+  shown so items can be ticked off mid-session, then Stop → notes → optional
+  **Share to community** → Save.
+
+New tables (`walk_tracker` migration): **`walks`** (own-account
+read/write/delete via RLS — the *owner* logs these, unlike the
+trainer-only-written `training_sessions`) and **`homework_completions`**, a
+repeatable log — one row per time an item is marked done, not a one-off
+checkbox, since homework gets practiced across many sessions. A `walks` row
+is inserted the moment you hit Start (so a homework mark mid-walk has
+something to link to via `walk_id`) and updated when you Stop; the history
+list only shows finished walks (`ended_at is not null`). Sharing composes a
+post from the duration/notes and reuses the existing community `createPost`
+(`lib/community.ts`) — same membership-gated insert policy as any other
+post — then links `walks.shared_post_id` back to it.
+
+`lib/walks.ts` has the full data layer: `startWalk`, `finishWalk`,
+`markHomeworkDone`, `getHomeworkForDog`, `getWalks`, `shareWalkToCommunity`.
+
+Not built: distance/route tracking (only a single start location is
+captured, not a live path — a bigger feature, background location
+permissions included, if wanted later) and editing/deleting a past walk.
+
 ## Project structure
 
 ```
@@ -156,8 +190,11 @@ src/
     admin/
       index.tsx                  # admin app placeholder
     customer/
-      _layout.tsx                  # Stack: guard + (tabs) + profile
+      _layout.tsx                  # Stack: guard + (tabs) + profile + walks/*
       profile.tsx                   # dog profile card (pushed, from top-bar avatar)
+      walks/
+        index.tsx                     # walk/training history + "Start a walk"
+        track.tsx                      # live tracker: timer, homework, notes, share
       (tabs)/
         _layout.tsx                   # tab shell (top bar + 5 tabs)
         index.tsx                      # Home — the community feed
@@ -185,6 +222,7 @@ src/
     session.ts                 # live account (role, owner, dogs, active dog) — see above
     community.ts                # feed reads/writes — posts, likes, comments
     dogs.ts                      # per-dog stats, next session + notices
+    walks.ts                      # walk/training log + homework mark-off + share
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -211,7 +249,10 @@ Every screen picks up the change automatically since they all render `<Logo />`.
   post/comment at both the UI and the database layer.
 - The dog profile card (avatar → `/customer/profile`): stats, breed,
   multi-dog switcher, next/today's session with any real trainer notice
-  (weather/heat/cancellation/info), and a hand-off to Reports.
+  (weather/heat/cancellation/info), and a hand-off to Reports and Walks.
+- The walk/training tracker (`/customer/walks`): timed sessions, a start
+  location, homework mark-off mid-session, notes, history, and sharing a
+  finished walk to the community feed.
 
 ## What's next
 
@@ -226,6 +267,7 @@ off the profile card. Also queued:
 - Photo/video attachments on posts — `post_media` and the display side (the
   edge-to-edge media grid) are ready; there's no image picker/upload flow
   yet, so posting is text-only for now.
+- Route/distance tracking for walks (currently start-location-only).
 - The admin app (currently a placeholder screen).
 - Wiring the notification bell up to real data once a `notifications` table
   exists (the website's own inbox is still sample data too — see

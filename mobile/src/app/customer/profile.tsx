@@ -93,7 +93,14 @@ export default function ProfileScreen() {
         {shown?.breed ? <Text style={styles.breed}>{shown.breed}</Text> : null}
       </View>
 
-      <Button title="Reports" variant="secondary" onPress={() => router.push("/customer/reports")} />
+      <View style={styles.actionsRow}>
+        <View style={styles.actionsCol}>
+          <Button title="Walks" variant="secondary" onPress={() => router.push("/customer/walks")} />
+        </View>
+        <View style={styles.actionsCol}>
+          <Button title="Reports" variant="secondary" onPress={() => router.push("/customer/reports")} />
+        </View>
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next session</Text>
@@ -239,6 +246,14 @@ const styles = StyleSheet.create({
   },
   nameBlock: {
     paddingHorizontal: H_PADDING,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: H_PADDING,
+  },
+  actionsCol: {
+    flex: 1,
   },
   name: {
     fontSize: 22,

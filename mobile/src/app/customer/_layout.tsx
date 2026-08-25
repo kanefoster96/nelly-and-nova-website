@@ -30,6 +30,8 @@ export default function CustomerLayout() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ title: "Profile" }} />
+      <Stack.Screen name="walks/index" options={{ title: "Walks" }} />
+      <Stack.Screen name="walks/track" options={{ title: "Track a walk" }} />
     </Stack>
   );
 }

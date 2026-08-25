@@ -135,14 +135,18 @@ export async function getFeed(): Promise<Post[]> {
 }
 
 /** Start a post. Requires an active membership — enforced by RLS, not just the UI. */
-export async function createPost(body: string): Promise<{ error: string | null }> {
+export async function createPost(body: string): Promise<{ error: string | null; postId: string | null }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
+  if (!user) return { error: "Not signed in.", postId: null };
 
-  const { error } = await supabase.from("posts").insert({ author_id: user.id, body: body.trim() });
-  return { error: error?.message ?? null };
+  const { data, error } = await supabase
+    .from("posts")
+    .insert({ author_id: user.id, body: body.trim() })
+    .select("id")
+    .single();
+  return { error: error?.message ?? null, postId: data?.id ?? null };
 }
 
 export async function addComment(postId: string, body: string): Promise<{ error: string | null }> {
