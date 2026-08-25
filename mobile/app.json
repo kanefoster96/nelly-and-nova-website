@@ -2,6 +2,7 @@
   "expo": {
     "name": "Nelly & Nova",
     "slug": "nelly-and-nova",
+    "owner": "kanefoster96",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +11,10 @@
     "backgroundColor": "#0a0a0a",
     "ios": {
       "bundleIdentifier": "uk.co.nellyandnova.app",
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "uk.co.nellyandnova.app",

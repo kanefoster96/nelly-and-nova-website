@@ -34,11 +34,49 @@ npm run start           # opens Expo dev tools — scan the QR with Expo Go,
 Other scripts:
 
 ```bash
-npm run ios      # iOS simulator (macOS only)
-npm run android  # Android emulator
-npm run web      # run in a browser (handy for quick UI iteration)
-npm run lint     # eslint
+npm run ios         # iOS simulator (macOS only)
+npm run android     # Android emulator
+npm run web         # run in a browser (handy for quick UI iteration)
+npm run lint        # eslint
+npm run typecheck   # tsc --noEmit
 ```
+
+## Shipping to TestFlight (EAS Build)
+
+Same setup/workflow as the Kanvas Academy app — `eas.json` here mirrors its
+build profiles exactly. One-time setup, then it's the usual `eas build` /
+`eas submit` from your terminal:
+
+```bash
+npx eas login     # once per machine — your Expo account (kanefoster96)
+npx eas init       # once per app — links this project to an EAS project,
+                    # writes extra.eas.projectId into app.json. This is
+                    # also the one thing push notifications are waiting on
+                    # (see Push notifications below) — same step covers both.
+```
+
+Then, same two commands every release:
+
+```bash
+npx eas build --platform ios --profile production
+npx eas submit --platform ios --profile production --latest   # uploads to TestFlight
+```
+
+(`--latest` submits the build that just finished, without rebuilding — drop
+it and `eas submit` will offer a picker instead.) First submit will prompt
+for your Apple ID / App Store Connect access if EAS doesn't already have it
+cached from Kanvas Academy — it can reuse the same Apple Developer account
+if this app is under the same team, otherwise it'll ask which team to use.
+
+`eas.json`'s `production` profile has `autoIncrement: true` and
+`appVersionSource: "remote"`, so EAS manages the build number for you —
+there's nothing to hand-edit in `app.json` between releases, just bump
+`expo.version` when you actually want a new marketing version (1.0.1, etc).
+
+`preview` and `development` profiles are there too (internal-distribution
+builds — an ad-hoc/simulator build to test without going through
+TestFlight, and a dev-client build for local native-module development)
+but production → TestFlight is the one you'll use most.
 
 ## Environment
 
@@ -66,14 +104,14 @@ still works).
 
 Real device push (e.g. a coach's "you're next for pickup" reaching the
 phone even with the app closed) needs this project linked to an EAS
-project: run `npx eas init` (a free Expo account, one-time). That writes
-`extra.eas.projectId` into `app.json` — nothing else changes, since
-`lib/push.ts` already reads it. Without it, push registration no-ops (a
-console warning) and everything still works via the in-app/Realtime
-notifications (the bell, the profile card's ETA banner) — see **Collection
-routes & pickup ETAs** below. Also needs a development build rather than
-Expo Go (`expo run:ios` / `expo run:android`, or an EAS build) — Expo Go
-dropped remote push support in SDK 53.
+project — the `eas init` from **Shipping to TestFlight** above is the same
+step, nothing extra to do. That writes `extra.eas.projectId` into
+`app.json`, which `lib/push.ts` already reads. Without it, push
+registration no-ops (a console warning) and everything still works via the
+in-app/Realtime notifications (the bell, the profile card's ETA banner) —
+see **Collection routes & pickup ETAs** below. Also needs a development
+build rather than Expo Go (`expo run:ios` / `expo run:android`, or an EAS
+build) — Expo Go dropped remote push support in SDK 53.
 
 ## Auth & routing
 
