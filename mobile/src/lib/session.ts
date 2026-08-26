@@ -9,15 +9,12 @@
 import { useSyncExternalStore } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
-import { stopNotifications } from "@/lib/notifications";
 import type { User } from "@supabase/supabase-js";
 
 export type Role = "member" | "admin";
 export type AuthStatus = "loading" | "authed" | "anon";
 
 export type SessionDog = { id: string; name: string; photo: string };
-
-export type PickupLocation = { address: string; lat: number; lng: number } | null;
 
 export type Session = {
   /** auth.users id — same as profiles.id / dogs.account_id. */
@@ -29,8 +26,6 @@ export type Session = {
   dogs: SessionDog[];
   /** Which of `dogs` is currently selected (persisted). Null only when `dogs` is empty. */
   activeDogId: string | null;
-  /** Where this account is collected from for Walk & Train — set by the owner. */
-  pickupLocation: PickupLocation;
   role: Role;
 };
 
@@ -101,11 +96,7 @@ async function hydrate() {
   }
 
   const [profileRes, dogsRes] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("role, owner_name, avatar_url, pickup_address, pickup_lat, pickup_lng")
-      .eq("id", user.id)
-      .single(),
+    supabase.from("profiles").select("role, owner_name, avatar_url").eq("id", user.id).single(),
     supabase.from("dogs").select("id, name, photo_url").eq("account_id", user.id).order("sort_order"),
   ]);
 
@@ -126,25 +117,9 @@ async function hydrate() {
     avatarUrl: profile?.avatar_url ?? "",
     dogs,
     activeDogId: validActiveId,
-    pickupLocation:
-      profile?.pickup_lat != null && profile?.pickup_lng != null
-        ? { address: profile.pickup_address ?? "", lat: profile.pickup_lat, lng: profile.pickup_lng }
-        : null,
     role: profile?.role === "admin" ? "admin" : "member",
   };
   status = "authed";
-  emit();
-}
-
-/** Save the account's pickup location (used for Walk & Train collection). */
-export async function setPickupLocation(location: { address: string; lat: number; lng: number }) {
-  if (!session) return;
-  const { error } = await supabase
-    .from("profiles")
-    .update({ pickup_address: location.address, pickup_lat: location.lat, pickup_lng: location.lng })
-    .eq("id", session.id);
-  if (error) return;
-  session = { ...session, pickupLocation: location };
   emit();
 }
 
@@ -174,7 +149,6 @@ export async function signOut() {
   status = "anon";
   session = null;
   emit();
-  stopNotifications();
 }
 
 function subscribe(cb: () => void) {

@@ -20,7 +20,6 @@ below).
 - **Expo (SDK 57)** + **Expo Router** (file-based routing) + **TypeScript**
 - **React Native**
 - **Supabase** (`@supabase/supabase-js`) — same project as the website, incl. Storage
-- **react-native-maps**, **expo-location**, **expo-image-picker** — the walk tracker
 
 ## Getting started
 
@@ -50,9 +49,7 @@ build profiles exactly. One-time setup, then it's the usual `eas build` /
 ```bash
 npx eas login     # once per machine — your Expo account (kanefoster96)
 npx eas init       # once per app — links this project to an EAS project,
-                    # writes extra.eas.projectId into app.json. This is
-                    # also the one thing push notifications are waiting on
-                    # (see Push notifications below) — same step covers both.
+                    # writes extra.eas.projectId into app.json.
 ```
 
 Then, same two commands every release:
@@ -90,29 +87,6 @@ so no extra config is needed. Without a `.env`, the app still renders (a
 console warning is logged) but every Supabase call fails, which
 `lib/session.ts` treats as signed-out.
 
-### Maps (Android)
-
-The walk tracker's maps (`components/walks/RouteMap.tsx`, via
-`react-native-maps`) use Apple Maps on iOS — no key needed, it just works.
-**Android needs a Google Maps API key** to render anything. Add one under
-`plugins → ["react-native-maps", { "androidGoogleMapsApiKey": "…" }]` in
-`app.json` before testing on Android; without it the map area renders blank
-on that platform (everything else — timer, distance, saving, sharing —
-still works).
-
-### Push notifications
-
-Real device push (e.g. a coach's "you're next for pickup" reaching the
-phone even with the app closed) needs this project linked to an EAS
-project — the `eas init` from **Shipping to TestFlight** above is the same
-step, nothing extra to do. That writes `extra.eas.projectId` into
-`app.json`, which `lib/push.ts` already reads. Without it, push
-registration no-ops (a console warning) and everything still works via the
-in-app/Realtime notifications (the bell, the profile card's ETA banner) —
-see **Collection routes & pickup ETAs** below. Also needs a development
-build rather than Expo Go (`expo run:ios` / `expo run:android`, or an EAS
-build) — Expo Go dropped remote push support in SDK 53.
-
 ## Auth & routing
 
 `src/app/index.tsx` is the entry point and the only place that decides where
@@ -136,27 +110,21 @@ similar) field once one exists.
 
 ## The customer app (`src/app/customer/`)
 
-An Instagram-style shell:
+Onboarding happens on the website; once someone's membership is set up
+there, they're sent to sign into the app. So the app itself skips
+onboarding entirely and gets straight to five tabs, kept deliberately
+simple for a first working version:
 
-- **Top bar** (`components/TopBar.tsx`) — account avatar top-left (opens the
-  dog profile card, see below), app name centred, notifications bell
-  top-right.
-- **Bottom tabs** (`customer/(tabs)/_layout.tsx`) — 5 items: Home, **Walks**,
-  Sessions, Reports, Messages.
-
-The original 5 were Home/Sessions/Reports/Community/Messages; **Community
-was dropped and replaced with Walks** once Home became the community feed
-itself (see below) — a separate Community tab had nothing left to do, and
-the walk/training tracker (this session's build) explicitly needed to be
-"its own menu item", not just a button off the profile card.
+- **Top bar** (`components/TopBar.tsx`) — account avatar top-left (opens
+  Your Dog, see below), app name centred, notifications bell top-right
+  (not wired to anything yet — see the `TODO(backend)` in that file).
+- **Bottom tabs** (`customer/(tabs)/_layout.tsx`) — **Home, Your Dog, Next
+  Session, Calendar, Homework**.
 
 `customer/` is a Stack (`customer/_layout.tsx`, holds the auth/membership
-guard) with children beyond the `(tabs)` group for anything that shouldn't
-be a 6th tab: `profile` (from the top-bar avatar), `walks/track` (the live
-recording screen — full-bleed, own close button, no header) and
-`walks/[id]` (one walk's detail page). Any future screen like this
-(session detail, report card detail, …) belongs alongside them, not inside
-`(tabs)`.
+guard) with just the `(tabs)` group registered as its only child — every
+customer-facing screen right now is one of the five tabs, so there's
+nothing else in the Stack to route to.
 
 **Layout rule for every screen in the app:** nothing sits inside a padded
 "container" unless it's a genuinely intentional card (a notice, a comment
@@ -166,9 +134,9 @@ padding themselves; individual rows (text, avatars, buttons) add their own.
 See `customer/index.tsx` / `components/community/PostCard.tsx` for the
 reference implementation (media has zero inset; text/actions do).
 
-### Home = the community feed
+### 1. Home = the community feed
 
-Home (`customer/index.tsx`) is a live Facebook-wall-style feed —
+Home (`customer/(tabs)/index.tsx`) is a live Facebook-wall-style feed —
 `lib/community.ts` reads/writes the real `posts`, `post_media`, `post_likes`
 and `post_comments` tables (same Supabase project as the website; see
 `lib/community/types.ts` there for the reference shape this mirrors). An
@@ -186,168 +154,80 @@ own-account-only), since the feed needs to show *other* members' dog names
 and photos — `profiles` stays locked to each account's own row (it holds
 email/phone, unlike `dogs`).
 
-Sessions, Reports and Messages are still stubs (`components/PlaceholderScreen.tsx`).
+### 2. Your Dog (`customer/(tabs)/your-dog.tsx`)
 
-### The dog profile card (`customer/profile.tsx`)
+Also reachable from the top-bar avatar. Real data throughout — `lib/dogs.ts`
+reads `dogs` (breed, age from `date_of_birth`) and `skills`/`dog_skills` (an
+overall level — same pillar/level algorithm as the website's
+`config/skills.ts`, ported to `src/config/skills.ts`, driven by the dog's
+real learnt-skills row). Multi-dog accounts get a switcher (pills, mirrors
+the website's); the selected dog persists across launches (`lib/session.ts`,
+`activeDog()` / `setActiveDog()`, AsyncStorage-backed like the website's
+localStorage version).
 
-Reached from the top-bar avatar. Real data throughout — `lib/dogs.ts` reads
-`dogs` (breed, age from `date_of_birth`), `skills`/`dog_skills` (an overall
-level — same pillar/level algorithm as the website's `config/skills.ts`,
-ported to `src/config/skills.ts`, driven by the dog's real learnt-skills
-row), and `training_sessions`/`session_notices` (the next/today's session,
-with any notice attached — `session_notices.kind` covers weather, heat,
-cancellation and general info; a trainer-written weather notice is the
-"remember to pack a coat" reminder, rather than an external weather API
-call).
+Below the stats sits the dog's **latest report card** (`lib/homework.ts`'s
+`getLatestReportCard()`) — title, session date, summary and its first few
+homework items, with "+N more on the Homework tab" pointing at the full
+library (see below). Deliberately **not** on this card: anything about the
+next session or booking — that's Next Session's and Calendar's job.
 
-Multi-dog accounts get a switcher (pills, mirrors the website's); the
-selected dog persists across launches (`lib/session.ts`, `activeDog()` /
-`setActiveDog()`, AsyncStorage-backed like the website's localStorage
-version). "Walks" and "Reports" buttons hand off to those.
+### 3. Next Session (`customer/(tabs)/next-session.tsx`)
 
-Deliberately **not** on this card: rescheduling or booking an extra
-session, or changing plan — that's the Sessions tab's job (calendar icon,
-already scaffolded), kept separate per how this was scoped. Only a
-read-only next-session summary + any notice lives on the profile card.
+A read-only, at-a-glance view of the dog's schedule: an active-membership
+row (`hasActiveMembership()`), then one large card for the next (or today's)
+session — kind, date/time, location — with any trainer notice attached
+(`training_sessions` + `session_notices`, same real tables as before;
+`session_notices.kind` covers weather, heat, cancellation and general
+info — a trainer-written weather notice is the "remember to pack a coat"
+reminder, rather than an external weather API call). Rescheduling,
+cancelling or booking extra sessions live on the Calendar tab, not here.
 
-**Pickup location**: the next-session block also shows where this account
-is collected from for Walk & Train — tap it to set/edit
-(`customer/pickup-location.tsx`: an address the owner types by hand, plus a
-"use my current location" button that drops a pin via `expo-location`, no
-geocoding key needed since only the coordinates matter for routing).
-Persisted on `profiles.pickup_address/pickup_lat/pickup_lng`
-(`lib/session.ts`, `setPickupLocation()`) — the same fields the coach's
-route planner reads (see **Collection routes** below).
+### 4. Calendar (`customer/(tabs)/calendar.tsx`)
 
-**Pickup ETA banner**: if the coach has sent a "you're next" notification
-today (see below), it shows right on the profile card, above the
-next-session block — real-time, not a refresh-to-see (`lib/notifications.ts`,
-Supabase Realtime).
+Every upcoming session for the active dog (`lib/dogs.ts`'s
+`getUpcomingSessions()`), each with inline **Reschedule**/**Cancel** links,
+plus a **Book an extra session** button at the top. Members can't edit
+`training_sessions` directly (RLS keeps that trainer-only) — everything here
+is a *request* the trainer reviews, same as the website's cancellation
+policy (`lib/calendar.ts`'s `requestReschedule()` / `requestCancellation()` /
+`requestExtraSession()`, all writing to `reschedule_requests` /
+`booking_requests`). There's no date picker yet — the reason/message field
+is where a preferred date goes for now.
 
-### Walks — a Strava-style tracker (`customer/walks/` + `(tabs)/walks.tsx`)
+### 5. Homework (`customer/(tabs)/homework.tsx`)
 
-Its own tab (see above). Three screens:
+The full homework library — every *published* report card's homework,
+newest first (`lib/homework.ts`'s `getHomeworkLibrary()`). New homework
+"unlocks" the library one card at a time as report cards are published, and
+once unlocked it stays accessible forever. The most recent card is pinned
+open at the top as the active practice checklist; older cards collapse into
+the library below but are just as checkable, since homework gets practised
+across many sessions, not once and done (`getCompletedItemIds()` /
+`markHomeworkDone()`, writing to `homework_completions` — a repeatable log,
+one row per mark-off, never un-checkable once done).
 
-- **`(tabs)/walks.tsx`** — history for the active dog, newest first (kind,
-  date, duration, distance, place, a shared badge), plus "Start a walk".
-  Tapping a row opens its detail page.
-- **`walks/track.tsx`** — the live recording screen, full-bleed with its own
-  close button (no header/tab bar, like Strava's recording view). A small
-  state machine (idle → tracking → finished):
-  - **Start** picks Walk or Training, tags a start location via
-    `expo-location` (best-effort — tracking still works if permission is
-    denied).
-  - **Tracking** samples the route continuously (`Location.watchPositionAsync`,
-    every ~10 m / 5 s while the screen is open — foreground only, no
-    background-location entitlements needed) and draws it live on a map
-    (`components/walks/RouteMap.tsx`, `react-native-maps`) with a running
-    timer and distance (great-circle sum over the sampled points,
-    `routeDistanceMeters()` in `lib/walks.ts`). The dog's **current
-    homework** (their most recent *published* report card's items — real
-    `report_cards`/`report_card_items`) is shown so items can be ticked off
-    mid-session.
-  - **Stop → finished**: name the place, add notes, attach photos (picker or
-    camera, `expo-image-picker`), then optionally **share to the
-    community feed** → Save.
-- **`walks/[id].tsx`** — a walk's detail page: full route map, duration /
-  distance / pace, place, notes, homework practiced, and its photos —
-  plus a "Share to community" button if it wasn't shared at save time.
+## What was pulled back out
 
-New tables (`walk_tracker` + `walk_tracker_strava` migrations):
+A walk/training tracker ("Strava for dog walks") and a coach
+route-planner + pickup-notification system were built earlier in this
+app's development, then deliberately removed to keep the first working
+version simple — both are meant to come back as a later layer. Removed:
+the whole `customer/walks/` + `(tabs)/walks.tsx` screens,
+`components/walks/RouteMap.tsx`, `lib/walks.ts`, `lib/storage.ts`, the
+`admin/index.tsx` route planner, `lib/collections.ts`, `lib/notifications.ts`,
+`lib/push.ts`, and the `react-native-maps`/`expo-location`/
+`expo-image-picker`/`expo-notifications` packages. `admin/index.tsx` is
+back to a plain "coming soon" placeholder.
 
-- **`walks`** — the owner's own log (insert/update/delete gated to their
-  account via RLS, unlike the trainer-only-written `training_sessions`),
-  now also carrying `distance_meters`, `location_name`, and start/end
-  lat/lng.
-- **`walk_points`** — the sampled route, batch-inserted on save (not
-  written point-by-point during tracking, so a flaky connection mid-walk
-  can't lose progress — everything's held client-side until Stop).
-- **`walk_photos`** — photos attached to a walk regardless of whether/when
-  it's shared (sharing reuses the same uploaded URLs in `post_media`,
-  rather than re-uploading).
-- **`homework_completions`** — unchanged from before: a repeatable log, one
-  row per mark-off, not a one-off checkbox, since homework gets practiced
-  across many sessions.
-
-A `walks` row is inserted the moment you hit Start (so a homework mark
-mid-walk has something to link to via `walk_id`) and updated on Stop; the
-history list only shows finished walks (`ended_at is not null`).
-
-**Storage**: a new public `media` bucket (Supabase Storage) holds uploaded
-images — writes are scoped to the uploader's own folder
-(`{account_id}/...`) via storage RLS, reads are public since this is
-community content. `lib/storage.ts` has the upload helper
-(`uploadImage(localUri, folder)`); `lib/community.ts`'s `createPost()` now
-takes an optional `mediaUrls[]` so any post (not just a shared walk) can
-carry photos once there's a picker on the composer too.
-
-Sharing composes a post from duration/distance/place/notes and calls the
-same membership-gated `createPost()` from the community feed, with any
-photo URLs attached, then links `walks.shared_post_id` back to it — so a
-shared walk **is** a community post (recommending a place, showing
-progress/issues) and shows up in Home like any other.
-
-`lib/walks.ts` has the full data layer: `startWalk`, `finishWalk`,
-`uploadWalkPhotos`, `markHomeworkDone`, `getHomeworkForDog`, `getWalks`,
-`getWalkDetail`, `shareWalkToCommunity`, `routeDistanceMeters`.
-
-**Scoped down deliberately:** tracking is foreground-only (the screen must
-stay open/awake — no background-location permissions, which need extra App
-Store justification and entitlements); no editing/deleting a past walk; no
-automatic place lookup from coordinates (an owner types the location name
-by hand rather than this reverse-geocoding, which would need a geocoding
-API key). See **Maps (Android)** above for the one manual setup step this
-needs.
-
-### Collection routes & pickup ETAs (`admin/index.tsx` + `lib/collections.ts`)
-
-The first real piece of the admin/coach app: a route planner for today's
-Walk & Train collections, and the notification that reaches an owner when
-the coach is heading their way.
-
-- **`admin/index.tsx`** — today's collections (real `training_sessions`
-  where `kind = 'walk-and-train'`, scheduled today), in route order, each
-  showing the dog/owner, time, pickup address (from the owner's saved
-  `profiles.pickup_*`) and a pending/en-route/collected status. Up/down
-  arrows reorder the route (persisted to `route_order`) — deliberately
-  arrow buttons, not drag-and-drop, for reliability. **Start next pickup**
-  marks the current "en route" stop collected and sends the *next* pending
-  stop's owner a notification.
-- **No live coach location, by design** — the ask was explicitly that
-  customers shouldn't see it.
-- **No precise ETA, deliberately** — a real one needs a paid Directions API
-  key just to say "you're roughly next"; not worth it. Every notification
-  sends the same fixed heads-up — "usually around 10–20 minutes" — the
-  moment "Start next pickup" is tapped, rather than computing a number from
-  distance/speed. (An earlier version of this did estimate from straight-line
-  distance between saved pickup points; dropped in favour of this simpler,
-  free, equally-honest fixed window.)
-
-**Notifications are real two ways now:**
-
-- **In-app / Realtime** — the `notifications` table (staff-insert-only via
-  RLS; an owner can only read/mark-read their own) is in the
-  `supabase_realtime` publication, so `lib/notifications.ts` gets pushed
-  updates instantly over a Realtime channel — no polling. Drives the
-  top-bar bell's unread badge (`useUnreadNotificationCount()`), the profile
-  card's ETA banner (`useLatestPickupEta()`), and the full list at
-  `customer/notifications.tsx` (tap to mark read, "mark all as read"). Works
-  the moment the app is open, or the next time it is.
-- **Real OS push** (the phone buzzes even with the app closed) —
-  `lib/push.ts` registers an Expo push token (permission + `profiles.push_token`)
-  once the customer app loads, and `startNextPickup()` calls the new
-  `send-push` **Edge Function** with that token. The function re-checks the
-  caller is an admin itself (not just RLS) before relaying to Expo's push
-  API, so it can't be used to spam arbitrary accounts. **This needs the
-  project linked to an EAS project** (`npx eas init` — free Expo account,
-  one-time, not done yet) for `app.json`'s `extra.eas.projectId` to exist;
-  until then `registerForPushNotifications()` no-ops with a console
-  warning and everything still works via the in-app/Realtime path above.
-  Also: push notifications need a development build, not Expo Go (Expo Go
-  dropped remote push support in SDK 53).
-
-**Not built:** the rest of the admin app beyond this one screen, and
-drag-and-drop route reordering (arrows only, for now).
+**Nothing was dropped at the database level** — `walks`, `walk_points`,
+`walk_photos`, `homework_completions`, `notifications`, the public `media`
+Storage bucket, the `send-push` Edge Function, and
+`profiles.pickup_address/pickup_lat/pickup_lng/push_token` +
+`training_sessions.route_order/pickup_status` all still exist in the real
+Supabase project, untouched — only the app code that read/wrote them was
+removed, so this can be picked back up without redoing any migrations. See
+git history on the files above (and on `admin/index.tsx`) for the working
+implementation.
 
 ## Project structure
 
@@ -361,65 +241,42 @@ src/
     forgot-password.tsx         # Password reset request
     pending.tsx                  # member, no dog on the account yet
     admin/
-      index.tsx                  # today's collection route planner (see above) — rest is placeholder
+      index.tsx                  # placeholder — "Admin app — coming soon"
     customer/
-      _layout.tsx                  # Stack: guard + (tabs) + profile + walks/* + pickup-location + notifications
-      profile.tsx                   # dog profile card (pushed, from top-bar avatar)
-      pickup-location.tsx            # set/edit the account's collection pickup point
-      notifications.tsx               # full notification list (from the bell)
-      walks/
-        track.tsx                     # live recording screen: map, timer, homework, share
-        [id].tsx                       # one walk's detail — route map, stats, photos
+      _layout.tsx                  # Stack: auth/membership guard + (tabs)
       (tabs)/
         _layout.tsx                   # tab shell (top bar + 5 tabs)
-        index.tsx                      # Home — the community feed
-        walks.tsx                       # walk/training history + "Start a walk"
-        sessions.tsx                     # stub (reschedule/book extra/change plan → here)
-        reports.tsx                       # stub
-        messages.tsx                       # stub
+        index.tsx                      # 1. Home — the community feed
+        your-dog.tsx                    # 2. Your Dog — stats, breed, latest report card
+        next-session.tsx                 # 3. Next Session — membership + next/today's session
+        calendar.tsx                      # 4. Calendar — upcoming sessions, reschedule/cancel/book
+        homework.tsx                       # 5. Homework — the full accumulating library
 
   components/              # reusable UI primitives
     Logo.tsx                 # PLACEHOLDER logo mark — swap for the real logo
     Avatar.tsx                # round avatar (photo or initial fallback)
-    TopBar.tsx                 # avatar · title · notification bell (real unread badge)
+    TopBar.tsx                 # avatar · title · notification bell (not wired up yet)
     Button.tsx                  # primary/secondary/ghost pill button
     TextField.tsx                # labelled input, matches the website's <Field>
-    PlaceholderScreen.tsx          # "not built yet" stub for a tab
+    PlaceholderScreen.tsx          # "not built yet" stub
     community/
       Composer.tsx                  # collapsed pill -> post form (members only)
       PostCard.tsx                   # one feed post — edge-to-edge media, inline comments
-    walks/
-      RouteMap.tsx                    # route polyline + live/start/finish markers — also used
-                                        # for a single pickup pin on pickup-location.tsx
 
   config/
     skills.ts                  # skill pillars/levels — mirrors the website's + the real `skills` table
 
   lib/
     supabase.ts               # Supabase client (AsyncStorage-backed session)
-    session.ts                 # live account (role, owner, dogs, active dog, pickup location)
+    session.ts                 # live account (role, owner, dogs, active dog)
     community.ts                # feed reads/writes — posts, likes, comments (+ photos)
-    dogs.ts                      # per-dog stats, next session + notices
-    walks.ts                      # walk/training log, route, photos, homework mark-off, share
-    storage.ts                     # image upload → the `media` Storage bucket
-    notifications.ts                # real-time notifications store (Supabase Realtime)
-    push.ts                          # Expo push token registration + sendPushNotification()
-    collections.ts                    # coach route planning + "Start next pickup"
+    dogs.ts                      # per-dog stats, next/upcoming sessions + notices
+    homework.ts                   # report cards + homework items, completion log
+    calendar.ts                    # reschedule/cancellation/extra-session requests
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
 ```
-
-## Edge Functions
-
-- **`send-push`** — relays one push notification to Expo's push API on
-  behalf of an admin action (`lib/push.ts`'s `sendPushNotification()`).
-  Requires a valid JWT (`verify_jwt: true`) and re-checks the caller is
-  `profiles.role = 'admin'` itself before sending, so it can't be used to
-  push arbitrary messages to arbitrary accounts even by another signed-in
-  member. Deployed via the Supabase MCP tools — view/redeploy with
-  `list_edge_functions` / `deploy_edge_function` against project
-  `kqreuupspgifbhhxpfxu`.
 
 ## Swapping in the real logo
 
@@ -436,70 +293,55 @@ Every screen picks up the change automatically since they all render `<Logo />`.
 
 - Login, create account and forgotten-password screens, wired up to
   Supabase auth.
-- Role/membership-based routing (admin vs. customer vs. pending).
-- The customer app shell — top bar + 5-tab bottom nav (Home, Walks,
-  Sessions, Reports, Messages).
-- Home: a live community feed (posts, likes, comments, photos),
+- Role/membership-based routing (admin vs. customer vs. pending). No
+  onboarding in the app itself — that happens on the website first, and an
+  account arrives here already set up.
+- The customer app shell — top bar + 5-tab bottom nav: **Home, Your Dog,
+  Next Session, Calendar, Homework**.
+- **Home**: a live community feed (posts, likes, comments, photos),
   membership-gated to post/comment at both the UI and the database layer.
-- The dog profile card (avatar → `/customer/profile`): stats, breed,
-  multi-dog switcher, next/today's session with any real trainer notice
-  (weather/heat/cancellation/info), and a hand-off to Reports and Walks.
-- **Walks** (its own tab): a Strava-style tracker — live route map,
-  timer, distance, homework mark-off mid-session, place + notes + photos,
-  a history list, per-walk detail pages, and sharing a finished walk to
-  the community feed (as a real post, with photos).
-- **Pickup location** on the profile card, owner-editable, feeding straight
-  into the coach's route planner.
-- **Real, live notification bell** — unread badge + full list, pushed
-  instantly over Supabase Realtime, *and* real OS push via a `send-push`
-  Edge Function once `eas init` links a project (in-app path works either
-  way).
-- **Collection route planner** (`admin/index.tsx`, the first real admin
-  screen): today's Walk & Train stops in order, reorderable, "Start next
-  pickup" sends the next owner a heads-up (a fixed ~10–20 min window, not
-  a computed ETA — no Directions API key needed or wanted). No live coach
-  location — by design, per the ask.
+- **Your Dog**: stats, breed, multi-dog switcher, and the latest report
+  card's homework preview.
+- **Next Session**: active-membership status + a large next/today's-session
+  card with any real trainer notice (weather/heat/cancellation/info).
+- **Calendar**: every upcoming session, with reschedule/cancel requests and
+  a "book an extra session" request form.
+- **Homework**: the full accumulating homework library across every
+  published report card, most recent pinned open as an active checklist,
+  older ones collapsible — all checkable, forever.
+- `admin/index.tsx` is a plain placeholder for now.
 
 ## What's next
 
-Menu pages for Sessions, Reports and Messages — mirroring the website's
-member area (see `app/profile/`, `app/messages/` and `lib/` in the root
-project for the shape of the data). Held off deliberately until asked for,
-per the current build order. Sessions in particular now owns rescheduling,
-booking an extra session and changing plan — deliberately kept off the
-profile card. Also queued:
+Per the current build order, this app is being kept deliberately simple
+until the five tabs above are working end-to-end. Queued for later:
 
-- Background location for walks (currently foreground-only — the tracking
-  screen has to stay open) and editing/deleting a past walk.
-- Automatic place lookup from coordinates (currently a manual text field) —
-  needs a geocoding API key. Same applies to the pickup-location screen.
-- A photo picker on the community composer itself (`createPost()` already
-  accepts `mediaUrls[]` — the walk-share flow uses it; the composer UI just
-  doesn't have a picker yet).
-- The rest of the admin app beyond the collection route planner.
-- Linking an EAS project (`npx eas init`, needs a free Expo account) — the
-  one remaining step for real device push to actually deliver; everything
-  else for it is built (see **Collection routes & pickup ETAs** above).
+- **Walk/training tracker** ("Strava for dog walks") and the coach
+  **route-planner + pickup notifications** — both were built once already
+  and pulled back out to simplify the first working version; see **What
+  was pulled back out** above for exactly what that involved and what's
+  still sitting in the database ready for it.
+- The rest of the admin app beyond the placeholder.
 - Real app icon, splash screen and store listing assets.
-- An Android Google Maps API key (see **Maps (Android)** above) — iOS maps
-  work out of the box.
+- A date picker on the Calendar tab (reschedule/booking currently collect a
+  free-text preferred date via the reason/message field).
 
 ## Database
 
 The real Supabase project ("Nelly and Nova") already has a much fuller
 schema than the website's own client code uses yet — `report_cards`,
 `training_sessions`, `skills`/`dog_skills`, `library_drills`, etc. all exist
-for real, ready for those menu pages when we get to them. Run `list_tables`
-via the Supabase MCP tools (or the dashboard) rather than assuming the
-website's `lib/*` sample-data scaffolding reflects what's actually in the
-database — in several places (community, sessions, reports) the real tables
-are already ahead of the website's own UI.
+for real. Run `list_tables` via the Supabase MCP tools (or the dashboard)
+rather than assuming the website's `lib/*` sample-data scaffolding reflects
+what's actually in the database — in several places (community, sessions,
+reports) the real tables are already ahead of the website's own UI.
 
 `walks`, `walk_points`, `walk_photos`, `homework_completions` and
 `notifications` (plus the public `media` Storage bucket, the `send-push`
 Edge Function, and `profiles.pickup_*`+`push_token` /
 `training_sessions.route_order`+`pickup_status`) exist only because this
-app added them — there's no equivalent on the website
-yet. If the website ever gets its own walk-tracking or route-planning UI,
-it should read/write these same tables rather than inventing a parallel
-schema.
+app added them for the walk-tracker/route-planner work — there's no
+equivalent on the website. They're deliberately still there even though the
+app code that used them was removed (see **What was pulled back out**
+above); the app should read/write these same tables rather than inventing a
+parallel schema whenever that work resumes.

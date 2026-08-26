@@ -75,6 +75,33 @@ export function sessionKindLabel(kind: string): string {
   return KIND_LABEL[kind] ?? "Session";
 }
 
+export type UpcomingSession = {
+  id: string;
+  scheduledAt: string;
+  kind: string;
+  location: string;
+};
+
+/** All future scheduled sessions for this dog, soonest first — for the Calendar tab. */
+export async function getUpcomingSessions(dogId: string): Promise<UpcomingSession[]> {
+  const now = new Date();
+
+  const { data } = await supabase
+    .from("training_sessions")
+    .select("id, scheduled_at, kind, location")
+    .eq("dog_id", dogId)
+    .eq("status", "scheduled")
+    .gte("scheduled_at", now.toISOString())
+    .order("scheduled_at", { ascending: true });
+
+  return (data ?? []).map((s) => ({
+    id: s.id,
+    scheduledAt: s.scheduled_at,
+    kind: s.kind,
+    location: s.location ?? "",
+  }));
+}
+
 /** The next scheduled session for this dog (today's, if it's today), with any notices attached. */
 export async function getNextSession(dogId: string): Promise<NextSession | null> {
   const startOfToday = new Date();

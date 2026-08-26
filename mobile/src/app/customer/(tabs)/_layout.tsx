@@ -8,16 +8,21 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 const TABS: { name: string; label: string; icon: IconName; iconFocused: IconName }[] = [
   { name: "index", label: "Home", icon: "home-outline", iconFocused: "home" },
-  { name: "walks", label: "Walks", icon: "walk-outline", iconFocused: "walk" },
-  { name: "sessions", label: "Sessions", icon: "calendar-outline", iconFocused: "calendar" },
-  { name: "reports", label: "Reports", icon: "document-text-outline", iconFocused: "document-text" },
-  { name: "messages", label: "Messages", icon: "chatbubble-outline", iconFocused: "chatbubble" },
+  { name: "your-dog", label: "Your Dog", icon: "paw-outline", iconFocused: "paw" },
+  { name: "next-session", label: "Next Session", icon: "time-outline", iconFocused: "time" },
+  { name: "calendar", label: "Calendar", icon: "calendar-outline", iconFocused: "calendar" },
+  { name: "homework", label: "Homework", icon: "book-outline", iconFocused: "book" },
 ];
 
 /**
  * The customer app shell — a 5-item bottom tab bar (Instagram-style) under a
  * shared top bar (account avatar top-left, notifications bell top-right).
  * Auth/membership is guarded one level up, in customer/_layout.tsx.
+ *
+ * Simplified on purpose to these 5 (Home, Your Dog, Next Session, Calendar,
+ * Homework) for a first working version — Walks and the pickup-notification
+ * system were pulled back out; see the mobile README for how to reintroduce
+ * them later.
  */
 export default function CustomerTabsLayout() {
   const router = useRouter();
@@ -26,8 +31,10 @@ export default function CustomerTabsLayout() {
     <View style={{ flex: 1, backgroundColor: colors.ink }}>
       <TopBar
         title="Nelly & Nova"
-        onAvatarPress={() => router.push("/customer/profile")}
-        onBellPress={() => router.push("/customer/notifications")}
+        onAvatarPress={() => router.push("/customer/your-dog")}
+        onBellPress={() => {
+          // TODO: notifications, once there's something real to show here again.
+        }}
       />
       <Tabs
         screenOptions={{

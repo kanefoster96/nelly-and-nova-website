@@ -39,22 +39,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ],
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "Nelly & Nova uses your location to track your walk route while the app is open."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Nelly & Nova uses your photos to let you add pictures to a walk.",
-          "cameraPermission": "Nelly & Nova uses your camera to let you take pictures during a walk."
-        }
-      ],
-      "react-native-maps",
-      "expo-notifications"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
