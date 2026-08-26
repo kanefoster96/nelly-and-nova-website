@@ -97,7 +97,7 @@ session via `lib/session.ts` (same `profiles` + `dogs` tables the website's
 | Condition | Destination |
 | --- | --- |
 | Signed out | `/login` |
-| `profiles.role === "admin"` | `/admin` (placeholder for now) |
+| `profiles.role === "admin"` | `/admin` (the coach app) |
 | Member with a dog on the account | `/customer` (the customer app) |
 | Member with no dog yet | `/pending` ("not set up yet") |
 
@@ -270,6 +270,107 @@ removed, so this can be picked back up without redoing any migrations. See
 git history on the files above (and on `admin/index.tsx`) for the working
 implementation.
 
+## The coach app (`src/app/admin/`)
+
+`admin/index.tsx`'s "coming soon" placeholder is gone — this is the real
+trainer/coach side, same shell pattern as the customer app (`admin/_layout.tsx`
+guards on `role === "admin"` + registers push, `admin/(tabs)/_layout.tsx` is
+the 5-tab bar under the same `TopBar`, with the chat icon going to
+`/admin/messages` and the bell to `/admin/notifications`; the avatar opens
+the Menu tab, since there's no "your dog" for a coach).
+
+Two constraints shaped every screen here, worth knowing before extending it:
+there's **no live weather API anywhere in this codebase** (website included)
+— "weather" always means the trainer-authored `session_notices` rows, same
+as the customer app's Next Session card, not a forecast fetch; and **the
+mobile app has no image picker any more** (removed in the earlier
+simplification pass), so the drill library editor below is text-only for now.
+
+### 1. Dashboard (`admin/(tabs)/index.tsx`)
+
+Today's dogs — every `training_sessions` row scheduled today, in order,
+with any attached `session_notices` (weather/heat/cancellation/info)
+surfaced as a banner up top. Real data via `lib/adminSchedule.ts`'s
+`getSessionsForToday()`.
+
+### 2. Home (`admin/(tabs)/home.tsx`)
+
+The exact same community feed as the customer app's Home tab — both now
+render a shared `components/community/CommunityFeed.tsx` (factored out of
+the old `customer/(tabs)/index.tsx`, which lost nothing, it just delegates
+now). A coach can always post, per the `posts` RLS policy's `is_admin()`
+clause.
+
+Pinned above the feed: `components/admin/BroadcastComposer.tsx` — a
+collapsed "Send a notification to all customers" pill that expands into a
+title + message + an "Also email everyone" switch. `lib/broadcast.ts`'s
+`sendBroadcast()`:
+- inserts a real `notifications` row (`kind: "info"`) and sends a real push
+  for every real member, the same client-side pattern as `lib/adminNotify.ts`
+  (no server hop needed — RLS already lets an admin write on any account's
+  behalf, and Expo's push-send endpoint takes no secret);
+- if "Also email everyone" is on, calls the new **`broadcast-email`** Edge
+  Function (admin-JWT-checked, mirrors `send-push`'s auth pattern), which
+  loops every member's `profiles.email` through Resend. That needs a
+  `RESEND_API_KEY` **Supabase project secret** — separate from the website's
+  own Vercel-only env var of the same name — or it silently reports 0 sent
+  or a "skipped" note, same best-effort shape as the website's
+  `lib/email/resend.ts`.
+
+### 3. Calendar (`admin/(tabs)/calendar.tsx`)
+
+A month grid (`lib/adminSchedule.ts`'s `getSessionsInRange()`), each day
+tinted by what's on it that day — plain if nothing's scheduled, accent if
+sessions are, amber if any has a weather/heat notice, red if any has a
+cancellation notice (a legend sits under the grid). Tapping a day opens a
+sheet listing that day's sessions; tapping one of those opens a reschedule
+sheet for that dog with two modes:
+
+- **This session only** — a one-off move: type a new date + time,
+  `rescheduleOneOff()` updates just that `training_sessions` row.
+- **This & every future one** — the real schema has no recurring-slot row
+  (unlike the website's legacy `lib/schedule/` sample data), just individual
+  dated sessions, so "permanent" means bulk-updating every future
+  `status = 'scheduled'` session for that dog that falls on the same weekday
+  as the one you opened, to a new weekday + time
+  (`reschedulePermanent()` in `lib/adminSchedule.ts`).
+
+No date-picker library is wired in (same pragmatic choice as the customer
+Calendar tab) — date/time are plain `YYYY-MM-DD`/`HH:MM` text fields.
+
+### 4. Homework — drill library editor (`admin/(tabs)/homework.tsx`)
+
+Pillar (Engagement / Skills / Mindset) → category → drills-by-level → a
+drill's content blocks, all real: `library_categories` (already seeded with
+9 real rows), `library_drills`, `library_drill_blocks`
+(`lib/drillLibrary.ts`). Add a category, add a drill at a level, delete a
+drill, and edit a drill's blocks — heading/paragraph text only for now (see
+the image-picker note above); blocks reorder with up/down arrows, the same
+reliability-over-drag-and-drop choice used elsewhere in this app.
+
+### 5. Menu (`admin/(tabs)/menu.tsx`)
+
+Real customers: every `profiles.role = 'member'` row with their `dogs`
+(`lib/adminMembers.ts`), tap to expand a card and see email/phone/dogs. A
+**Payments** section is present but explicitly says "not connected yet" —
+there is no real payment backend anywhere in this codebase (the website's
+own payments screens are sample/localStorage data too, no live GoCardless
+integration), so this deliberately doesn't pretend otherwise. Also: log out.
+
+### Chat & notifications, coach side (`admin/messages/`, `admin/notifications.tsx`)
+
+`admin/messages/index.tsx` lists every real conversation
+(`lib/adminChat.ts`'s `getConversationsForAdmin()`), newest activity first,
+with an unread dot; tapping one opens `admin/messages/[id].tsx`, a thread
+screen sharing `lib/chat.ts`'s `getMessages()`/`subscribeToMessages()` with
+the customer side, but sending through `sendStaffMessage()` — which also
+calls `lib/adminNotify.ts` to push+notify that customer, same as the
+website's `/admin/chat`. `admin/notifications.tsx` reuses the same
+`components/notifications/NotificationsList.tsx` the customer app's bell
+uses, just with its own tap-through routes (currently only `chat_message` →
+`/admin/messages`, since the other two kinds are things a coach causes, not
+receives).
+
 ## Project structure
 
 ```
@@ -282,7 +383,18 @@ src/
     forgot-password.tsx         # Password reset request
     pending.tsx                  # member, no dog on the account yet
     admin/
-      index.tsx                  # placeholder — "Admin app — coming soon"
+      _layout.tsx                  # Stack: auth guard (role=admin) + push registration + (tabs)/notifications/messages
+      notifications.tsx             # full notification list (from the bell)
+      messages/
+        index.tsx                    # every real conversation, newest first
+        [id].tsx                      # one conversation's thread (send as staff)
+      (tabs)/
+        _layout.tsx                   # tab shell (top bar + 5 tabs)
+        index.tsx                      # 1. Dashboard — today's sessions + notices
+        home.tsx                        # 2. Home — community feed + broadcast composer
+        calendar.tsx                     # 3. Calendar — month grid + reschedule (one-off/permanent)
+        homework.tsx                      # 4. Homework — drill library editor (pillar/category/drill/blocks)
+        menu.tsx                           # 5. Menu — real customer/dog browser, payments (not connected), log out
     customer/
       _layout.tsx                  # Stack: auth guard + push registration + (tabs)/notifications/messages
       notifications.tsx             # full notification list (from the bell)
@@ -303,8 +415,13 @@ src/
     TextField.tsx                # labelled input, matches the website's <Field>
     PlaceholderScreen.tsx          # "not built yet" stub
     community/
-      Composer.tsx                  # collapsed pill -> post form (members only)
-      PostCard.tsx                   # one feed post — edge-to-edge media, inline comments
+      CommunityFeed.tsx              # shared feed rendering — customer Home + coach Home
+      Composer.tsx                    # collapsed pill -> post form (members only, or coach)
+      PostCard.tsx                     # one feed post — edge-to-edge media, inline comments
+    notifications/
+      NotificationsList.tsx          # shared bell-list rendering — customer + coach notifications
+    admin/
+      BroadcastComposer.tsx          # notification/email blast to every member
 
   config/
     skills.ts                  # skill pillars/levels — mirrors the website's + the real `skills` table
@@ -316,9 +433,15 @@ src/
     dogs.ts                      # per-dog stats, next/upcoming sessions + notices
     homework.ts                   # report cards + homework items, completion log
     calendar.ts                    # reschedule/cancellation/extra-session requests
-    chat.ts                          # real-time conversation with the trainer
+    chat.ts                          # real-time conversation with the trainer (member side)
     notifications.ts                  # real-time in-app notifications store (the bell)
     push.ts                             # Expo push token registration -> profiles.push_token
+    adminChat.ts                         # coach side of chat — list conversations, send as staff
+    adminNotify.ts                        # notify+push one member (coach-triggered events)
+    broadcast.ts                           # notify+push every member, optional email fan-out
+    adminSchedule.ts                        # today's/month's sessions, one-off & permanent reschedule
+    adminMembers.ts                          # real customer/dog browser
+    drillLibrary.ts                           # homework drill library CRUD (categories/drills/blocks)
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -361,26 +484,37 @@ Every screen picks up the change automatically since they all render `<Logo />`.
   card being published. The trainer's side of chat/reschedule/report-card
   publishing lives on the website at `/admin/chat`,
   `/admin/reschedule-requests` and `/admin/report-cards`.
-- `admin/index.tsx` is a plain placeholder for now.
+- **The coach app** (`admin/`) — real, not a placeholder any more: a
+  Dashboard (today's sessions + notices), Home (the same community feed,
+  plus a notification/email blast to every customer), Calendar (a
+  colour-coded month grid with one-off and permanent reschedule), a
+  Homework drill-library editor (real categories/drills/text blocks), a
+  Menu (real customer/dog browser; Payments explicitly marked "not
+  connected"), and its own chat inbox + notifications.
 
 ## What's next
 
-Per the current build order, this app is being kept deliberately simple
-until the five tabs above are working end-to-end. Queued for later:
-
-- **Walk/training tracker** ("Strava for dog walks") and the coach
-  **route-planner + pickup notifications** — both were built once already
-  and pulled back out to simplify the first working version; see **What
-  was pulled back out** above for exactly what that involved and what's
-  still sitting in the database ready for it.
-- The rest of the admin app beyond the placeholder and the three new real
-  pages (`/admin/chat`, `/admin/reschedule-requests`, `/admin/report-cards`).
+- **Walk/training tracker** ("Strava for dog walks") and the customer-facing
+  half of the coach **route-planner + pickup notifications** — both were
+  built once already and pulled back out to simplify the first working
+  version; see **What was pulled back out** above for exactly what that
+  involved and what's still sitting in the database ready for it.
 - Real app icon, splash screen and store listing assets.
-- A date picker on the Calendar tab (reschedule/booking currently collect a
-  free-text preferred date via the reason/message field).
+- A date/time picker on the Calendar tabs (both apps currently collect
+  dates via plain text fields — `YYYY-MM-DD`/`HH:MM`).
+- Photo/video blocks in the drill library editor — needs an image picker
+  back (removed in the earlier simplification pass); text blocks work today.
+- A real payments backend — nothing in this codebase (website or app) talks
+  to a live payment provider yet; the coach Menu tab says so rather than
+  faking it.
 - Linking an EAS project (`npx eas init`) — the one remaining step for real
   device push to actually deliver; the in-app/Realtime notification path
   works today regardless.
+- Setting the `RESEND_API_KEY` Supabase project secret (`supabase secrets
+  set`, or the dashboard) — the one remaining step for the Home tab's
+  "Also email everyone" toggle to actually send; the in-app/push part of a
+  broadcast works today regardless. This is a *project* secret, separate
+  from the website's own `RESEND_API_KEY` in its Vercel env.
 
 ## Database
 
@@ -416,3 +550,24 @@ resumes. The `send-push` Edge Function is also still deployed but unused —
 these three notification events call Expo's push API directly from the
 website's Next.js server instead (see **Chat & notifications** above), so
 it remains reserved for the deferred route planner's own push needs.
+
+`library_categories`/`library_drills`/`library_drill_blocks` and `skills`/
+`dog_skills` also predate this pass (used for real by `config/skills.ts`'s
+level algorithm already) but only got a real *editor* now, in the coach
+app's Homework tab (`lib/drillLibrary.ts`) — the website's own
+`/admin/homework` still edits a separate `config/homeworkLibrary.ts` +
+localStorage overlay (`lib/homework-library/store.ts`), not these tables, so
+the two aren't in sync yet.
+
+### Edge Functions
+
+- **`send-push`** — deployed, unused (see above; reserved for the deferred
+  route planner).
+- **`broadcast-email`** — real, used by the coach app's Home tab blast.
+  Admin-JWT-checked the same way `send-push` is, then emails every real
+  member via Resend using a `RESEND_API_KEY` **Supabase project secret**
+  (`supabase secrets set RESEND_API_KEY=...`, or the dashboard) — separate
+  from the website's own env var of the same name. No key set → it reports
+  back "skipped" rather than failing; the notification/push half of a
+  broadcast always goes out regardless, since that part doesn't touch email
+  at all.

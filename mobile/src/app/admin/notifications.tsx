@@ -2,11 +2,9 @@ import { NotificationsList } from "@/components/notifications/NotificationsList"
 import type { NotificationKind } from "@/lib/notifications";
 
 const ROUTES: Partial<Record<NotificationKind, string>> = {
-  chat_message: "/customer/messages",
-  reschedule_accepted: "/customer/calendar",
-  report_card_published: "/customer/homework",
+  chat_message: "/admin/messages",
 };
 
-export default function NotificationsScreen() {
+export default function AdminNotificationsScreen() {
   return <NotificationsList routeFor={(kind) => ROUTES[kind]} />;
 }
