@@ -116,8 +116,8 @@ onboarding entirely and gets straight to five tabs, kept deliberately
 simple for a first working version:
 
 - **Top bar** (`components/TopBar.tsx`) — account avatar top-left (opens
-  Your Dog, see below), app name centred, notifications bell top-right
-  (not wired to anything yet — see the `TODO(backend)` in that file).
+  Your Dog, see below), app name centred, a chat icon and a notifications
+  bell top-right (both real — see **Chat & notifications** below).
 - **Bottom tabs** (`customer/(tabs)/_layout.tsx`) — **Home, Your Dog, Next
   Session, Calendar, Homework**.
 
@@ -206,6 +206,44 @@ across many sessions, not once and done (`getCompletedItemIds()` /
 `markHomeworkDone()`, writing to `homework_completions` — a repeatable log,
 one row per mark-off, never un-checkable once done).
 
+### 6. Chat & notifications (`customer/messages.tsx`, `customer/notifications.tsx`)
+
+Reached from the top bar's chat icon and bell — pushed Stack screens, not
+tabs. Both are real, live features, not stubs:
+
+- **Chat** (`lib/chat.ts`) — one ongoing conversation per account with the
+  trainer, backed by real `conversations`/`messages` tables (Realtime, so a
+  staff reply appears instantly if the app's open). The trainer's side lives
+  on the website at `/admin/chat`.
+- **Notifications** (`lib/notifications.ts`) — a live, real list backed by
+  the real `notifications` table (also Realtime), drives the bell's unread
+  badge, and is the in-app path for three real events fired from the
+  website's admin actions:
+  - a staff **chat reply** (`/admin/chat`),
+  - a **reschedule request accepted** (`/admin/reschedule-requests`),
+  - a **new report card published** (`/admin/report-cards`).
+
+  Tapping a notification marks it read and, for the two schedule/homework
+  kinds, jumps straight to the relevant tab (Calendar / Homework); a chat
+  notification opens Messages.
+- **Real OS push** (the phone buzzes even with the app closed) —
+  `lib/push.ts` registers an Expo push token on launch (permission +
+  `profiles.push_token`) once the customer app loads. The website's
+  `lib/push/notify.ts` sends to it directly (no edge function in the loop
+  for these three events — the admin's Next.js server already has enough
+  privilege via RLS to write the notification and call Expo's push API in
+  the same request). **Needs an EAS project linked first**
+  (`npx eas init` — see **Shipping to TestFlight** above, not done yet) for
+  `app.json`'s `extra.eas.projectId` to exist; until then
+  `registerForPushNotifications()` no-ops with a console warning and
+  everything still works via the in-app/Realtime path above. Also needs a
+  development build rather than Expo Go (Expo Go dropped remote push
+  support in SDK 53).
+
+`notifications.kind` also still reserves `pickup_eta`/`dropoff_eta` for the
+deferred coach route-planner below — this table and its Realtime wiring
+were originally built for that feature and are now shared by both.
+
 ## What was pulled back out
 
 A walk/training tracker ("Strava for dog walks") and a coach
@@ -214,10 +252,13 @@ app's development, then deliberately removed to keep the first working
 version simple — both are meant to come back as a later layer. Removed:
 the whole `customer/walks/` + `(tabs)/walks.tsx` screens,
 `components/walks/RouteMap.tsx`, `lib/walks.ts`, `lib/storage.ts`, the
-`admin/index.tsx` route planner, `lib/collections.ts`, `lib/notifications.ts`,
-`lib/push.ts`, and the `react-native-maps`/`expo-location`/
-`expo-image-picker`/`expo-notifications` packages. `admin/index.tsx` is
-back to a plain "coming soon" placeholder.
+`admin/index.tsx` route planner, and `lib/collections.ts`, plus the
+`react-native-maps`/`expo-location`/`expo-image-picker` packages.
+`admin/index.tsx` is back to a plain "coming soon" placeholder.
+`lib/notifications.ts`/`lib/push.ts`/`expo-notifications` were removed in
+that same pass, then reintroduced (generalized beyond just pickup ETAs) for
+**Chat & notifications** above — they're real again, just not yet driving
+the route-planner's "you're next for pickup" push.
 
 **Nothing was dropped at the database level** — `walks`, `walk_points`,
 `walk_photos`, `homework_completions`, `notifications`, the public `media`
@@ -243,7 +284,9 @@ src/
     admin/
       index.tsx                  # placeholder — "Admin app — coming soon"
     customer/
-      _layout.tsx                  # Stack: auth/membership guard + (tabs)
+      _layout.tsx                  # Stack: auth guard + push registration + (tabs)/notifications/messages
+      notifications.tsx             # full notification list (from the bell)
+      messages.tsx                    # real-time chat with the trainer (from the chat icon)
       (tabs)/
         _layout.tsx                   # tab shell (top bar + 5 tabs)
         index.tsx                      # 1. Home — the community feed
@@ -255,7 +298,7 @@ src/
   components/              # reusable UI primitives
     Logo.tsx                 # PLACEHOLDER logo mark — swap for the real logo
     Avatar.tsx                # round avatar (photo or initial fallback)
-    TopBar.tsx                 # avatar · title · notification bell (not wired up yet)
+    TopBar.tsx                 # avatar · title · chat icon · notification bell (real, badged)
     Button.tsx                  # primary/secondary/ghost pill button
     TextField.tsx                # labelled input, matches the website's <Field>
     PlaceholderScreen.tsx          # "not built yet" stub
@@ -273,6 +316,9 @@ src/
     dogs.ts                      # per-dog stats, next/upcoming sessions + notices
     homework.ts                   # report cards + homework items, completion log
     calendar.ts                    # reschedule/cancellation/extra-session requests
+    chat.ts                          # real-time conversation with the trainer
+    notifications.ts                  # real-time in-app notifications store (the bell)
+    push.ts                             # Expo push token registration -> profiles.push_token
 
   theme/
     colors.ts                  # colour tokens mirrored from the website
@@ -309,6 +355,12 @@ Every screen picks up the change automatically since they all render `<Logo />`.
 - **Homework**: the full accumulating homework library across every
   published report card, most recent pinned open as an active checklist,
   older ones collapsible — all checkable, forever.
+- **Chat & real-time notifications**: a live conversation with the trainer,
+  plus a real, badged notification bell — both push to the phone too, for
+  a staff chat reply, a reschedule request being accepted, and a new report
+  card being published. The trainer's side of chat/reschedule/report-card
+  publishing lives on the website at `/admin/chat`,
+  `/admin/reschedule-requests` and `/admin/report-cards`.
 - `admin/index.tsx` is a plain placeholder for now.
 
 ## What's next
@@ -321,10 +373,14 @@ until the five tabs above are working end-to-end. Queued for later:
   and pulled back out to simplify the first working version; see **What
   was pulled back out** above for exactly what that involved and what's
   still sitting in the database ready for it.
-- The rest of the admin app beyond the placeholder.
+- The rest of the admin app beyond the placeholder and the three new real
+  pages (`/admin/chat`, `/admin/reschedule-requests`, `/admin/report-cards`).
 - Real app icon, splash screen and store listing assets.
 - A date picker on the Calendar tab (reschedule/booking currently collect a
   free-text preferred date via the reason/message field).
+- Linking an EAS project (`npx eas init`) — the one remaining step for real
+  device push to actually deliver; the in-app/Realtime notification path
+  works today regardless.
 
 ## Database
 
@@ -336,12 +392,27 @@ rather than assuming the website's `lib/*` sample-data scaffolding reflects
 what's actually in the database — in several places (community, sessions,
 reports) the real tables are already ahead of the website's own UI.
 
-`walks`, `walk_points`, `walk_photos`, `homework_completions` and
-`notifications` (plus the public `media` Storage bucket, the `send-push`
-Edge Function, and `profiles.pickup_*`+`push_token` /
+`walks`, `walk_points`, `walk_photos`, `homework_completions`,
+`conversations`, `messages` and `notifications` (plus the public `media`
+Storage bucket, the `send-push` Edge Function, and
+`profiles.pickup_*`+`push_token` /
 `training_sessions.route_order`+`pickup_status`) exist only because this
-app added them for the walk-tracker/route-planner work — there's no
-equivalent on the website. They're deliberately still there even though the
-app code that used them was removed (see **What was pulled back out**
-above); the app should read/write these same tables rather than inventing a
-parallel schema whenever that work resumes.
+app added them — there's no equivalent on the website's own sample-data
+scaffolding. Two are now live and driving real features:
+
+- **`notifications`** — real, Realtime-enabled, and actively used by
+  **Chat & notifications** above. `kind` currently allows `info`,
+  `pickup_eta`, `dropoff_eta` (reserved for the deferred route planner),
+  `chat_message`, `reschedule_accepted`, `report_card_published`.
+- **`conversations`/`messages`** — real, Realtime-enabled, backing the chat
+  feature on both this app (`lib/chat.ts`) and the website's `/admin/chat`
+  (`lib/liveChat/` there).
+
+`walks`, `walk_points`, `walk_photos` and the walk-tracker's
+`homework_completions.walk_id` column are still just sitting there
+untouched (see **What was pulled back out** above) — the app should
+read/write them rather than inventing a parallel schema whenever that work
+resumes. The `send-push` Edge Function is also still deployed but unused —
+these three notification events call Expo's push API directly from the
+website's Next.js server instead (see **Chat & notifications** above), so
+it remains reserved for the deferred route planner's own push needs.

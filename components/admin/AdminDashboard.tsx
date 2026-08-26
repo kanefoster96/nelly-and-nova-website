@@ -13,6 +13,7 @@ import {
   CheckIcon,
   PlusIcon,
   CardIcon,
+  MessageIcon,
 } from "@/components/ui/Icons";
 import { useSession, useAuthStatus, signOut } from "@/lib/auth/session";
 import { formatDate } from "@/lib/inbox/format";
@@ -350,6 +351,35 @@ export function AdminDashboard({
       <HolidayManager week={week} todayISO={todayISO} />
 
       <HeatDayManager week={week} todayISO={todayISO} />
+
+      {/* Real, live pages — the app's actual backend, not the sample data
+          the rest of this dashboard runs on. A reply/approval/publish here
+          reaches the member's phone for real. */}
+      <section className="mt-10">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          Live (real data + push)
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NavCard
+            href="/admin/chat"
+            icon={<MessageIcon width={22} height={22} />}
+            title="Chat"
+            body="Real conversations — replying pushes to their phone."
+          />
+          <NavCard
+            href="/admin/reschedule-requests"
+            icon={<CalendarIcon width={22} height={22} />}
+            title="Reschedule requests"
+            body="Approve or decline requests from the app."
+          />
+          <NavCard
+            href="/admin/report-cards"
+            icon={<ReportIcon width={22} height={22} />}
+            title="Report cards"
+            body="Create and publish — publishing notifies the owner."
+          />
+        </div>
+      </section>
 
       {/* Navigation cards */}
       <section className="mt-10 grid gap-3 sm:grid-cols-2">
