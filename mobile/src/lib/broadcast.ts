@@ -21,7 +21,7 @@ export async function sendBroadcast(input: {
 
   await Promise.all(
     (members ?? []).map((m) =>
-      notifyMember({ accountId: m.id, kind: "info", title: input.title, body: input.body })
+      notifyMember({ accountId: m.id, kind: "broadcast", title: input.title, body: input.body })
     )
   );
 

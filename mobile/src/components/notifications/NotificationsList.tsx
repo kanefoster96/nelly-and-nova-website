@@ -18,6 +18,7 @@ const KIND_ICON: Record<NotificationKind, keyof typeof Ionicons.glyphMap> = {
   chat_message: "chatbubble-ellipses-outline",
   reschedule_accepted: "calendar-outline",
   report_card_published: "document-text-outline",
+  broadcast: "megaphone-outline",
 };
 
 function formatWhen(iso: string): string {

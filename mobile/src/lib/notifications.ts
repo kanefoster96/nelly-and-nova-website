@@ -14,7 +14,8 @@ export type NotificationKind =
   | "dropoff_eta"
   | "chat_message"
   | "reschedule_accepted"
-  | "report_card_published";
+  | "report_card_published"
+  | "broadcast";
 
 export type NotificationItem = {
   id: string;

@@ -537,7 +537,8 @@ scaffolding. Two are now live and driving real features:
 - **`notifications`** — real, Realtime-enabled, and actively used by
   **Chat & notifications** above. `kind` currently allows `info`,
   `pickup_eta`, `dropoff_eta` (reserved for the deferred route planner),
-  `chat_message`, `reschedule_accepted`, `report_card_published`.
+  `chat_message`, `reschedule_accepted`, `report_card_published`,
+  `broadcast` (the coach Home tab's "notify everyone").
 - **`conversations`/`messages`** — real, Realtime-enabled, backing the chat
   feature on both this app (`lib/chat.ts`) and the website's `/admin/chat`
   (`lib/liveChat/` there).
