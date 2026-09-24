@@ -2,6 +2,7 @@
   "expo": {
     "name": "Nelly & Nova",
     "slug": "nelly-and-nova",
+    "owner": "kanefoster96",
     "scheme": "nellyandnova",
     "version": "1.0.0",
     "orientation": "portrait",
