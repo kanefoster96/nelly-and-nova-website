@@ -1,153 +1,121 @@
-import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, Text, View } from "react-native";
 
-import { Logo } from "@/components/Logo";
+import { BuildInfo } from "@/components/build-info";
+import { Logo } from "@/components/logo";
+import { ErrorText, FieldLabel, FormScrollView, LinkButton, PrimaryButton, TextField } from "@/components/ui";
 import { config, isSupabaseConfigured } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
-import { colors, radius, space } from "@/theme";
+import { colors } from "@/theme";
 
 const MEMBERSHIP_URL = "https://www.nellyandnova.co.uk";
 
-export default function SignIn() {
+/**
+ * The app's front door, laid out like the Kanvas app's login. Members only —
+ * accounts are made on the website, so anyone new is sent there.
+ */
+export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    isSupabaseConfigured ? null : "The app isn't connected to Supabase yet (EXPO_PUBLIC_SUPABASE_* missing)."
+  );
   const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  async function signIn() {
-    if (!email || !password) return;
-    setBusy(true);
+  async function handleLogin() {
     setError(null);
     setNotice(null);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
-    if (error) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(error.message === "Invalid login credentials" ? "That email and password don't match a member account." : error.message);
-      return;
+    setLoading(true);
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setLoading(false);
+    if (signInError) {
+      setError(signInError.message === "Invalid login credentials" ? "That email and password don't match a member account." : signInError.message);
     }
-    // AuthProvider picks up the new session and the root stack swaps to the app.
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // The root layout's auth gate takes it from here once the session lands.
   }
 
-  async function resetPassword() {
-    if (!email) {
+  async function handleForgot() {
+    setNotice(null);
+    if (!email.trim()) {
       setError("Enter your email above, then tap “Forgot password?”.");
       return;
     }
     setError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: new URL("/login", config.siteUrl).toString(),
     });
-    if (error) setError(error.message);
+    if (resetError) setError(resetError.message);
     else setNotice("Check your inbox for a link to reset your password.");
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.brand}>
-            <Logo size={120} />
-            <Text style={styles.title}>Members sign in</Text>
-            <Text style={styles.subtitle}>Community, homework, your schedule and chat with your trainer.</Text>
-          </View>
+    <FormScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 24, paddingTop: 72, paddingBottom: 48 }}>
+      <View style={{ alignItems: "center" }}>
+        <Logo size={96} />
+        <Text style={{ color: colors.foreground, fontSize: 24, fontWeight: "600", marginTop: 28, textAlign: "center" }}>Member Log In</Text>
+        <Text style={{ color: colors.muted, fontSize: 15, marginTop: 8, marginBottom: 32, textAlign: "center", lineHeight: 21 }}>
+          Your community, homework, schedule and chat with the team — all in one place.
+        </Text>
+      </View>
 
-          <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor={colors.paperDim}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              textContentType="username"
-              returnKeyType="next"
-              value={email}
-              onChangeText={setEmail}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={colors.paperDim}
-              secureTextEntry
-              autoComplete="current-password"
-              textContentType="password"
-              returnKeyType="go"
-              value={password}
-              onChangeText={setPassword}
-              onSubmitEditing={signIn}
-            />
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-            {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-            {!isSupabaseConfigured ? (
-              <Text style={styles.error}>App isn't connected to Supabase yet (EXPO_PUBLIC_SUPABASE_* missing).</Text>
-            ) : null}
-            <Pressable
-              style={({ pressed }) => [styles.primary, (pressed || busy) && styles.pressed]}
-              onPress={signIn}
-              disabled={busy || !isSupabaseConfigured}
-            >
-              {busy ? <ActivityIndicator color={colors.accentInk} /> : <Text style={styles.primaryText}>Sign in</Text>}
-            </Pressable>
-            <Pressable onPress={resetPassword} hitSlop={8}>
-              <Text style={styles.link}>Forgot password?</Text>
-            </Pressable>
-          </View>
+      <ErrorText>{error}</ErrorText>
+      {notice && <Text style={{ color: colors.success, fontSize: 14, marginBottom: 12 }}>{notice}</Text>}
 
-          <View style={styles.join}>
-            <Text style={styles.joinText}>Not a member yet?</Text>
-            <Pressable
-              style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-              onPress={() => Linking.openURL(MEMBERSHIP_URL)}
-            >
-              <Text style={styles.secondaryText}>Visit nellyandnova.co.uk</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <FieldLabel>Email</FieldLabel>
+      <TextField value={email} onChangeText={setEmail} keyboardType="email-address" textContentType="emailAddress" autoComplete="email" placeholder="you@example.com" />
+
+      <FieldLabel>Password</FieldLabel>
+      <TextField
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        textContentType="password"
+        autoComplete="current-password"
+        placeholder="••••••••"
+        returnKeyType="go"
+        onSubmitEditing={handleLogin}
+      />
+
+      <PrimaryButton title="Log In" onPress={handleLogin} loading={loading} disabled={!isSupabaseConfigured || !email || !password} />
+
+      <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 12, lineHeight: 17 }}>
+        By logging in you agree to our{" "}
+        <Text style={{ color: colors.foreground, textDecorationLine: "underline" }} onPress={() => Linking.openURL(new URL("/terms", config.siteUrl).toString())}>
+          Terms
+        </Text>{" "}
+        and{" "}
+        <Text style={{ color: colors.foreground, textDecorationLine: "underline" }} onPress={() => Linking.openURL(new URL("/privacy", config.siteUrl).toString())}>
+          Privacy Policy
+        </Text>
+        .
+      </Text>
+
+      <View style={{ marginTop: 16, alignItems: "center" }}>
+        <LinkButton title="Forgot password?" onPress={handleForgot} />
+      </View>
+
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 36, marginBottom: 24 }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+        <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 1 }}>OR</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+      </View>
+
+      <Pressable
+        onPress={() => Linking.openURL(MEMBERSHIP_URL)}
+        style={({ pressed }) => [
+          { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 18, alignItems: "center" },
+          pressed && { opacity: 0.8 },
+        ]}
+      >
+        <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600" }}>Become a Member</Text>
+        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4, textAlign: "center", lineHeight: 18 }}>
+          New to Nelly &amp; Nova? Book a meet &amp; greet on our website — nellyandnova.co.uk
+        </Text>
+      </Pressable>
+
+      <BuildInfo />
+    </FormScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.ink },
-  flex: { flex: 1 },
-  content: { flexGrow: 1, padding: space.lg, gap: space.xl, justifyContent: "center" },
-  brand: { alignItems: "center", gap: space.sm },
-  title: { color: colors.paper, fontSize: 28, fontWeight: "800", marginTop: space.sm },
-  subtitle: { color: colors.paperDim, fontSize: 15, textAlign: "center", lineHeight: 21 },
-  form: { gap: space.md },
-  input: {
-    backgroundColor: colors.inkRaised,
-    color: colors.paper,
-    borderRadius: radius.md,
-    borderCurve: "continuous",
-    paddingHorizontal: space.md,
-    paddingVertical: 15,
-    fontSize: 17,
-  },
-  error: { color: "#ff8a80", fontSize: 14 },
-  notice: { color: colors.paper, fontSize: 14 },
-  primary: { backgroundColor: colors.accent, borderRadius: radius.pill, paddingVertical: 15, alignItems: "center" },
-  primaryText: { color: colors.accentInk, fontSize: 17, fontWeight: "700" },
-  pressed: { opacity: 0.7 },
-  link: { color: colors.paperDim, textAlign: "center", fontSize: 15 },
-  join: { gap: space.sm, alignItems: "stretch" },
-  joinText: { color: colors.paperDim, textAlign: "center", fontSize: 15 },
-  secondary: { borderRadius: radius.pill, paddingVertical: 15, alignItems: "center", borderWidth: 1, borderColor: colors.line },
-  secondaryText: { color: colors.paper, fontSize: 17, fontWeight: "600" },
-});

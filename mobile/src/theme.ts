@@ -1,14 +1,19 @@
-/** Mirrors the website's tokens in app/globals.css so web and app feel the same. */
+// Same shape as the Kanvas Academy app's lib/theme.ts so screens can be
+// styled the same way, filled with Nelly & Nova's palette (the website's
+// app/globals.css tokens). Dark only.
 export const colors = {
-  ink: "#0a0a0a",
-  inkSoft: "#121212",
-  inkRaised: "#1a1a1a",
-  paper: "#f5f2ea",
-  paperDim: "#b8b4ab",
-  accent: "#ffffff",
-  accentInk: "#0a0a0a",
-  line: "rgba(245, 242, 234, 0.12)",
+  background: "#0a0a0a",
+  surface: "#121212",
+  foreground: "#f5f2ea",
+  muted: "rgba(245, 242, 234, 0.6)",
+  border: "rgba(245, 242, 234, 0.1)",
+  accent: "#f5f2ea",
+  accentForeground: "#0a0a0a",
+  danger: "#e11d33",
+  dangerForeground: "#f5f2ea",
+  success: "#22c55e",
+  warning: "#f59e0b",
 } as const;
 
-export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
-export const radius = { md: 14, lg: 20, pill: 999 } as const;
+/** Row highlight while pressed. */
+export const pressedBg = "rgba(245,245,242,0.05)";

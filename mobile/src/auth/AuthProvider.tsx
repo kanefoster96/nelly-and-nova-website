@@ -10,6 +10,7 @@ export type Profile = {
   id: string;
   role: Role;
   ownerName: string | null;
+  avatarUrl: string | null;
 };
 
 type AuthState = {
@@ -23,11 +24,12 @@ type AuthState = {
 const AuthContext = createContext<AuthState>({ session: null, profile: null, loading: true, isTrainer: false });
 
 async function loadProfile(session: Session): Promise<Profile> {
-  const { data } = await supabase.from("profiles").select("id, role, owner_name").eq("id", session.user.id).maybeSingle();
+  const { data } = await supabase.from("profiles").select("id, role, owner_name, avatar_url").eq("id", session.user.id).maybeSingle();
   return {
     id: session.user.id,
     role: data?.role === "admin" ? "admin" : "customer",
     ownerName: data?.owner_name ?? (session.user.user_metadata?.owner_name as string | undefined) ?? null,
+    avatarUrl: data?.avatar_url ?? null,
   };
 }
 

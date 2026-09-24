@@ -21,8 +21,10 @@ export const sampleConversations: Conversation[] = [
     user: { id: "u2", name: "Rachel T. (Nova & Rex)" },
     lastMessageAt: "2026-08-11T12:10:00Z",
     lastMessagePreview: "Perfect, see you Thursday for the meet & greet 🐾",
+    lastMessageFromStaff: true,
     unread: false,
     status: "active",
+    phone: "07700 900123",
   },
   {
     id: "c3",
@@ -50,6 +52,7 @@ export const sampleMessages: Record<string, Message[]> = {
       conversationId: "c2",
       body: "Hi Rachel — we'd love to help with Nova. Want to book a free meet & greet?",
       fromStaff: true,
+      senderName: "Charlotte",
       createdAt: "2026-08-11T11:55:00Z",
     },
     {
@@ -64,6 +67,7 @@ export const sampleMessages: Record<string, Message[]> = {
       conversationId: "c2",
       body: "Perfect, see you Thursday for the meet & greet 🐾",
       fromStaff: true,
+      senderName: "Charlotte",
       createdAt: "2026-08-11T12:10:00Z",
     },
   ],

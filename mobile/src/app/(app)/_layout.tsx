@@ -1,31 +1,18 @@
-import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { Stack } from "expo-router";
 
 import { colors } from "@/theme";
 
-/** Same five tabs for members and trainers; each screen shows the right side for the signed-in role. */
-export default function AppTabs() {
+// Wraps the tab shell — Profile, Notifications, a conversation and a drill
+// page push on top as full screens (tab bar hidden underneath), same as the
+// Kanvas app / Instagram.
+export default function AppLayout() {
   return (
-    <NativeTabs tintColor={colors.accent} backgroundColor={colors.ink}>
-      <NativeTabs.Trigger name="community">
-        <NativeTabs.Trigger.Label>Community</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: "person.3", selected: "person.3.fill" }} md="groups" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="homework">
-        <NativeTabs.Trigger.Label>Homework</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: "graduationcap", selected: "graduationcap.fill" }} md="school" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="schedule">
-        <NativeTabs.Trigger.Label>Schedule</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: "calendar", selected: "calendar" }} md="calendar_month" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="chat">
-        <NativeTabs.Trigger.Label>Chat</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: "bubble.left.and.bubble.right", selected: "bubble.left.and.bubble.right.fill" }} md="chat" />
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="account_circle" />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="profile" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="conversation/[id]" />
+      <Stack.Screen name="drill/[id]" />
+    </Stack>
   );
 }

@@ -1,102 +1,110 @@
-import { Image } from "expo-image";
-import type { PropsWithChildren } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import type { ReactNode } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type ScrollViewProps,
+  type TextInputProps,
+} from "react-native";
 
-import { mediaUrl } from "@/lib/media";
-import { colors, radius, space } from "@/theme";
+import { colors } from "@/theme";
 
-export function Card({ children, style, onPress }: PropsWithChildren<{ style?: StyleProp<ViewStyle>; onPress?: () => void }>) {
-  if (!onPress) return <View style={[styles.card, style]}>{children}</View>;
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, style, pressed && styles.pressed]}>
-      {children}
-    </Pressable>
-  );
+export function ScreenContainer({ children }: { children: ReactNode }) {
+  return <View style={styles.screen}>{children}</View>;
 }
 
-export function Avatar({ uri, name, size = 40 }: { uri?: string | null; name: string; size?: number }) {
-  const src = mediaUrl(uri);
-  const dims = { width: size, height: size, borderRadius: size / 2 };
-  if (src) return <Image source={src} style={[styles.avatar, dims]} contentFit="cover" transition={150} />;
-  return (
-    <View style={[styles.avatar, styles.initials, dims]}>
-      <Text style={[styles.initialsText, { fontSize: size * 0.4 }]}>{name.trim().charAt(0).toUpperCase()}</Text>
-    </View>
-  );
+/** ScrollView for screens full of inputs — pads for the keyboard natively. */
+export function FormScrollView(props: ScrollViewProps) {
+  return <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" {...props} />;
 }
 
-export function Pill({ label, tone = "default" }: { label: string; tone?: "default" | "accent" | "warn" }) {
-  return (
-    <View style={[styles.pill, tone === "accent" && styles.pillAccent, tone === "warn" && styles.pillWarn]}>
-      <Text style={[styles.pillText, tone === "accent" && styles.pillTextAccent]}>{label}</Text>
-    </View>
-  );
+export function FieldLabel({ children }: { children: string }) {
+  return <Text style={styles.label}>{children}</Text>;
 }
 
-export function SectionTitle({ children }: PropsWithChildren) {
-  return <Text style={styles.section}>{children}</Text>;
+export function TextField(props: TextInputProps) {
+  return <TextInput placeholderTextColor={colors.muted} style={styles.input} autoCapitalize="none" autoCorrect={false} {...props} />;
 }
 
-export function Muted({ children }: PropsWithChildren) {
-  return <Text style={styles.muted}>{children}</Text>;
-}
-
-export function Loading() {
-  return (
-    <View style={styles.center}>
-      <ActivityIndicator color={colors.paperDim} />
-    </View>
-  );
-}
-
-export function EmptyState({ title, body }: { title: string; body?: string }) {
-  return (
-    <View style={styles.center}>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      {body ? <Text style={styles.muted}>{body}</Text> : null}
-    </View>
-  );
-}
-
-export function Button({ label, onPress, variant = "primary", disabled }: { label: string; onPress: () => void; variant?: "primary" | "secondary"; disabled?: boolean }) {
-  const primary = variant === "primary";
+export function PrimaryButton({ title, onPress, loading, disabled }: { title: string; onPress: () => void; loading?: boolean; disabled?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [styles.button, primary ? styles.buttonPrimary : styles.buttonSecondary, (pressed || disabled) && styles.pressed]}
+      disabled={disabled || loading}
+      style={({ pressed }) => [styles.primaryButton, (disabled || loading) && styles.buttonDisabled, pressed && styles.buttonPressed]}
     >
-      <Text style={[styles.buttonText, primary && styles.buttonTextPrimary]}>{label}</Text>
+      {loading ? <ActivityIndicator color={colors.accentForeground} /> : <Text style={styles.primaryButtonText}>{title}</Text>}
     </Pressable>
+  );
+}
+
+export function LinkButton({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} hitSlop={8}>
+      <Text style={styles.linkText}>{title}</Text>
+    </Pressable>
+  );
+}
+
+export function ErrorText({ children }: { children: string | null }) {
+  if (!children) return null;
+  return <Text style={styles.error}>{children}</Text>;
+}
+
+/** Small uppercase section label above a list or card. */
+export function SectionLabel({ children }: { children: ReactNode }) {
+  return <Text style={styles.section}>{children}</Text>;
+}
+
+/** Full-screen spinner / error placeholder. */
+export function LoadingState({ error }: { error?: string | null }) {
+  return (
+    <View style={styles.center}>
+      {error ? <Text style={{ color: colors.danger, textAlign: "center" }}>{error}</Text> : <ActivityIndicator color={colors.foreground} />}
+    </View>
+  );
+}
+
+/** Rounded pill tag — "OFFICIAL", "PINNED", "HELD"… */
+export function Tag({ label, solid = false, tone }: { label: string; solid?: boolean; tone?: string }) {
+  return (
+    <View
+      style={[
+        styles.tag,
+        solid ? { backgroundColor: tone ?? colors.foreground, borderColor: tone ?? colors.foreground } : tone ? { borderColor: tone } : null,
+      ]}
+    >
+      <Text style={[styles.tagText, solid ? { color: colors.background } : tone ? { color: tone } : null]}>{label.toUpperCase()}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.inkRaised,
-    borderRadius: radius.lg,
-    borderCurve: "continuous",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.line,
-    padding: space.md,
-    gap: space.sm,
+  screen: { flex: 1, backgroundColor: colors.background, paddingHorizontal: 24, paddingTop: 24 },
+  label: { color: colors.muted, fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: colors.foreground,
+    fontSize: 16,
+    marginBottom: 16,
+    backgroundColor: colors.surface,
   },
-  pressed: { opacity: 0.6 },
-  avatar: { backgroundColor: colors.inkSoft },
-  initials: { alignItems: "center", justifyContent: "center" },
-  initialsText: { color: colors.paper, fontWeight: "700" },
-  pill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: colors.inkSoft },
-  pillAccent: { backgroundColor: colors.accent },
-  pillWarn: { backgroundColor: "#5c4210" },
-  pillText: { color: colors.paper, fontSize: 12, fontWeight: "600" },
-  pillTextAccent: { color: colors.accentInk },
-  section: { color: colors.paperDim, fontSize: 13, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginTop: space.sm },
-  muted: { color: colors.paperDim, fontSize: 14, lineHeight: 20 },
-  center: { paddingVertical: space.xl, alignItems: "center", gap: space.sm },
-  emptyTitle: { color: colors.paper, fontSize: 17, fontWeight: "600" },
-  button: { borderRadius: radius.pill, paddingVertical: 14, alignItems: "center" },
-  buttonPrimary: { backgroundColor: colors.accent },
-  buttonSecondary: { borderWidth: 1, borderColor: colors.line },
-  buttonText: { color: colors.paper, fontSize: 16, fontWeight: "600" },
-  buttonTextPrimary: { color: colors.accentInk, fontWeight: "700" },
+  primaryButton: { backgroundColor: colors.accent, borderRadius: 999, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+  buttonPressed: { opacity: 0.75 },
+  buttonDisabled: { opacity: 0.5 },
+  primaryButtonText: { color: colors.accentForeground, fontSize: 16, fontWeight: "600" },
+  linkText: { color: colors.foreground, textDecorationLine: "underline", fontSize: 14 },
+  error: { color: colors.danger, fontSize: 14, marginBottom: 12 },
+  section: { color: colors.muted, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, marginTop: 24, marginBottom: 8 },
+  center: { flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center", padding: 32 },
+  tag: { borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1.5 },
+  tagText: { color: colors.muted, fontSize: 9, fontWeight: "700", letterSpacing: 0.5 },
 });

@@ -49,7 +49,15 @@
           "backgroundColor": "#0a0a0a"
         }
       ],
-      "expo-image"
+      "expo-image",
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nelly & Nova uses your photos so you can share them in the community and in chat.",
+          "cameraPermission": "Nelly & Nova uses the camera so you can share photos of your dog."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

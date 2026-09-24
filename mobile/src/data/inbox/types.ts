@@ -21,9 +21,13 @@ export type Conversation = {
   unread: boolean;
   /** Simple buckets for ordering the inbox (no claim/assign concept). */
   status: "new" | "active" | "closed";
+  avatarUrl?: string | null;
+  /** The last message was sent by the team ("You: …" in the inbox). */
+  lastMessageFromStaff?: boolean;
+  phone?: string | null;
 };
 
-export type Attachment = { name: string; type: string; url: string };
+export type Attachment = { name: string; type: "image" | "video" | "file"; url: string };
 
 export type Message = {
   id: string;
@@ -34,6 +38,9 @@ export type Message = {
   createdAt: string; // ISO
   /** Optimistic message not yet confirmed by the backend. */
   pending?: boolean;
+  /** Which team member sent a staff message (shown above their bubble). */
+  senderName?: string;
+  senderAvatarUrl?: string | null;
   attachment?: Attachment;
 };
 

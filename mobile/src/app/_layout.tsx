@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
 import { AuthProvider, useAuth } from "@/auth/AuthProvider";
+import { NotificationsProvider } from "@/lib/notifications-context";
 import { useOtaUpdates } from "@/lib/useOtaUpdates";
 import { colors } from "@/theme";
 
@@ -21,7 +22,7 @@ function RootStack() {
   if (loading) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.ink } }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="index" />
       {/* Members only: everything behind sign-in. */}
       <Stack.Protected guard={!!session}>
@@ -38,8 +39,10 @@ export default function RootLayout() {
   useOtaUpdates();
   return (
     <AuthProvider>
-      <StatusBar style="light" />
-      <RootStack />
+      <NotificationsProvider>
+        <StatusBar style="light" />
+        <RootStack />
+      </NotificationsProvider>
     </AuthProvider>
   );
 }

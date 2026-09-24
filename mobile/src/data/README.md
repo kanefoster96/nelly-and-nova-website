@@ -9,7 +9,7 @@ website's `lib/*` scaffold. `index.ts` holds the async functions screens call.
 
 - **Live on Supabase today:** auth, `profiles` (role), `dogs` (see `dogs.ts`).
 - **Sample data behind `TODO(backend)`:** community, report cards/homework,
-  drill library, schedule, chat.
+  drill library, schedule, chat, notifications.
 
 To go live, create the table (schema notes are in each `TODO(backend)` comment
 and the website's `lib/inbox/schema.sql`), then replace that function's body

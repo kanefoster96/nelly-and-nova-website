@@ -1,22 +1,28 @@
 # Nelly & Nova — iOS/Android app
 
-Native members-only app built with **Expo SDK 57** + **Expo Router** (native
-tabs, SF Symbols, haptics). It uses the **same Supabase project** as the website
-and ships JavaScript changes **over the air with EAS Update**, with no App Store
-review needed. Over time the members' features move out of the website and live
-only here.
+Native members-only app built with **Expo SDK 57** + **Expo Router**. It uses
+the **same Supabase project** as the website and ships JavaScript changes
+**over the air with EAS Update**, with no App Store review needed. Over time the
+members' features move out of the website and live only here.
 
-**Flow:** sign-in (members only; non-members get a button to
-www.nellyandnova.co.uk) → five tabs. Each tab shows the member side or the
+**Look and feel** matches the Kanvas Academy app (`kanvas-academy-website/mobile`):
+the same dark theme tokens, the Instagram-style top bar (avatar → Profile, NN
+mark, bell → Notifications with an unread badge), an Ionicons tab bar, and the
+same layouts for the community feed, chat, inbox, notifications, profile rows
+and the calendar-style schedule. Chat has no AI suggested replies.
+
+**Flow:** sign-in (members only; "Become a Member" sends people to
+www.nellyandnova.co.uk) → four tabs. Each tab shows the member side or the
 trainer side depending on `profiles.role` (`admin` = trainer).
 
-| Tab | Member | Trainer |
+| Screen | Member | Trainer |
 | --- | --- | --- |
-| Community | feed, likes, comments | same feed |
+| Community | feed, composer (photos/videos), likes, comments, report/block | same, plus pin posts and delete anyone's |
 | Homework | latest report card + homework, "I practised today" | drill library → drill pages |
-| Schedule | plan + upcoming sessions | week board by day, capacity, held/alternating |
-| Chat | one thread with the team | inbox → conversation |
-| Profile | dogs (live), progress, sign out | role, sign out |
+| Schedule | their upcoming sessions by day | next 14 days, dogs booked, spaces, held/alternating |
+| Chat | one thread with the team (photo/video/file attachments) | Inbox (search, filters) → conversation (call, mark complete) |
+| Profile (avatar) | dogs (live), progress, change password, sign out | role, sign out |
+| Notifications (bell) | report cards, messages, likes | comments, booking requests |
 
 Profile/role and dogs are live from Supabase. The rest runs on sample data
 behind `TODO(backend)` functions in `src/data/`; see `src/data/README.md`.
@@ -24,18 +30,22 @@ behind `TODO(backend)` functions in `src/data/`; see `src/data/README.md`.
 ```
 src/
   app/
-    _layout.tsx         # auth gate (Stack.Protected), splash, OTA hook
-    sign-in.tsx         # members-only login
-    (app)/              # native tab bar; each tab has its own stack
-      community/ homework/ schedule/ chat/ profile/
-  auth/AuthProvider.tsx # session + profile role
-  components/           # UI kit, PostCard, ChatThread, member/trainer views
-  data/                 # data layer (types, sample data, Supabase seams)
-  lib/                  # config, supabase client, OTA updates, helpers
-  theme.ts              # mirrors the website's colour tokens
-assets/                 # NN logo icon + splash
-app.json                # app config (bundle id uk.co.nellyandnova.app)
-eas.json                # build profiles + update channels
+    _layout.tsx           # auth gate (Stack.Protected), splash, OTA hook, providers
+    sign-in.tsx           # members-only login
+    (app)/
+      (tabs)/             # top bar + tab bar: community, homework, schedule, chat
+      profile.tsx         # pushed from the avatar
+      notifications.tsx   # pushed from the bell
+      conversation/[id]   # trainer: one conversation
+      drill/[id]          # trainer: a drill page
+  auth/AuthProvider.tsx   # session + profile (role, name, avatar)
+  components/             # Kanvas-style UI: top-bar, nav-row, avatar-circle,
+                          # community/, chat/, schedule/, homework/, …
+  data/                   # data layer (types, sample data, Supabase seams)
+  lib/                    # config, supabase client, notifications, OTA updates
+  theme.ts                # colour tokens (same keys as Kanvas, N&N values)
+assets/                   # NN logo icon + splash
+app.json / eas.json       # app config, build profiles + update channels
 ```
 
 ## One-time setup (≈20 minutes, on your computer)
@@ -92,7 +102,7 @@ npm run update:production -- --message "Fix booking button"
 
 Installed apps download the update in the background and apply it the next
 time the app is opened, or when it's backgrounded if it was already
-running (see `src/lib/useOtaUpdates.ts`). The Profile tab footer shows which
+running (see `src/lib/useOtaUpdates.ts`). The Profile screen footer shows which
 update a device is running.
 
 **What can go OTA:** anything in JS/TS, styles, images, and screens.

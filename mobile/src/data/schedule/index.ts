@@ -40,3 +40,14 @@ export function formatSessionDate(iso: string): string {
 export function todayDayId(now = new Date()): DayId {
   return (Object.keys(JS_DAY) as DayId[]).find((k) => JS_DAY[k] === now.getDay()) ?? "mon";
 }
+
+/** The next `count` dates from today (local), as { iso, day }. */
+export function nextDates(count: number, now = new Date()): { iso: string; day: DayId }[] {
+  const out: { iso: string; day: DayId }[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    out.push({ iso, day: todayDayId(d) });
+  }
+  return out;
+}
