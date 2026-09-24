@@ -63,19 +63,10 @@ npx eas-cli@latest update:configure  # adds updates.url to app.json
 
 Commit the `app.json` changes those commands make.
 
-Add the Supabase keys (same values as the website's `NEXT_PUBLIC_SUPABASE_*`)
-as EAS environment variables so builds *and* OTA updates get them:
-
-```bash
-for ENV in development preview production; do
-  npx eas-cli@latest env:create --environment $ENV --visibility plaintext \
-    --name EXPO_PUBLIC_SUPABASE_URL --value https://YOUR-PROJECT.supabase.co
-  npx eas-cli@latest env:create --environment $ENV --visibility plaintext \
-    --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value YOUR-ANON-KEY
-done
-```
-
-For local dev, copy `.env.example` to `.env.local` and fill it in.
+The Supabase URL and publishable key are built into `src/lib/config.ts`
+(they're public by design, like on the website), so there's nothing to set.
+To point a build at a different project, set `EXPO_PUBLIC_SUPABASE_URL` /
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` as EAS environment variables or in `.env.local`.
 
 ## TestFlight
 
