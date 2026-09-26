@@ -3,6 +3,7 @@ import { Outfit } from "next/font/google";
 import "./globals.css";
 import { site } from "@/config/site";
 import { theme } from "@/config/theme";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 
 // Body / paragraph typeface. (Titles use a Helvetica system stack — see globals.css.)
 const body = Outfit({
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-ink text-paper antialiased">
         {children}
+        <CookieConsentBanner />
       </body>
     </html>
   );

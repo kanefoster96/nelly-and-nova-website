@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Wordmark } from "./ui/Wordmark";
 import { socialIcons } from "./ui/Icons";
 import { socials, site } from "@/config/site";
+import { CookieSettingsButton } from "./CookieSettingsButton";
 
 export function Footer() {
   return (
@@ -46,6 +47,7 @@ export function Footer() {
             <Link href="/cookies" className="transition-colors hover:text-accent">
               Cookie Policy
             </Link>
+            <CookieSettingsButton />
             <Link href="/holidays" className="transition-colors hover:text-accent">
               Holidays
             </Link>
