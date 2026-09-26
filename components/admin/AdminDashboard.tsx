@@ -354,6 +354,12 @@ export function AdminDashboard({
       {/* Navigation cards */}
       <section className="mt-10 grid gap-3 sm:grid-cols-2">
         <NavCard
+          href="/admin/onboarding"
+          icon={<UserIcon width={22} height={22} />}
+          title="Onboarding"
+          body="New enquiries — book meet & greets."
+        />
+        <NavCard
           href="/admin/schedule"
           icon={<CalendarIcon width={22} height={22} />}
           title="Full schedule"
@@ -362,8 +368,8 @@ export function AdminDashboard({
         <NavCard
           href="/admin/dogs"
           icon={<PawIcon width={22} height={22} />}
-          title="All dog profiles"
-          body="View and edit dog information."
+          title="All dogs"
+          body="Every dog's details, health, vet & documents."
         />
         <NavCard
           href="/admin/reports"

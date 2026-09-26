@@ -4,6 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { MembersList, type Member } from "@/components/admin/MembersList";
+import { AllAccounts } from "@/components/admin/AllAccounts";
 import { getWeekSchedule } from "@/lib/schedule/data";
 
 export const metadata: Metadata = {
@@ -45,12 +46,12 @@ export default async function MembersPage() {
               Members
             </h1>
             <p className="mt-3 text-paper/75">
-              Tap a contact to see their plan, dog, payments and more — edit their
-              details, change their day, message them, or cancel.
+              Every customer account. Tap a name for their contact details, or a
+              dog to jump straight to its record.
             </p>
 
             <RequireAdmin>
-              <MembersList members={members} />
+              <AllAccounts fallback={<MembersList members={members} />} />
             </RequireAdmin>
           </div>
         </section>

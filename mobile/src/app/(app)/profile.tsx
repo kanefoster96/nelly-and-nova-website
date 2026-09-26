@@ -98,7 +98,7 @@ export default function ProfileScreen() {
             description="We'll email you a link to set a new one."
             onPress={async () => {
               if (!email) return;
-              await supabase.auth.resetPasswordForEmail(email, { redirectTo: new URL("/login", config.siteUrl).toString() });
+              await supabase.auth.resetPasswordForEmail(email, { redirectTo: new URL("/reset-password", config.siteUrl).toString() });
               Alert.alert("Check your inbox", "We've emailed you a link to set a new password.");
             }}
           />

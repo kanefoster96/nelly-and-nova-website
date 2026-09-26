@@ -6,7 +6,8 @@ import { Field } from "@/components/ui/Field";
 import { SelectCards } from "@/components/ui/SelectCards";
 import { CheckIcon, CheckCircleIcon, CalendarIcon } from "@/components/ui/Icons";
 import { DraftRestored, StepCard, WizardHeading, WizardNav, WizardProgress } from "@/components/ui/WizardProgress";
-import { useSession } from "@/lib/auth/session";
+import { useAuthStatus, useSession } from "@/lib/auth/session";
+import { getDog, uploadDocument } from "@/lib/records/client";
 import {
   clearDraft,
   emptyWaiver,
@@ -43,7 +44,11 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export function WaiverForm() {
   const session = useSession();
+  const authStatus = useAuthStatus();
   const [data, setData] = useState<WaiverData>(emptyWaiver);
+  const [submitError, setSubmitError] = useState("");
+  const [savedDogId, setSavedDogId] = useState("");
+  const [vaccUploading, setVaccUploading] = useState(false);
   const [step, setStep] = useState(0);
   const [completed, setCompleted] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,28 +65,65 @@ export function WaiverForm() {
       initRef.current = true;
       const draft = loadDraft();
       if (draft) {
-        /* eslint-disable react-hooks/set-state-in-effect */
+         
         setData(draft.data);
         setStep(Math.min(Math.max(0, draft.step), STEPS.length - 1));
         setCompleted(draft.completed);
         setRestored(true);
-        /* eslint-enable react-hooks/set-state-in-effect */
+         
         return;
       }
     }
     if (session) {
       const [first, ...rest] = session.ownerName.split(" ");
       const today = new Date().toISOString().slice(0, 10);
+      // "/waiver?dog=<id>" (from a dog's page) picks that dog up front.
+      const fromLink = new URLSearchParams(window.location.search).get("dog") ?? "";
+      const linked = session.dogs?.find((x) => x.id === fromLink);
       setData((d) => ({
         ...d,
         firstName: d.firstName || first || "",
         lastName: d.lastName || rest.join(" ") || "",
         clientName: d.clientName || session.ownerName || "",
-        dogName: d.dogName || session.dogName || "",
+        dogId: d.dogId || linked?.id || "",
+        dogName: d.dogName || linked?.name || "",
         signDate: d.signDate || today,
       }));
     }
   }, [session]);
+
+  /** Choose which dog on the account the form is for, and fill in what we know. */
+  async function pickDog(id: string) {
+    const name = session?.dogs?.find((x) => x.id === id)?.name ?? "";
+    setData((d) => ({ ...d, dogId: id, dogName: id ? name || d.dogName : "" }));
+    setErrors((e) => ({ ...e, dogName: "" }));
+    if (!id) return;
+    const dog = await getDog(id).catch(() => null);
+    if (!dog) return;
+    setData((d) => ({
+      ...d,
+      breed: d.breed || dog.breed,
+      dob: d.dob || dog.dateOfBirth,
+      gender: d.gender || (["Male", "Female"].find((g) => dog.sex.startsWith(g)) ?? ""),
+      microchip: d.microchip || dog.microchip,
+      vetName: d.vetName || dog.vetName,
+      vetAddress: d.vetAddress || dog.vetAddress,
+    }));
+  }
+
+  /** Upload the vaccination record as soon as it's chosen, so it survives the draft. */
+  async function pickVaccFile(file: File) {
+    setVaccUploading(true);
+    setErrors((e) => ({ ...e, vaccFile: "" }));
+    try {
+      const up = await uploadDocument(file, { kind: "vaccination", record: false });
+      setData((d) => ({ ...d, vaccFile: up.fileName, vaccPath: up.path, vaccType: up.contentType }));
+    } catch (err) {
+      setErrors((e) => ({ ...e, vaccFile: (err as Error).message }));
+    } finally {
+      setVaccUploading(false);
+    }
+  }
 
   // Also save if they leave mid-step (switch apps, close the tab), not just on Next.
   const latest = useRef({ step, completed, data, status });
@@ -144,7 +186,8 @@ export function WaiverForm() {
         }
         break;
       case 3: // Vaccinations
-        if (!data.vaccFile) e.vaccFile = "Please upload the vaccination record.";
+        if (vaccUploading) e.vaccFile = "Still uploading — one moment.";
+        else if (!data.vaccPath) e.vaccFile = "Please upload the vaccination record.";
         if (!data.vaccConfirmed) e.vaccConfirmed = "Please confirm.";
         if (!data.kennelCough) e.kennelCough = "Please choose one.";
         break;
@@ -213,19 +256,28 @@ export function WaiverForm() {
       }
     }
     setStatus("submitting");
+    setSubmitError("");
     // Stamp the signing date with the moment they click "Sign & submit",
     // rather than a date they picked by hand.
     const signedData = { ...data, signDate: new Date().toISOString().slice(0, 10) };
     setData(signedData);
-    await submitWaiver(signedData);
-    // Flip the onboarding waiver gate the coach sees, keyed to this dog.
-    if (session?.dogId) {
-      setWaiverSigned(session.dogId, {
-        ownerName: `${data.firstName} ${data.lastName}`.trim() || session.ownerName,
-        email: data.email,
-        dogName: data.dogName || session.dogName,
-      });
+    let dogId: string;
+    try {
+      dogId = await submitWaiver(signedData);
+    } catch (err) {
+      // Keep everything (the draft is still saved) so they can try again.
+      setStatus("idle");
+      setSubmitError((err as Error).message);
+      persist(step, completed);
+      return;
     }
+    // Flip the onboarding waiver gate the coach sees, keyed to this dog.
+    setWaiverSigned(dogId, {
+      ownerName: `${data.firstName} ${data.lastName}`.trim() || session?.ownerName || "",
+      email: data.email,
+      dogName: data.dogName,
+    });
+    setSavedDogId(dogId);
     clearDraft();
     setStatus("success");
     scrollTop();
@@ -247,13 +299,39 @@ export function WaiverForm() {
         <h2 className="mt-4 text-3xl font-semibold tracking-tight text-paper">Waiver signed</h2>
         <p className="mx-auto mt-3 max-w-md text-paper/75">
           Thank you, {data.firstName || "there"} — your consent &amp; waiver for{" "}
-          {data.dogName || "your dog"} is complete. That&apos;s the last step of
-          onboarding; we&apos;ll confirm your place.
+          {data.dogName || "your dog"} is saved to your account. We&apos;ll be in touch
+          to confirm your place.
         </p>
-        <div className="mt-6 flex justify-center">
-          <Button href="/profile" radius="xl">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {savedDogId && (
+            <Button href={`/profile/dogs/${savedDogId}`} radius="xl">
+              View {data.dogName || "your dog"}&apos;s record
+            </Button>
+          )}
+          <Button href="/profile" variant="secondary" radius="xl">
             Go to your profile
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (authStatus === "loading") {
+    return <div className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center text-paper-dim">Loading…</div>;
+  }
+
+  // The form is saved against the customer's account and dog, so it needs a login.
+  if (authStatus === "anon") {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center">
+        <h2 className="text-2xl font-semibold text-paper">Log in to continue</h2>
+        <p className="mx-auto mt-3 max-w-sm text-sm text-paper-dim">
+          Your consent &amp; waiver is saved to your account and your dog&apos;s record, so please log
+          in (or create an account) first.{restored ? " Your progress so far is saved on this device." : ""}
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Button href="/login" radius="xl">Log in</Button>
+          <Button href="/create-account" variant="secondary" radius="xl">Create an account</Button>
         </div>
       </div>
     );
@@ -276,8 +354,12 @@ export function WaiverForm() {
       <StepCard key={step}>
         {step === 0 && <AboutStep data={data} set={set} errors={errors} />}
         {step === 1 && <AddressStep data={data} set={set} errors={errors} />}
-        {step === 2 && <DogBasicsStep data={data} set={set} errors={errors} />}
-        {step === 3 && <VaccStep data={data} set={set} toggle={toggle} setData={setData} errors={errors} />}
+        {step === 2 && (
+          <DogBasicsStep data={data} set={set} errors={errors} dogs={session?.dogs ?? []} onPickDog={(id) => void pickDog(id)} />
+        )}
+        {step === 3 && (
+          <VaccStep data={data} set={set} toggle={toggle} onFile={(f) => void pickVaccFile(f)} uploading={vaccUploading} errors={errors} />
+        )}
         {step === 4 && <HealthStep data={data} set={set} errors={errors} />}
         {step === 5 && <VetStep data={data} set={set} errors={errors} />}
         {step === 6 && <AgreementStep data={data} toggle={toggle} errors={errors} />}
@@ -293,6 +375,11 @@ export function WaiverForm() {
           />
         )}
 
+        {submitError && (
+          <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            Couldn&apos;t submit: {submitError}
+          </p>
+        )}
         {Object.values(errors).some(Boolean) && (
           <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
             Please check the highlighted {Object.values(errors).filter(Boolean).length === 1 ? "field" : "fields"} above.
@@ -453,10 +540,33 @@ function AddressStep({ data, set, errors }: { data: WaiverData; set: SetFn; erro
   );
 }
 
-function DogBasicsStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+function DogBasicsStep({
+  data,
+  set,
+  errors,
+  dogs,
+  onPickDog,
+}: {
+  data: WaiverData;
+  set: SetFn;
+  errors: Record<string, string>;
+  dogs: { id: string; name: string }[];
+  onPickDog: (id: string) => void;
+}) {
   return (
     <div className="grid gap-4">
-      <Field label="Full Name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
+      {dogs.length > 0 && (
+        <div>
+          <p className="mb-2 block text-sm text-paper-dim">Which dog is this for?</p>
+          <SelectCards
+            ariaLabel="Which dog is this for?"
+            options={[...dogs.map((d) => ({ value: d.id, label: d.name })), { value: "", label: "Another dog" }]}
+            value={data.dogId}
+            onChange={onPickDog}
+          />
+        </div>
+      )}
+      <Field label="Dog's full name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
         <Field label="Date of birth" name="dob" type="date" required value={data.dob} onChange={set("dob")} error={errors.dob} />
@@ -473,13 +583,15 @@ function VaccStep({
   data,
   set,
   toggle,
-  setData,
+  onFile,
+  uploading,
   errors,
 }: {
   data: WaiverData;
   set: SetFn;
   toggle: (key: keyof WaiverData) => void;
-  setData: React.Dispatch<React.SetStateAction<WaiverData>>;
+  onFile: (file: File) => void;
+  uploading: boolean;
   errors: Record<string, string>;
 }) {
   return (
@@ -493,11 +605,17 @@ function VaccStep({
             type="file"
             accept="image/*,application/pdf"
             className="hidden"
-            onChange={(e) => setData((d) => ({ ...d, vaccFile: e.target.files?.[0]?.name ?? "" }))}
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) onFile(file);
+            }}
           />
-          {data.vaccFile ? "Change file" : "+ Upload File"}
+          {uploading ? "Uploading…" : data.vaccPath ? "Change file" : "+ Upload File"}
         </label>
-        {data.vaccFile && <p className="mt-2 text-sm text-paper/70">{data.vaccFile}</p>}
+        {data.vaccPath && !uploading && <p className="mt-2 text-sm text-emerald-300">{data.vaccFile} ✓ uploaded</p>}
+        <p className="mt-1.5 text-xs text-paper-dim">A photo or PDF, up to 10 MB. Kept privately on your account.</p>
         {errors.vaccFile && <p className="mt-1.5 text-sm text-red-400">{errors.vaccFile}</p>}
       </div>
 

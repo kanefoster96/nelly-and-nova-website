@@ -281,3 +281,37 @@ export function heatDayNotice(d: {
   ].join("\n");
   return { to: d.email, subject: `Hot day ${d.dateLabel} — earlier times — ${BRAND}`, html, text };
 }
+
+// --- Customer: meet & greet booked ----------------------------------------
+
+export function meetGreetBooked(d: {
+  name: string;
+  email: string;
+  whenLabel: string; // e.g. "Thursday 2 October at 10:30"
+  notes?: string;
+  createAccountUrl: string;
+}): EmailMessage {
+  const first = d.name.split(" ")[0] || "there";
+  const html = layout("Your meet & greet is booked", `
+    <p>Hi ${escape(first)},</p>
+    <p>Lovely to hear from you. We've booked your free meet &amp; greet for <b style="color:#f5f3ee;">${escape(d.whenLabel)}</b>.</p>
+    ${d.notes ? `<p>${escape(d.notes).replace(/\n/g, "<br/>")}</p>` : ""}
+    <p>If you haven't already, you can create your account now so you're ready to go afterwards:</p>
+    <p><a href="${escape(d.createAccountUrl)}" style="display:inline-block;background:${ACCENT};color:#0f0f10;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600;">Create your account</a></p>
+    <p>Need to change the time? Just reply to this email.</p>
+    <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${first},`,
+    "",
+    `We've booked your free meet & greet for ${d.whenLabel}.`,
+    ...(d.notes ? ["", d.notes] : []),
+    "",
+    `Create your account so you're ready afterwards: ${d.createAccountUrl}`,
+    "",
+    "Need to change the time? Just reply to this email.",
+    "",
+    `See you soon, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Your meet & greet with ${BRAND}`, html, text };
+}

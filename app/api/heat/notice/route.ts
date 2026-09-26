@@ -1,3 +1,4 @@
+import { requireTrainer } from "@/lib/records/server";
 import { sendEmail } from "@/lib/email/resend";
 import { heatDayNotice } from "@/lib/email/templates";
 
@@ -12,6 +13,11 @@ type Recipient = { email?: string; ownerName?: string };
  * per-date roster instead of the client.
  */
 export async function POST(request: Request) {
+  // Trainer-only: these email customers, so an anonymous caller must not be
+  // able to trigger them (they'd be an open relay for branded email).
+  const denied = await requireTrainer();
+  if (denied) return denied;
+
   let d: {
     recipients?: Recipient[];
     dateLabel?: string;

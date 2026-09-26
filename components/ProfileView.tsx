@@ -332,8 +332,48 @@ export function ProfileView({
       {/* Their latest community post, or a nudge to share their first */}
       <LatestCommunityPost />
 
-      {/* Account holder information — the overall account manager. */}
+      {/* Your dogs — quick links to each dog's full record. */}
       <div className="mt-10">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Your dogs</h2>
+          <Link href="/profile/dogs/new" className="text-xs text-paper-dim underline underline-offset-2 hover:text-paper">
+            + Add a dog
+          </Link>
+        </div>
+        {dogs.length === 0 ? (
+          <Link
+            href="/profile/dogs/new"
+            className="block rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-4 text-sm text-paper-dim transition-colors hover:border-white/35"
+          >
+            Add your dog to get started →
+          </Link>
+        ) : (
+          <div className="grid gap-2">
+            {dogs.map((d) => (
+              <Link
+                key={d.id}
+                href={`/profile/dogs/${d.id}`}
+                className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-3 transition-colors hover:border-white/35"
+              >
+                <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/10">
+                  {d.photo && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={d.photo} alt="" className="h-full w-full object-cover" />
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-paper">{d.name}</span>
+                  <span className="block text-sm text-paper-dim">Details, health, vet &amp; documents</span>
+                </span>
+                <ArrowRightIcon width={18} height={18} className="ml-auto text-paper-dim" />
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Account holder information — the overall account manager. */}
+      <div className="mt-4">
         <Link
           href="/profile/account"
           className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.02] px-4 py-4 transition-colors hover:border-white/35"

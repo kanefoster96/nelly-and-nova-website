@@ -1,7 +1,6 @@
 import { site } from "@/config/site";
 import { findService, findBookingType, priceFor } from "@/config/booking";
-import { createRequest } from "@/lib/inbox/data";
-import { bookingToRequest } from "@/lib/inbox/mappers";
+import { saveEnquiry } from "@/lib/records/server";
 import { sendEmail, ownerAddress } from "@/lib/email/resend";
 import { bookingConfirmation, bookingOwnerNotification } from "@/lib/email/templates";
 
@@ -89,13 +88,28 @@ export async function POST(request: Request) {
     ...(extraDogsText ? [extraDogsText] : []),
   ].join("\n");
 
-  // Accept the submission as an inbox request (scaffold no-op until a backend).
-  await createRequest(bookingToRequest(d));
+  // Save to the trainer's onboarding list (Supabase) so the request is never
+  // lost, even before email is set up.
+  const { company: _honeypot, ...answers } = d;
+  void _honeypot;
+  const dogNames = [String(d.dogName ?? "").trim(), ...extraDogs.map((x) => String(x.name ?? "").trim())]
+    .filter(Boolean)
+    .join(", ");
+  const stored = await saveEnquiry({
+    kind: "booking",
+    name: `${firstName} ${lastName}`,
+    email,
+    phone: String(d.phone ?? "").trim(),
+    message: String(d.needHelp ?? "").trim(),
+    service: [svc?.label, bt?.label].filter(Boolean).join(" · "),
+    dogNames,
+    details: { ...answers, estimatedPrice: price ? `£${price.total} per ${price.unit}` : null },
+  });
 
   // Emails are best-effort — they never block the submission (the request
   // itself is the deliverable) and no-op without RESEND_API_KEY. See .env.example.
   // 1) Notify the team. 2) Confirm to the customer that we've got their request.
-  await Promise.all([
+  const [ownerEmailed] = await Promise.all([
     sendEmail(
       bookingOwnerNotification({
         firstName,
@@ -116,5 +130,13 @@ export async function POST(request: Request) {
     ),
   ]);
 
+  // Saved or emailed is enough. If neither worked, say so rather than
+  // pretending — the visitor can still call or email.
+  if (!stored && !ownerEmailed) {
+    return Response.json(
+      { error: "Sorry, we couldn't send your request just now. Please try again, or call or email us directly." },
+      { status: 503 }
+    );
+  }
   return Response.json({ ok: true });
 }

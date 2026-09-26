@@ -1,3 +1,4 @@
+import { requireTrainer } from "@/lib/records/server";
 import { sendEmail } from "@/lib/email/resend";
 import { placementConfirmed } from "@/lib/email/templates";
 
@@ -11,6 +12,11 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  * client, so it can't be spoofed.
  */
 export async function POST(request: Request) {
+  // Trainer-only: these email customers, so an anonymous caller must not be
+  // able to trigger them (they'd be an open relay for branded email).
+  const denied = await requireTrainer();
+  if (denied) return denied;
+
   let d: Record<string, string>;
   try {
     d = await request.json();

@@ -7,7 +7,7 @@ import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
 import { AvatarUpload } from "./ui/AvatarUpload";
 import { CheckCircleIcon } from "./ui/Icons";
-import { DOG_PHOTO_HANDOFF_KEY } from "@/lib/storage/photos";
+import { DOG_PHOTO_HANDOFF_KEY, EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 import { signUpNewAccount } from "@/lib/auth/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -36,6 +36,24 @@ export function SignupForm() {
     }
   });
 
+  // Carried over from the meet & greet form so nothing is asked twice: contact
+  // details go on the profile, and every dog they told us about is created.
+  const phone = params.get("phone") ?? "";
+  const address = params.get("address") ?? "";
+  const [dogs] = useState(() => {
+    const first = params.get("dogName")?.trim();
+    const list: { name: string; breed?: string }[] = first ? [{ name: first, breed: params.get("breed") ?? undefined }] : [];
+    if (typeof window !== "undefined") {
+      try {
+        const extra = JSON.parse(sessionStorage.getItem(EXTRA_DOGS_HANDOFF_KEY) ?? "[]") as { name?: string; breed?: string }[];
+        for (const d of extra) if (d.name?.trim()) list.push({ name: d.name.trim(), breed: d.breed });
+      } catch {
+        /* ignore */
+      }
+    }
+    return list;
+  });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [needsConfirm, setNeedsConfirm] = useState(false);
@@ -60,6 +78,9 @@ export function SignupForm() {
       password,
       ownerName: `${firstName} ${lastName}`.trim(),
       avatarUrl: photo ?? undefined,
+      dogs,
+      phone,
+      address,
     });
 
     if (error) {
@@ -70,6 +91,7 @@ export function SignupForm() {
 
     try {
       sessionStorage.removeItem(DOG_PHOTO_HANDOFF_KEY);
+      sessionStorage.removeItem(EXTRA_DOGS_HANDOFF_KEY);
     } catch {
       /* ignore */
     }
@@ -180,7 +202,9 @@ export function SignupForm() {
         </Button>
 
         <p className="text-center text-sm text-paper-dim">
-          You can add your dog&apos;s details later from your profile.
+          {dogs.length
+            ? `We'll add ${dogs.map((d) => d.name).join(" & ")} to your account.`
+            : "You can add your dog's details later from your profile."}
         </p>
         <p className="text-center text-sm text-paper-dim">
           Already have an account?{" "}

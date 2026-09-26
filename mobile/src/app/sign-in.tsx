@@ -44,7 +44,7 @@ export default function SignInScreen() {
     }
     setError(null);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: new URL("/login", config.siteUrl).toString(),
+      redirectTo: new URL("/reset-password", config.siteUrl).toString(),
     });
     if (resetError) setError(resetError.message);
     else setNotice("Check your inbox for a link to reset your password.");

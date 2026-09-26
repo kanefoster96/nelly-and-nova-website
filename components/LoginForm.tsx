@@ -67,6 +67,11 @@ export function LoginForm() {
           onChange={setPassword}
           error={errors.password}
         />
+        <div className="-mt-3 text-right">
+          <Link href="/forgot-password" className="text-sm text-paper-dim underline underline-offset-2 hover:text-paper">
+            Forgot password?
+          </Link>
+        </div>
         {formError && (
           <p className="rounded-xl bg-red-500/10 px-3.5 py-2.5 text-sm text-red-300 ring-1 ring-red-500/20">
             {formError}

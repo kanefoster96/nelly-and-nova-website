@@ -4,6 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { DogsList, type DogRow } from "@/components/admin/DogsList";
+import { AllDogs } from "@/components/admin/AllDogs";
 import { getWeekSchedule } from "@/lib/schedule/data";
 import { dayLabel } from "@/lib/schedule/types";
 
@@ -41,11 +42,12 @@ export default async function DogsPage() {
               All dogs
             </h1>
             <p className="mt-3 text-paper/75">
-              Every dog on the books. Edit a dog to update their details.
+              Every dog on the books — tap one for their details, health, vet,
+              documents and signed consent form.
             </p>
 
             <RequireAdmin>
-              <DogsList dogs={dogs} />
+              <AllDogs fallback={<DogsList dogs={dogs} />} />
             </RequireAdmin>
           </div>
         </section>
