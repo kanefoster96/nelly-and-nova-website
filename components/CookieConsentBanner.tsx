@@ -23,10 +23,12 @@ function setConsentCookie(value: string) {
 }
 
 /**
- * Held back a few seconds so the first thing a visitor meets is the page,
- * not a consent question. Nothing tracks during the wait.
+ * Held back a moment so the first thing a visitor meets is the page, not a
+ * consent question. Kanvas waits 10s because a trial-offer banner shows
+ * first; there's no promo banner here, so 3s is enough. Nothing tracks
+ * during the wait.
  */
-const SHOW_AFTER_MS = 10_000;
+const SHOW_AFTER_MS = 3_000;
 
 /**
  * Cookie consent card — the same layout as the Kanvas Academy site: a
