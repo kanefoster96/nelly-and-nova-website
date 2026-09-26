@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 
+// Kanvas-style inputs: a quiet bordered box on the page background that
+// brightens its border on focus. (Phones get 16px text via globals.css so iOS
+// doesn't zoom into the field.)
 const inputClass =
-  "w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+  "w-full rounded-lg border border-white/10 bg-ink px-4 py-2.5 text-sm text-paper placeholder:text-paper-dim/70 outline-none transition-colors focus:border-white/40 aria-[invalid=true]:border-red-400/60";
 
 type BaseProps = {
   label: ReactNode;
@@ -35,9 +38,9 @@ export function Field({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="mb-2 block text-sm font-medium text-paper/90">
+      <label htmlFor={name} className="mb-2 block text-sm text-paper-dim">
         {label}
-        {required && <span className="text-paper-dim"> *</span>}
+        {required && <span className="text-paper-dim/70"> *</span>}
       </label>
       {options ? (
         <div className="relative">

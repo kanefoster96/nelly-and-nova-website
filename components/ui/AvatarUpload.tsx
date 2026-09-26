@@ -22,12 +22,12 @@ export function AvatarUpload({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function onChange(ev: React.ChangeEvent<HTMLInputElement>) {
+  async function onChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const file = ev.target.files?.[0];
+    // Reset so choosing the same file again still fires a change.
+    ev.target.value = "";
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => onSelect(String(reader.result));
-    reader.readAsDataURL(file);
+    onSelect(await downscaleImage(file));
   }
 
   return (
@@ -62,4 +62,37 @@ export function AvatarUpload({
       />
     </div>
   );
+}
+
+/**
+ * Phone photos are several MB — far too big to hand between pages in
+ * sessionStorage or keep in a form draft (both cap out around 5MB). Shrink to
+ * a square-ish avatar (longest side 640px, JPEG) before handing it back.
+ * Falls back to the original if the browser can't decode it (e.g. HEIC).
+ */
+export async function downscaleImage(file: File, maxSide = 640): Promise<string> {
+  const original = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = original;
+    });
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return original;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return original;
+  }
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
 import { SelectCards } from "./ui/SelectCards";
 import { AvatarUpload } from "./ui/AvatarUpload";
 import { CheckCircleIcon } from "./ui/Icons";
+import { DraftRestored, StepCard, WizardHeading, WizardNav, WizardProgress } from "./ui/WizardProgress";
+import { clearFormDraft, loadFormDraft, saveFormDraft } from "@/lib/forms/draft";
 import { booking, findService, priceFor } from "@/config/booking";
 import { DOG_PHOTO_HANDOFF_KEY, EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 
@@ -23,6 +24,9 @@ const BASE_STEPS = [
 ];
 const FIRST_EXTRA = BASE_STEPS.length; // index of the first additional-dog step
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// Loose UK-friendly check: 10–15 digits once spaces, dashes, brackets and a leading + are removed.
+const PHONE_RE = /^\+?\d{10,15}$/;
+const DRAFT_KEY = "nn-booking-draft-v1";
 
 type Data = Record<string, string>;
 
@@ -46,6 +50,9 @@ const blankDog = (): DogInput => ({
   allergies: "", tools: "", trust: "",
 });
 
+/** What "Next" saves, so a half-finished request survives closing the tab. */
+type BookingDraft = { step: number; data: Data; extraDogs: DogInput[]; photo: string | null };
+
 export function BookingForm() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Data>(INITIAL);
@@ -57,8 +64,70 @@ export function BookingForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "error" | "success">("idle");
   const [submitError, setSubmitError] = useState("");
+  const [restored, setRestored] = useState(false);
+  const [saved, setSaved] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
+  const savedTimer = useRef<number | undefined>(undefined);
   const router = useRouter();
+
+  // Pick up a saved draft on first load.
+  useEffect(() => {
+    const draft = loadFormDraft<BookingDraft>(DRAFT_KEY);
+    if (!draft?.data) return;
+    const d: Data = { ...INITIAL, ...draft.data, company: "" };
+    const n = Math.max(0, (parseInt(d.dogs, 10) || 1) - 1);
+    const dogs = (draft.extraDogs ?? []).slice(0, n).map((x) => ({ ...blankDog(), ...x }));
+    while (dogs.length < n) dogs.push(blankDog());
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setData(d);
+    setExtraDogs(dogs);
+    setPhoto(draft.photo ?? null);
+    // Steps = base + extra dogs + meet & greet.
+    setStep(Math.min(Math.max(0, draft.step ?? 0), BASE_STEPS.length + n));
+    setRestored(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
+  function persist(nextStep: number) {
+    const draft: BookingDraft = { step: nextStep, data: { ...data, company: "" }, extraDogs, photo };
+    // A big photo can overflow storage — keep the answers even if the photo won't fit.
+    const ok = saveFormDraft(DRAFT_KEY, draft) || saveFormDraft(DRAFT_KEY, { ...draft, photo: null });
+    if (!ok) return;
+    setSaved(true);
+    window.clearTimeout(savedTimer.current);
+    savedTimer.current = window.setTimeout(() => setSaved(false), 2000);
+  }
+
+  // Also save if they leave mid-step (switch apps, close the tab), not just on Next.
+  const latest = useRef({ step, data, extraDogs, photo, status });
+  useEffect(() => {
+    latest.current = { step, data, extraDogs, photo, status };
+  }, [step, data, extraDogs, photo, status]);
+  useEffect(() => {
+    const onHide = () => {
+      const l = latest.current;
+      if (document.visibilityState !== "hidden" || l.status === "success") return;
+      const draft: BookingDraft = { step: l.step, data: { ...l.data, company: "" }, extraDogs: l.extraDogs, photo: l.photo };
+      if (!saveFormDraft(DRAFT_KEY, draft)) saveFormDraft(DRAFT_KEY, { ...draft, photo: null });
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, []);
+
+  function startOver() {
+    clearFormDraft(DRAFT_KEY);
+    setData(INITIAL);
+    setExtraDogs([]);
+    setPhoto(null);
+    setErrors({});
+    setStep(0);
+    setRestored(false);
+    scrollTop();
+  }
 
   const set = (key: string) => (value: string) => {
     setData((d) => ({ ...d, [key]: value }));
@@ -129,7 +198,8 @@ export function BookingForm() {
     switch (s) {
       case 0: // About you
         req("firstName"); req("lastName"); req("email"); req("phone"); req("address");
-        if (data.email && !EMAIL_RE.test(data.email)) e.email = "Enter a valid email address.";
+        if (data.email && !EMAIL_RE.test(data.email.trim())) e.email = "Enter a valid email address.";
+        if (data.phone && !PHONE_RE.test(data.phone.replace(/[\s\-()]/g, ""))) e.phone = "Enter a valid phone number.";
         break;
       case 1: // Choose a service
         if (!data.service) e.service = "Please choose a service.";
@@ -170,14 +240,22 @@ export function BookingForm() {
       setErrors(e);
       return;
     }
+    const ns = Math.min(step + 1, steps.length - 1);
     setErrors({});
-    setStep((s) => Math.min(s + 1, steps.length - 1));
+    setStep(ns);
+    persist(ns);
     scrollTop();
   }
 
   function back() {
+    jump(Math.max(step - 1, 0));
+  }
+
+  /** Go straight to an earlier step (from Back or the progress circles), saving first. */
+  function jump(target: number) {
     setErrors({});
-    setStep((s) => Math.max(s - 1, 0));
+    setStep(target);
+    persist(target);
     scrollTop();
   }
 
@@ -206,6 +284,7 @@ export function BookingForm() {
         return;
       }
       // Request sent — take them to create an account, prefilled from the form.
+      clearFormDraft(DRAFT_KEY);
       setStatus("success");
       // Hand the chosen photo + any extra dogs to create-account (files and
       // arrays can't ride in the URL).
@@ -240,9 +319,9 @@ export function BookingForm() {
 
   if (status === "success") {
     return (
-      <div ref={topRef} className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+      <div ref={topRef} className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center animate-fade-up">
         <CheckCircleIcon width={44} height={44} className="mx-auto text-accent" />
-        <h2 className="display-heading mt-4 text-3xl text-paper">Request sent</h2>
+        <h2 className="mt-4 text-3xl font-semibold tracking-tight text-paper">Request sent</h2>
         <p className="mx-auto mt-3 max-w-md text-paper/75">
           Thanks {data.firstName || "there"} — taking you to create your
           account…
@@ -254,26 +333,13 @@ export function BookingForm() {
   const dogNames = [data.dogName, ...extraDogs.map((d) => d.name)].filter((n) => n?.trim());
 
   return (
-    <div ref={topRef} tabIndex={-1} className="outline-none">
-      {/* Progress */}
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
-        Step {step + 1} of {steps.length}
-      </p>
-      <div
-        className="mt-3 grid gap-1.5"
-        style={{ gridTemplateColumns: `repeat(${steps.length}, 1fr)` }}
-        aria-hidden="true"
-      >
-        {steps.map((label, i) => (
-          <div
-            key={`${label}-${i}`}
-            className={`h-1.5 rounded-full ${i <= step ? "bg-paper" : "bg-white/15"}`}
-          />
-        ))}
+    <div ref={topRef} tabIndex={-1} className="scroll-mt-24 outline-none">
+      <WizardHeading title={steps[step]} step={step} total={steps.length} saved={saved} />
+      <div className="mt-5">
+        <WizardProgress steps={steps} current={step} onJump={status === "submitting" ? undefined : jump} />
       </div>
-      <h2 className="display-heading mt-5 text-2xl text-paper sm:text-3xl">
-        {steps[step]}
-      </h2>
+
+      {restored && <DraftRestored onStartOver={startOver} />}
 
       {/* Honeypot */}
       <div className="hidden" aria-hidden="true">
@@ -288,7 +354,7 @@ export function BookingForm() {
         </label>
       </div>
 
-      <div className="mt-6">
+      <StepCard key={step}>
         {step === 0 && (
           <div className="grid gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
@@ -297,7 +363,7 @@ export function BookingForm() {
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Email" name="email" type="email" inputMode="email" required value={data.email} onChange={set("email")} error={errors.email} placeholder="you@example.com" />
-              <Field label="Phone" name="phone" type="tel" inputMode="tel" required value={data.phone} onChange={set("phone")} error={errors.phone} placeholder="07000 000000" />
+              <Field label="Phone" name="phone" type="tel" inputMode="tel" required value={data.phone} onChange={set("phone")} error={errors.phone} placeholder="07123 456789" />
             </div>
             <Field label="Address & postcode" name="address" required value={data.address} onChange={set("address")} error={errors.address} placeholder="Street, town, postcode" />
           </div>
@@ -305,8 +371,8 @@ export function BookingForm() {
 
         {step === 1 && (
           <div>
-            <p className="mb-2 block text-sm font-medium text-paper/90">
-              Service type <span className="text-paper-dim">*</span>
+            <p className="mb-2 block text-sm text-paper-dim">
+              Service type <span className="text-paper-dim/70">*</span>
             </p>
             <SelectCards
               ariaLabel="Service type"
@@ -322,8 +388,8 @@ export function BookingForm() {
           <div className="grid gap-6">
             {service && (
               <div>
-                <p className="mb-2 block text-sm font-medium text-paper/90">
-                  Booking type <span className="text-paper-dim">*</span>
+                <p className="mb-2 block text-sm text-paper-dim">
+                  Booking type <span className="text-paper-dim/70">*</span>
                 </p>
                 <SelectCards
                   ariaLabel="Booking type"
@@ -345,14 +411,14 @@ export function BookingForm() {
               <p className="mt-2 text-sm text-paper-dim">{booking.copy.dogsNote}</p>
               {dogsNum > 1 && (
                 <p className="mt-1 text-sm text-accent">
-                  You&apos;ll add {dogsNum === 2 ? "your second dog" : `each of your ${dogsNum} dogs`}
-                  &apos; details on their own step after your first.
+                  You&apos;ll add {dogsNum === 2 ? "your second dog’s" : `your other ${dogsNum - 1} dogs’`}{" "}
+                  details on their own step{dogsNum === 2 ? "" : "s"} after your first.
                 </p>
               )}
             </div>
 
             {price && (
-              <div className="rounded-2xl border border-white/15 bg-white/[0.05] p-5">
+              <div className="rounded-lg border border-white/10 bg-ink p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Estimated price</p>
                 <p className="display-heading mt-2 text-3xl text-paper">
                   £{price.total}{" "}
@@ -371,7 +437,7 @@ export function BookingForm() {
         {step === 3 && (
           <div className="grid gap-5">
             {dogsNum > 1 && (
-              <p className="rounded-xl bg-white/[0.04] px-4 py-2.5 text-sm text-paper/80 ring-1 ring-white/5">
+              <p className="rounded-lg border border-white/10 bg-ink px-4 py-2.5 text-sm text-paper/80">
                 This is your <b className="text-paper">first dog</b>. You&apos;ll add your
                 other {dogsNum === 2 ? "dog" : `${dogsNum - 1} dogs`} on the next step
                 {dogsNum === 2 ? "" : "s"} — same questions each time.
@@ -392,8 +458,8 @@ export function BookingForm() {
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <p className="mb-2 block text-sm font-medium text-paper/90">
-                  Gender <span className="text-paper-dim">*</span>
+                <p className="mb-2 block text-sm text-paper-dim">
+                  Gender <span className="text-paper-dim/70">*</span>
                 </p>
                 <SelectCards ariaLabel="Gender" options={booking.genders} value={data.gender} onChange={set("gender")} />
                 {errors.gender && <p className="mt-1.5 text-sm text-red-400">{errors.gender}</p>}
@@ -416,12 +482,12 @@ export function BookingForm() {
           <div className="grid gap-5">
             <Field label="Any allergies?" name="allergies" required value={data.allergies} onChange={set("allergies")} error={errors.allergies} placeholder={booking.placeholders.allergies} />
             <Field label="What lead / tools do you use during walks?" name="tools" required value={data.tools} onChange={set("tools")} error={errors.tools} placeholder={booking.placeholders.tools} />
-            <div className="rounded-2xl bg-white/[0.03] p-4 text-sm text-paper/70 ring-1 ring-white/5">
+            <div className="rounded-lg border border-white/10 bg-ink p-4 text-sm text-paper/70">
               {booking.copy.toolsNote}
             </div>
             <div>
-              <p className="mb-2 block text-sm font-medium text-paper/90">
-                {booking.copy.trustQuestion} <span className="text-paper-dim">*</span>
+              <p className="mb-2 block text-sm text-paper-dim">
+                {booking.copy.trustQuestion} <span className="text-paper-dim/70">*</span>
               </p>
               <SelectCards ariaLabel="Trust our guidance" options={booking.yesNo} value={data.trust} onChange={set("trust")} />
               {errors.trust && <p className="mt-1.5 text-sm text-red-400">{errors.trust}</p>}
@@ -444,8 +510,8 @@ export function BookingForm() {
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <p className="mb-2 block text-sm font-medium text-paper/90">
-                    Gender <span className="text-paper-dim">*</span>
+                  <p className="mb-2 block text-sm text-paper-dim">
+                    Gender <span className="text-paper-dim/70">*</span>
                   </p>
                   <SelectCards ariaLabel={`Gender (dog ${idx + 2})`} options={booking.genders} value={dog.gender} onChange={setExtra(idx, "gender")} />
                   {err("gender") && <p className="mt-1.5 text-sm text-red-400">{err("gender")}</p>}
@@ -458,8 +524,8 @@ export function BookingForm() {
               <Field label="Any allergies?" name={`d${idx}_allergies`} required value={dog.allergies} onChange={setExtra(idx, "allergies")} error={err("allergies")} placeholder={booking.placeholders.allergies} />
               <Field label="What lead / tools do you use during walks?" name={`d${idx}_tools`} required value={dog.tools} onChange={setExtra(idx, "tools")} error={err("tools")} placeholder={booking.placeholders.tools} />
               <div>
-                <p className="mb-2 block text-sm font-medium text-paper/90">
-                  {booking.copy.trustQuestion} <span className="text-paper-dim">*</span>
+                <p className="mb-2 block text-sm text-paper-dim">
+                  {booking.copy.trustQuestion} <span className="text-paper-dim/70">*</span>
                 </p>
                 <SelectCards ariaLabel={`Trust our guidance (dog ${idx + 2})`} options={booking.yesNo} value={dog.trust} onChange={setExtra(idx, "trust")} />
                 {err("trust") && <p className="mt-1.5 text-sm text-red-400">{err("trust")}</p>}
@@ -473,7 +539,7 @@ export function BookingForm() {
             {booking.copy.meetGreet.map((p, i) => (
               <p key={i}>{p}</p>
             ))}
-            <div className="rounded-2xl bg-white/[0.03] p-4 text-sm ring-1 ring-white/5">
+            <div className="rounded-lg border border-white/10 bg-ink p-4 text-sm">
               <p className="font-semibold text-paper/90">Your request</p>
               <p className="mt-1 text-paper/70">
                 {service?.label}
@@ -484,39 +550,26 @@ export function BookingForm() {
             </div>
           </div>
         )}
-      </div>
 
-      {(status === "error" || submitError) && (
-        <p role="alert" className="mt-6 text-sm text-red-400">
-          {submitError}
-        </p>
-      )}
+        {Object.values(errors).some(Boolean) && (
+          <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            Please check the highlighted {Object.values(errors).filter(Boolean).length === 1 ? "field" : "fields"} above.
+          </p>
+        )}
+        {submitError && (
+          <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            {submitError}
+          </p>
+        )}
 
-      {/* Navigation */}
-      <div className="mt-8 flex items-center justify-between gap-4">
-        {step > 0 ? (
-          <Button variant="secondary" radius="xl" onClick={back} disabled={status === "submitting"}>
-            Back
-          </Button>
-        ) : (
-          <span />
-        )}
-        {step < steps.length - 1 ? (
-          <Button radius="xl" onClick={next}>
-            Next
-          </Button>
-        ) : (
-          <Button
-            radius="xl"
-            size="lg"
-            onClick={submit}
-            disabled={status === "submitting"}
-            className="disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {status === "submitting" ? "Sending…" : "Submit request"}
-          </Button>
-        )}
-      </div>
+        <WizardNav
+          onBack={step > 0 ? back : undefined}
+          onNext={step < steps.length - 1 ? next : submit}
+          nextLabel={step < steps.length - 1 ? "Next" : "Submit request"}
+          busy={status === "submitting"}
+          busyLabel="Sending…"
+        />
+      </StepCard>
     </div>
   );
 }
