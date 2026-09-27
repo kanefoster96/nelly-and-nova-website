@@ -13,13 +13,13 @@
 export const media = {
   logo: {
     /** Primary wordmark (used in the footer). */
-    wordmark: "/placeholders/logo-wordmark.svg",
+    wordmark: "/brand/nn-logo-white.svg",
     /** Pure-white variant for very dark placements. */
-    wordmarkMono: "/placeholders/logo-wordmark-mono.svg",
+    wordmarkMono: "/brand/nn-logo-white.svg",
     /** Compact "NN" monogram (used in the header). */
     monogram: "/brand/nn-logo-white.svg",
     /** Square app/favicon mark. */
-    mark: "/placeholders/icon-mark.svg",
+    mark: "/brand/nn-icon.svg",
   },
 
   hero: {

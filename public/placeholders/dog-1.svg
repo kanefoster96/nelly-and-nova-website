@@ -11,13 +11,7 @@
   </defs>
   <rect width="900" height="900" fill="url(#gd1)"/>
   <rect width="900" height="900" fill="url(#pd1)"/>
-  <g transform="translate(450, 416)" fill="#ffffff" fill-opacity="0.55">
-    <circle cx="-26" cy="-10" r="9"/>
-    <circle cx="-9" cy="-20" r="9"/>
-    <circle cx="9" cy="-20" r="9"/>
-    <circle cx="26" cy="-10" r="9"/>
-    <path d="M0 -8 C 18 -8 30 6 30 20 C 30 34 16 40 0 40 C -16 40 -30 34 -30 20 C -30 6 -18 -8 0 -8 Z"/>
-  </g>
+  <g transform="translate(402, 394.91377921031426) scale(0.038678485092667206) translate(-259, -748)" fill="#ffffff" fill-opacity="0.55"><path d="M259 748 L453 748 L453 1963.9 L1203.5 748 L1444 748 L1444 2252 L1249 2252 L1249 1038.5 L488 2252 L259 2252 Z"/><path d="M2741 748 L2547 748 L2547 1963.9 L1796.5 748 L1556 748 L1556 2252 L1751 2252 L1751 1038.5 L2512 2252 L2741 2252 Z"/></g>
   <text x="450" y="484" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="2" fill="#f5f2ea">DOG PHOTO 1</text>
   <text x="450" y="508" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" letter-spacing="3" fill="#8a8a8a">PLACEHOLDER PHOTO</text>
 </svg>
