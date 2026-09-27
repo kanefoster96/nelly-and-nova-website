@@ -17,7 +17,7 @@ export const media = {
     /** Pure-white variant for very dark placements. */
     wordmarkMono: "/placeholders/logo-wordmark-mono.svg",
     /** Compact "NN" monogram (used in the header). */
-    monogram: "/placeholders/logo-monogram.svg",
+    monogram: "/brand/nn-logo-white.svg",
     /** Square app/favicon mark. */
     mark: "/placeholders/icon-mark.svg",
   },
