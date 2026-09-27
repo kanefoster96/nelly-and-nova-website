@@ -15,8 +15,10 @@ A step-by-step guide for wiring this scaffold up to a real Supabase project
 - **Git**: `.env*` is gitignored (except `.env.example`), so real keys aren't
   committed.
 
-> The app is a **scaffold**. Every backend action currently runs off
-> `localStorage` and the `TODO(backend)` seams in `lib/*/data.ts`. Setting the
+> **Live on Supabase:** auth, account details, dogs, dog documents and photos,
+> signed waivers, and enquiries/onboarding (Phase 1b). **Still scaffold:** the
+> schedule, report cards/homework, reschedules, holidays, payments and chat run
+> off `localStorage` and the `TODO(backend)` seams in `lib/*/data.ts`. Setting the
 > env vars connects Supabase but does **not** change behaviour on its own — you
 > swap the seams over one at a time (Phase 5).
 
@@ -52,7 +54,50 @@ A step-by-step guide for wiring this scaffold up to a real Supabase project
 
 ---
 
-## Phase 2 — Build the database schema
+## Phase 1b — Customer records (run this first) ✅ built
+
+`supabase/migrations/20260926000000_customer_records.sql` adds everything the
+live customer features use. **Supabase → SQL Editor → New query → paste the
+whole file → Run.** It only adds to the existing `profiles`/`dogs` tables and
+is safe to run again.
+
+It creates:
+
+| What | Used by |
+| --- | --- |
+| `profiles` + phone, address, city, postcode, country, emergency contacts, email | Account page (`/profile/account`), admin Members |
+| `dogs` + breed, sex, date of birth, microchip, vaccinations, kennel cough, medical, allergies, vet, notes, `waiver_signed_at` | Dog pages (`/profile/dogs/[id]`, `/admin/dogs/[id]`), All dogs |
+| `dog_documents` + private `dog-documents` bucket | Vaccination records, insurance, vet letters, signatures |
+| `waivers` | Signed consent & waiver (answers + signature) |
+| `enquiries` | Contact form + meet & greet form → admin **Onboarding** (`/admin/onboarding`) |
+| `dog-photos` public bucket | Dog photos |
+
+Row Level Security: customers read/edit only their own account, dogs, files
+and forms (and can't change their own role); trainers (`profiles.role =
+'admin'`) see and manage everything; anyone can *submit* an enquiry but only
+trainers can read them.
+
+**Password reset — two dashboard settings** (*Authentication → URL
+Configuration*):
+
+1. **Site URL**: `https://www.nellyandnova.co.uk` (or the Vercel URL until the
+   domain is live).
+2. **Redirect URLs**: add `https://www.nellyandnova.co.uk/reset-password`
+   (and `https://nelly-and-nova-website.vercel.app/reset-password`).
+
+Optional but recommended, so reset links work even when opened on a different
+device from the one that asked: *Authentication → Email Templates → Reset
+Password*, set the link to
+
+```
+{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery
+```
+
+`/reset-password` handles this link, the default one, and older links.
+
+---
+
+## Phase 2 — Build the rest of the schema
 
 Use the Supabase **SQL Editor** (or `supabase` CLI migrations). Main tables,
 mirroring the `lib/*` folders — each `TODO(backend)` comment describes the exact

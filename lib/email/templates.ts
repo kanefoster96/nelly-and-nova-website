@@ -7,6 +7,14 @@ import { site } from "@/config/site";
 import type { EmailMessage } from "./resend";
 
 const BRAND = site.name;
+
+/**
+ * Where the logo image is loaded from. Emails can't embed SVG, so this points
+ * at the PNG in public/brand/. Set NEXT_PUBLIC_SITE_URL to the live domain
+ * (e.g. https://www.nellyandnova.co.uk) once it's connected.
+ */
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://nelly-and-nova-website.vercel.app").replace(/\/$/, "");
+const LOGO_URL = `${SITE_URL}/brand/nn-logo-white.png`;
 const ACCENT = "#c8a24a"; // warm gold — close to the site accent
 
 function escape(s: string): string {
@@ -20,8 +28,8 @@ function layout(heading: string, bodyHtml: string): string {
   return `<!doctype html><html><body style="margin:0;background:#0f0f10;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#17171a;border-radius:16px;overflow:hidden;">
       <tr><td style="padding:28px 28px 8px;">
-        <p style="margin:0;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:${ACCENT};font-weight:700;">${escape(BRAND)}</p>
-        <h1 style="margin:8px 0 0;font-size:24px;line-height:1.2;color:#f5f3ee;">${escape(heading)}</h1>
+        <img src="${LOGO_URL}" width="66" height="40" alt="${escape(BRAND)}" style="display:block;width:66px;height:40px;border:0;color:#f5f3ee;font-size:14px;font-weight:700;letter-spacing:.15em;" />
+        <h1 style="margin:18px 0 0;font-size:24px;line-height:1.2;color:#f5f3ee;">${escape(heading)}</h1>
       </td></tr>
       <tr><td style="padding:12px 28px 28px;color:#cfccc4;font-size:15px;line-height:1.6;">
         ${bodyHtml}
@@ -280,4 +288,38 @@ export function heatDayNotice(d: {
     `Thanks, The ${BRAND} team`,
   ].join("\n");
   return { to: d.email, subject: `Hot day ${d.dateLabel} — earlier times — ${BRAND}`, html, text };
+}
+
+// --- Customer: meet & greet booked ----------------------------------------
+
+export function meetGreetBooked(d: {
+  name: string;
+  email: string;
+  whenLabel: string; // e.g. "Thursday 2 October at 10:30"
+  notes?: string;
+  createAccountUrl: string;
+}): EmailMessage {
+  const first = d.name.split(" ")[0] || "there";
+  const html = layout("Your meet & greet is booked", `
+    <p>Hi ${escape(first)},</p>
+    <p>Lovely to hear from you. We've booked your free meet &amp; greet for <b style="color:#f5f3ee;">${escape(d.whenLabel)}</b>.</p>
+    ${d.notes ? `<p>${escape(d.notes).replace(/\n/g, "<br/>")}</p>` : ""}
+    <p>If you haven't already, you can create your account now so you're ready to go afterwards:</p>
+    <p><a href="${escape(d.createAccountUrl)}" style="display:inline-block;background:${ACCENT};color:#0f0f10;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600;">Create your account</a></p>
+    <p>Need to change the time? Just reply to this email.</p>
+    <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${first},`,
+    "",
+    `We've booked your free meet & greet for ${d.whenLabel}.`,
+    ...(d.notes ? ["", d.notes] : []),
+    "",
+    `Create your account so you're ready afterwards: ${d.createAccountUrl}`,
+    "",
+    "Need to change the time? Just reply to this email.",
+    "",
+    `See you soon, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Your meet & greet with ${BRAND}`, html, text };
 }

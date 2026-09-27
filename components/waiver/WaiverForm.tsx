@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { SelectCards } from "@/components/ui/SelectCards";
 import { CheckIcon, CheckCircleIcon, CalendarIcon } from "@/components/ui/Icons";
-import { useSession } from "@/lib/auth/session";
+import { DraftRestored, StepCard, WizardHeading, WizardNav, WizardProgress } from "@/components/ui/WizardProgress";
+import { useAuthStatus, useSession } from "@/lib/auth/session";
+import { getDog, uploadDocument } from "@/lib/records/client";
 import {
   clearDraft,
   emptyWaiver,
@@ -42,14 +44,17 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export function WaiverForm() {
   const session = useSession();
+  const authStatus = useAuthStatus();
   const [data, setData] = useState<WaiverData>(emptyWaiver);
+  const [submitError, setSubmitError] = useState("");
+  const [savedDogId, setSavedDogId] = useState("");
+  const [vaccUploading, setVaccUploading] = useState(false);
   const [step, setStep] = useState(0);
   const [completed, setCompleted] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [restored, setRestored] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [signing, setSigning] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
@@ -60,28 +65,85 @@ export function WaiverForm() {
       initRef.current = true;
       const draft = loadDraft();
       if (draft) {
-        /* eslint-disable react-hooks/set-state-in-effect */
+         
         setData(draft.data);
-        setStep(draft.step);
+        setStep(Math.min(Math.max(0, draft.step), STEPS.length - 1));
         setCompleted(draft.completed);
         setRestored(true);
-        /* eslint-enable react-hooks/set-state-in-effect */
+         
         return;
       }
     }
     if (session) {
       const [first, ...rest] = session.ownerName.split(" ");
       const today = new Date().toISOString().slice(0, 10);
+      // "/waiver?dog=<id>" (from a dog's page) picks that dog up front.
+      const fromLink = new URLSearchParams(window.location.search).get("dog") ?? "";
+      const linked = session.dogs?.find((x) => x.id === fromLink);
       setData((d) => ({
         ...d,
         firstName: d.firstName || first || "",
         lastName: d.lastName || rest.join(" ") || "",
         clientName: d.clientName || session.ownerName || "",
-        dogName: d.dogName || session.dogName || "",
+        dogId: d.dogId || linked?.id || "",
+        dogName: d.dogName || linked?.name || "",
         signDate: d.signDate || today,
       }));
     }
   }, [session]);
+
+  /** Choose which dog on the account the form is for, and fill in what we know. */
+  async function pickDog(id: string) {
+    const name = session?.dogs?.find((x) => x.id === id)?.name ?? "";
+    setData((d) => ({ ...d, dogId: id, dogName: id ? name || d.dogName : "" }));
+    setErrors((e) => ({ ...e, dogName: "" }));
+    if (!id) return;
+    const dog = await getDog(id).catch(() => null);
+    if (!dog) return;
+    setData((d) => ({
+      ...d,
+      breed: d.breed || dog.breed,
+      dob: d.dob || dog.dateOfBirth,
+      gender: d.gender || (["Male", "Female"].find((g) => dog.sex.startsWith(g)) ?? ""),
+      microchip: d.microchip || dog.microchip,
+      vetName: d.vetName || dog.vetName,
+      vetAddress: d.vetAddress || dog.vetAddress,
+    }));
+  }
+
+  /** Upload the vaccination record as soon as it's chosen, so it survives the draft. */
+  async function pickVaccFile(file: File) {
+    setVaccUploading(true);
+    setErrors((e) => ({ ...e, vaccFile: "" }));
+    try {
+      const up = await uploadDocument(file, { kind: "vaccination", record: false });
+      setData((d) => ({ ...d, vaccFile: up.fileName, vaccPath: up.path, vaccType: up.contentType }));
+    } catch (err) {
+      setErrors((e) => ({ ...e, vaccFile: (err as Error).message }));
+    } finally {
+      setVaccUploading(false);
+    }
+  }
+
+  // Also save if they leave mid-step (switch apps, close the tab), not just on Next.
+  const latest = useRef({ step, completed, data, status });
+  useEffect(() => {
+    latest.current = { step, completed, data, status };
+  }, [step, completed, data, status]);
+  useEffect(() => {
+    const onHide = () => {
+      const l = latest.current;
+      if (document.visibilityState === "hidden" && l.status === "idle") {
+        saveDraft({ step: l.step, completed: l.completed, data: l.data });
+      }
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, []);
 
   const set = (key: keyof WaiverData) => (value: string) => {
     setData((d) => ({ ...d, [key]: value }));
@@ -124,7 +186,8 @@ export function WaiverForm() {
         }
         break;
       case 3: // Vaccinations
-        if (!data.vaccFile) e.vaccFile = "Please upload the vaccination record.";
+        if (vaccUploading) e.vaccFile = "Still uploading — one moment.";
+        else if (!data.vaccPath) e.vaccFile = "Please upload the vaccination record.";
         if (!data.vaccConfirmed) e.vaccConfirmed = "Please confirm.";
         if (!data.kennelCough) e.kennelCough = "Please choose one.";
         break;
@@ -171,10 +234,14 @@ export function WaiverForm() {
   }
 
   function back() {
-    const ps = Math.max(step - 1, 0);
+    jump(Math.max(step - 1, 0));
+  }
+
+  /** Go straight to an earlier (or already-completed) step, saving first. */
+  function jump(target: number) {
     setErrors({});
-    setStep(ps);
-    persist(ps, completed);
+    setStep(target);
+    persist(target, completed);
     scrollTop();
   }
 
@@ -189,19 +256,28 @@ export function WaiverForm() {
       }
     }
     setStatus("submitting");
+    setSubmitError("");
     // Stamp the signing date with the moment they click "Sign & submit",
     // rather than a date they picked by hand.
     const signedData = { ...data, signDate: new Date().toISOString().slice(0, 10) };
     setData(signedData);
-    await submitWaiver(signedData);
-    // Flip the onboarding waiver gate the coach sees, keyed to this dog.
-    if (session?.dogId) {
-      setWaiverSigned(session.dogId, {
-        ownerName: `${data.firstName} ${data.lastName}`.trim() || session.ownerName,
-        email: data.email,
-        dogName: data.dogName || session.dogName,
-      });
+    let dogId: string;
+    try {
+      dogId = await submitWaiver(signedData);
+    } catch (err) {
+      // Keep everything (the draft is still saved) so they can try again.
+      setStatus("idle");
+      setSubmitError((err as Error).message);
+      persist(step, completed);
+      return;
     }
+    // Flip the onboarding waiver gate the coach sees, keyed to this dog.
+    setWaiverSigned(dogId, {
+      ownerName: `${data.firstName} ${data.lastName}`.trim() || session?.ownerName || "",
+      email: data.email,
+      dogName: data.dogName,
+    });
+    setSavedDogId(dogId);
     clearDraft();
     setStatus("success");
     scrollTop();
@@ -218,16 +294,21 @@ export function WaiverForm() {
 
   if (status === "success") {
     return (
-      <div ref={topRef} className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+      <div ref={topRef} className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center animate-fade-up">
         <CheckCircleIcon width={44} height={44} className="mx-auto text-accent" />
-        <h2 className="display-heading mt-4 text-3xl text-paper">Waiver signed</h2>
+        <h2 className="mt-4 text-3xl font-semibold tracking-tight text-paper">Waiver signed</h2>
         <p className="mx-auto mt-3 max-w-md text-paper/75">
           Thank you, {data.firstName || "there"} — your consent &amp; waiver for{" "}
-          {data.dogName || "your dog"} is complete. That&apos;s the last step of
-          onboarding; we&apos;ll confirm your place.
+          {data.dogName || "your dog"} is saved to your account. We&apos;ll be in touch
+          to confirm your place.
         </p>
-        <div className="mt-6 flex justify-center">
-          <Button href="/profile" radius="xl">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {savedDogId && (
+            <Button href={`/profile/dogs/${savedDogId}`} radius="xl">
+              View {data.dogName || "your dog"}&apos;s record
+            </Button>
+          )}
+          <Button href="/profile" variant="secondary" radius="xl">
             Go to your profile
           </Button>
         </div>
@@ -235,89 +316,84 @@ export function WaiverForm() {
     );
   }
 
-  return (
-    <div ref={topRef} tabIndex={-1} className="outline-none">
-      {/* Progress */}
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">
-          Step {step + 1} of {STEPS.length}
+  if (authStatus === "loading") {
+    return <div className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center text-paper-dim">Loading…</div>;
+  }
+
+  // The form is saved against the customer's account and dog, so it needs a login.
+  if (authStatus === "anon") {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center">
+        <h2 className="text-2xl font-semibold text-paper">Log in to continue</h2>
+        <p className="mx-auto mt-3 max-w-sm text-sm text-paper-dim">
+          Your consent &amp; waiver is saved to your account and your dog&apos;s record, so please log
+          in (or create an account) first.{restored ? " Your progress so far is saved on this device." : ""}
         </p>
-        {saved && <span className="text-xs font-medium text-emerald-300">Draft saved ✓</span>}
-      </div>
-      <div
-        className="mt-3 grid gap-1.5"
-        style={{ gridTemplateColumns: `repeat(${STEPS.length}, 1fr)` }}
-        aria-hidden="true"
-      >
-        {STEPS.map((label, i) => (
-          <div
-            key={label}
-            className={`h-1.5 rounded-full ${i <= step || completed.includes(i) ? "bg-paper" : "bg-white/15"}`}
-          />
-        ))}
-      </div>
-      <h2 className="display-heading mt-6 text-2xl text-paper sm:text-3xl">{STEPS[step]}</h2>
-
-      {restored && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white/[0.05] p-4 text-sm ring-1 ring-white/10">
-          <p className="text-paper/80">We saved your progress — carry on where you left off.</p>
-          <button
-            type="button"
-            onClick={startOver}
-            className="font-medium text-accent underline underline-offset-2"
-          >
-            Start over
-          </button>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Button href="/login" radius="xl">Log in</Button>
+          <Button href="/create-account" variant="secondary" radius="xl">Create an account</Button>
         </div>
-      )}
+      </div>
+    );
+  }
 
+  return (
+    <div ref={topRef} tabIndex={-1} className="scroll-mt-24 outline-none">
+      <WizardHeading title={STEPS[step]} step={step} total={STEPS.length} saved={saved} />
       <div className="mt-5">
+        <WizardProgress
+          steps={STEPS}
+          current={step}
+          reachable={(i) => i < step || completed.includes(i) || completed.includes(i - 1)}
+          onJump={jump}
+        />
+      </div>
+
+      {restored && <DraftRestored onStartOver={startOver} />}
+
+      <StepCard key={step}>
         {step === 0 && <AboutStep data={data} set={set} errors={errors} />}
         {step === 1 && <AddressStep data={data} set={set} errors={errors} />}
-        {step === 2 && <DogBasicsStep data={data} set={set} errors={errors} />}
-        {step === 3 && <VaccStep data={data} set={set} toggle={toggle} setData={setData} errors={errors} />}
+        {step === 2 && (
+          <DogBasicsStep data={data} set={set} errors={errors} dogs={session?.dogs ?? []} onPickDog={(id) => void pickDog(id)} />
+        )}
+        {step === 3 && (
+          <VaccStep data={data} set={set} toggle={toggle} onFile={(f) => void pickVaccFile(f)} uploading={vaccUploading} errors={errors} />
+        )}
         {step === 4 && <HealthStep data={data} set={set} errors={errors} />}
         {step === 5 && <VetStep data={data} set={set} errors={errors} />}
         {step === 6 && <AgreementStep data={data} toggle={toggle} errors={errors} />}
-        {step === 7 && <SignStep data={data} set={set} errors={errors} onSign={() => setSigning(true)} />}
-      </div>
-
-      {/* Navigation */}
-      <div className="mt-8 flex items-center justify-between gap-4">
-        {step > 0 ? (
-          <Button variant="secondary" radius="xl" onClick={back} disabled={status === "submitting"}>
-            Back
-          </Button>
-        ) : (
-          <span />
+        {step === 7 && (
+          <SignStep
+            data={data}
+            set={set}
+            errors={errors}
+            onSignature={(url) => {
+              setData((d) => ({ ...d, signature: url }));
+              if (url) setErrors((e) => ({ ...e, signature: "" }));
+            }}
+          />
         )}
-        {step < STEPS.length - 1 ? (
-          <Button radius="xl" onClick={next}>
-            Next
-          </Button>
-        ) : (
-          <Button
-            radius="xl"
-            size="lg"
-            onClick={submit}
-            disabled={status === "submitting"}
-            className="disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {status === "submitting" ? "Signing…" : "Sign & submit"}
-          </Button>
-        )}
-      </div>
 
-      {signing && (
-        <SignaturePad
-          onClose={() => setSigning(false)}
-          onSave={(url) => {
-            setData((d) => ({ ...d, signature: url }));
-            setErrors((e) => ({ ...e, signature: "" }));
-            setSigning(false);
-          }}
+        {submitError && (
+          <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            Couldn&apos;t submit: {submitError}
+          </p>
+        )}
+        {Object.values(errors).some(Boolean) && (
+          <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            Please check the highlighted {Object.values(errors).filter(Boolean).length === 1 ? "field" : "fields"} above.
+          </p>
+        )}
+
+        <WizardNav
+          onBack={step > 0 ? back : undefined}
+          onNext={step < STEPS.length - 1 ? next : submit}
+          nextLabel={step < STEPS.length - 1 ? "Next" : "Sign & submit"}
+          busy={status === "submitting"}
+          busyLabel="Signing…"
         />
-      )}
+      </StepCard>
     </div>
   );
 }
@@ -343,15 +419,15 @@ function PhoneRow({
 }) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-paper/90">
-        {label} <span className="text-paper-dim">*</span>
+      <label className="mb-2 block text-sm text-paper-dim">
+        {label} <span className="text-paper-dim/70">*</span>
       </label>
       <div className="flex gap-2">
         <div className="relative">
           <select
             value={String(data[codeKey])}
             onChange={(e) => set(codeKey)(e.target.value)}
-            className="appearance-none rounded-xl border border-white/15 bg-white/[0.04] py-3 pl-4 pr-9 text-paper focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="appearance-none rounded-lg border border-white/10 bg-ink py-2.5 pl-4 pr-9 text-sm text-paper outline-none transition-colors focus:border-white/40"
             aria-label={`${label} country code`}
           >
             {dialCodes.map((c) => (
@@ -372,7 +448,7 @@ function PhoneRow({
           value={String(data[numberKey])}
           onChange={(e) => set(numberKey)(e.target.value)}
           aria-invalid={!!error}
-          className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          className="w-full rounded-lg border border-white/10 bg-ink px-4 py-2.5 text-sm text-paper placeholder:text-paper-dim/70 outline-none transition-colors focus:border-white/40 aria-[invalid=true]:border-red-400/60"
         />
       </div>
       {error && <p className="mt-1.5 text-sm text-red-400">{error}</p>}
@@ -395,8 +471,8 @@ function YesNo({
 }) {
   return (
     <div>
-      <p className="mb-2 block text-sm font-medium text-paper/90">
-        {label} <span className="text-paper-dim">*</span>
+      <p className="mb-2 block text-sm text-paper-dim">
+        {label} <span className="text-paper-dim/70">*</span>
       </p>
       <SelectCards ariaLabel={label} columns={2} options={yesNo} value={String(data[field])} onChange={set(field)} />
       {error && <p className="mt-1.5 text-sm text-red-400">{error}</p>}
@@ -420,7 +496,7 @@ function Checkbox({
       <button type="button" onClick={onToggle} aria-pressed={checked} className="flex w-full items-start gap-3 text-left">
         <span
           className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-            checked ? "border-accent bg-accent text-accent-ink" : "border-white/30"
+            checked ? "border-accent bg-accent text-accent-ink" : "border-white/25 bg-ink"
           }`}
         >
           {checked && <CheckIcon width={15} height={15} />}
@@ -464,10 +540,33 @@ function AddressStep({ data, set, errors }: { data: WaiverData; set: SetFn; erro
   );
 }
 
-function DogBasicsStep({ data, set, errors }: { data: WaiverData; set: SetFn; errors: Record<string, string> }) {
+function DogBasicsStep({
+  data,
+  set,
+  errors,
+  dogs,
+  onPickDog,
+}: {
+  data: WaiverData;
+  set: SetFn;
+  errors: Record<string, string>;
+  dogs: { id: string; name: string }[];
+  onPickDog: (id: string) => void;
+}) {
   return (
     <div className="grid gap-4">
-      <Field label="Full Name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
+      {dogs.length > 0 && (
+        <div>
+          <p className="mb-2 block text-sm text-paper-dim">Which dog is this for?</p>
+          <SelectCards
+            ariaLabel="Which dog is this for?"
+            options={[...dogs.map((d) => ({ value: d.id, label: d.name })), { value: "", label: "Another dog" }]}
+            value={data.dogId}
+            onChange={onPickDog}
+          />
+        </div>
+      )}
+      <Field label="Dog's full name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
         <Field label="Date of birth" name="dob" type="date" required value={data.dob} onChange={set("dob")} error={errors.dob} />
@@ -484,31 +583,39 @@ function VaccStep({
   data,
   set,
   toggle,
-  setData,
+  onFile,
+  uploading,
   errors,
 }: {
   data: WaiverData;
   set: SetFn;
   toggle: (key: keyof WaiverData) => void;
-  setData: React.Dispatch<React.SetStateAction<WaiverData>>;
+  onFile: (file: File) => void;
+  uploading: boolean;
   errors: Record<string, string>;
 }) {
   return (
     <div className="grid gap-4">
       <div>
-        <p className="mb-2 block text-sm font-medium text-paper/90">
-          Upload Vaccination Record <span className="text-paper-dim">*</span>
+        <p className="mb-2 block text-sm text-paper-dim">
+          Upload Vaccination Record <span className="text-paper-dim/70">*</span>
         </p>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-sm font-medium text-paper transition-colors hover:border-white/40">
           <input
             type="file"
             accept="image/*,application/pdf"
             className="hidden"
-            onChange={(e) => setData((d) => ({ ...d, vaccFile: e.target.files?.[0]?.name ?? "" }))}
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) onFile(file);
+            }}
           />
-          {data.vaccFile ? "Change file" : "+ Upload File"}
+          {uploading ? "Uploading…" : data.vaccPath ? "Change file" : "+ Upload File"}
         </label>
-        {data.vaccFile && <p className="mt-2 text-sm text-paper/70">{data.vaccFile}</p>}
+        {data.vaccPath && !uploading && <p className="mt-2 text-sm text-emerald-300">{data.vaccFile} ✓ uploaded</p>}
+        <p className="mt-1.5 text-xs text-paper-dim">A photo or PDF, up to 10 MB. Kept privately on your account.</p>
         {errors.vaccFile && <p className="mt-1.5 text-sm text-red-400">{errors.vaccFile}</p>}
       </div>
 
@@ -557,8 +664,8 @@ function AgreementStep({
 }) {
   return (
     <div>
-      <h3 className="display-heading text-xl text-paper">{waiverTitle}</h3>
-      <div className="mt-4 max-h-[46vh] overflow-y-auto rounded-2xl bg-white/[0.03] p-5 ring-1 ring-white/10">
+      <h3 className="text-lg font-semibold text-paper">{waiverTitle}</h3>
+      <div className="mt-4 max-h-[46vh] overflow-y-auto overscroll-contain rounded-lg border border-white/10 bg-ink p-5">
         <div className="space-y-5">
           {waiverClauses.map((c) => (
             <div key={c.heading}>
@@ -603,49 +710,31 @@ function SignStep({
   data,
   set,
   errors,
-  onSign,
+  onSignature,
 }: {
   data: WaiverData;
   set: SetFn;
   errors: Record<string, string>;
-  onSign: () => void;
+  onSignature: (dataUrl: string) => void;
 }) {
   return (
     <div className="grid gap-4">
-      <Field label="The Client (Full Name)" name="clientName" required value={data.clientName} onChange={set("clientName")} error={errors.clientName} />
-      <div>
-        <p className="mb-2 block text-sm font-medium text-paper/90">Date signed</p>
-        <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper">
-          <CalendarIcon width={16} height={16} className="shrink-0 text-paper-dim" />
-          <span>{data.signDate ? formatSignDate(data.signDate) : "Today"}</span>
+      <p className="text-sm text-paper">To be signed by the dog&apos;s owner, who must be 18 or over.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="The Client (Full Name)" name="clientName" required value={data.clientName} onChange={set("clientName")} error={errors.clientName} />
+        <div>
+          <p className="mb-2 block text-sm text-paper-dim">Date signed</p>
+          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-ink px-4 py-2.5 text-sm text-paper-dim">
+            <CalendarIcon width={16} height={16} className="shrink-0" />
+            <span>{formatSignDate(new Date().toISOString().slice(0, 10))}</span>
+          </div>
         </div>
-        <p className="mt-1.5 text-xs text-paper-dim">
-          Captured automatically when you sign and submit.
-        </p>
       </div>
       <div>
-        <p className="mb-2 block text-sm font-medium text-paper/90">
-          Client Signature <span className="text-paper-dim">*</span>
+        <p className="mb-2 block text-sm text-paper-dim">
+          Client signature <span className="text-paper-dim/70">*</span>
         </p>
-        {data.signature ? (
-          <div className="rounded-2xl border border-white/15 bg-white/[0.06] p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.signature} alt="Your signature" className="mx-auto h-24 object-contain" />
-            <div className="mt-2 text-center">
-              <button type="button" onClick={onSign} className="text-sm font-medium text-accent underline underline-offset-2">
-                Sign again
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onSign}
-            className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-sm font-medium text-accent transition-colors hover:border-white/40"
-          >
-            ✎ Click to Sign
-          </button>
-        )}
+        <SignaturePad value={data.signature} onChange={onSignature} invalid={!!errors.signature} />
         {errors.signature && <p className="mt-1.5 text-sm text-red-400">{errors.signature}</p>}
       </div>
     </div>

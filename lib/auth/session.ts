@@ -144,6 +144,15 @@ async function hydrate() {
   ]);
 
   const profile = profileRes.data;
+
+  // Contact details given at sign-up (from the meet & greet form) ride in the
+  // user's metadata; copy them onto the profile the first time we see them.
+  // Only fills empty columns, so it never overwrites an edit.
+  const meta = user.user_metadata ?? {};
+  for (const col of ["phone", "address"] as const) {
+    const value = typeof meta[col] === "string" ? meta[col].trim() : "";
+    if (value) void sb().from("profiles").update({ [col]: value }).eq("id", user.id).is(col, null).then(() => undefined);
+  }
   const dogs: SessionDog[] = (dogsRes.data ?? []).map((d) => ({
     id: d.id as string,
     name: (d.name as string) ?? "",
@@ -206,6 +215,9 @@ export async function signUpNewAccount(input: {
    *  of user_metadata so it never bloats the JWT). */
   avatarUrl?: string;
   dogs?: SignUpDog[];
+  /** Contact details from the meet & greet form, saved onto the profile. */
+  phone?: string;
+  address?: string;
 }): Promise<{ error: string | null; needsConfirmation: boolean }> {
   const { data, error } = await sb().auth.signUp({
     email: input.email,
@@ -213,6 +225,8 @@ export async function signUpNewAccount(input: {
     options: {
       data: {
         owner_name: input.ownerName,
+        phone: input.phone?.trim() || undefined,
+        address: input.address?.trim() || undefined,
         dogs: (input.dogs ?? [])
           .filter((d) => d.name.trim())
           .map((d) => ({ name: d.name.trim(), breed: d.breed?.trim() || undefined })),

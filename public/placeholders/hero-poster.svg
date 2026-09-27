@@ -14,13 +14,7 @@
   </defs>
   <rect width="1600" height="2000" fill="url(#hg)"/>
   <rect width="1600" height="2000" fill="url(#sheen)"/>
-  <g transform="translate(800, 880)" fill="#ffffff" fill-opacity="0.5">
-    <circle cx="-52" cy="-20" r="18"/>
-    <circle cx="-18" cy="-40" r="18"/>
-    <circle cx="18" cy="-40" r="18"/>
-    <circle cx="52" cy="-20" r="18"/>
-    <path d="M0 -16 C 36 -16 60 12 60 40 C 60 68 32 80 0 80 C -32 80 -60 68 -60 40 C -60 12 -36 -16 0 -16 Z"/>
-  </g>
+  <g transform="translate(680, 817.2844480257857) scale(0.09669621273166801) translate(-259, -748)" fill="#ffffff" fill-opacity="0.5"><path d="M259 748 L453 748 L453 1963.9 L1203.5 748 L1444 748 L1444 2252 L1249 2252 L1249 1038.5 L488 2252 L259 2252 Z"/><path d="M2741 748 L2547 748 L2547 1963.9 L1796.5 748 L1556 748 L1556 2252 L1751 2252 L1751 1038.5 L2512 2252 L2741 2252 Z"/></g>
   <text x="50%" y="52%" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="800" letter-spacing="6" fill="#f5f2ea">HERO VIDEO</text>
   <text x="50%" y="55.5%" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" letter-spacing="8" fill="#8a8a8a">PLACEHOLDER LOOP</text>
 </svg>

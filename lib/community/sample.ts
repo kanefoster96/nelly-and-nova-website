@@ -24,7 +24,7 @@ export const sampleCommunityPosts: Post[] = [
       {
         id: "c1",
         authorName: "Nelly & Nova",
-        authorAvatarUrl: "/placeholders/icon-mark.svg",
+        authorAvatarUrl: "/brand/nn-icon.svg",
         body: "Amazing progress — she's really checking in with you now. Keep it up!",
         createdAt: "2026-08-11T09:05:00Z",
       },
@@ -48,7 +48,7 @@ export const sampleCommunityPosts: Post[] = [
   {
     id: "p1",
     authorName: "Nelly & Nova",
-    authorAvatarUrl: "/placeholders/icon-mark.svg",
+    authorAvatarUrl: "/brand/nn-icon.svg",
     title: "Welcome to the pack!",
     body:
       "This is our little community space — share your wins, photos and videos, ask questions and cheer each other on. Be kind, keep it doggy, and have fun. 🐶",

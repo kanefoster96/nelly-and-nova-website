@@ -15,7 +15,8 @@ type WordmarkProps = {
 };
 
 /**
- * NELLY & NOVA wordmark. Swap the underlying file in config/media.ts.
+ * The Nelly & Nova logo (the "ИN" mark — the only brand logo). The file lives
+ * in public/brand/ and is referenced from config/media.ts.
  */
 export function Wordmark({
   className = "",
@@ -25,8 +26,8 @@ export function Wordmark({
   priority = false,
 }: WordmarkProps) {
   const src = mono ? media.logo.wordmarkMono : media.logo.wordmark;
-  // Intrinsic ratio of the placeholder wordmark is 520 x 120.
-  const width = Math.round((height * 520) / 120);
+  // Intrinsic ratio of the NN logo is 2482 x 1504.
+  const width = Math.round((height * 2482) / 1504);
 
   const img = (
     <Image

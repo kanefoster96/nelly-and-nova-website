@@ -3,9 +3,8 @@
 Mobile-first marketing site for **Nelly & Nova**, a dog training company in the
 North East of England (Tynemouth, Backworth & surrounding areas).
 
-Phase one is the **homepage**. The project is built component-first and
-touch-friendly so it can later be wrapped as a native mobile app with
-[Capacitor](https://capacitorjs.com/).
+Phase one is the **homepage**. The members' native app lives in
+[`mobile/`](mobile/README.md).
 
 ## Stack
 
@@ -132,11 +131,11 @@ All booking CTAs currently point at `#book` (see `BOOKING_HREF` in
 - All motion is disabled automatically when the user has
   `prefers-reduced-motion` set.
 
-## Native app (later)
+## Native app
 
-To wrap with Capacitor, add `output: "export"` to `next.config.ts`, run
-`npm run build`, then point Capacitor at the exported `out/` directory. The site
-already avoids browser-only assumptions that would block a native wrap.
+The members' app (Expo, iOS/Android, over-the-air updates) lives in
+[`mobile/`](mobile/README.md). It has its own `package.json`, and the website's
+build, lint and typecheck ignore it.
 
 ---
 

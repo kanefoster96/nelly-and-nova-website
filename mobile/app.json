@@ -1,0 +1,78 @@
+{
+  "expo": {
+    "name": "Nelly & Nova",
+    "slug": "nelly-and-nova",
+    "owner": "kanefoster96",
+    "scheme": "nellyandnova",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0a0a0a",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/8f817078-2797-483e-a8ef-ca0c428909dc"
+    },
+    "ios": {
+      "bundleIdentifier": "uk.co.nellyandnova.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "uk.co.nellyandnova.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-sqlite",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0a0a0a"
+        }
+      ],
+      "expo-image",
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nelly & Nova uses your photos so you can share them in the community and in chat.",
+          "cameraPermission": "Nelly & Nova uses the camera so you can share photos of your dog."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8f817078-2797-483e-a8ef-ca0c428909dc"
+      }
+    }
+  }
+}

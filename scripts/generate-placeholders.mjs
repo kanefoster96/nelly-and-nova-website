@@ -23,7 +23,16 @@ const MUTED = "#8a8a8a";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** A generic "photo" placeholder tile with a paw glyph + label. */
+// The Nelly & Nova "ИN" logo (the only brand mark — see public/brand/).
+const NN_PATHS = `<path d="M259 748 L453 748 L453 1963.9 L1203.5 748 L1444 748 L1444 2252 L1249 2252 L1249 1038.5 L488 2252 L259 2252 Z"/><path d="M2741 748 L2547 748 L2547 1963.9 L1796.5 748 L1556 748 L1556 2252 L1751 2252 L1751 1038.5 L2512 2252 L2741 2252 Z"/>`;
+
+/** The NN mark centred on (cx, cy), `width` wide. */
+function nnMark(cx, cy, width, opacity = 1) {
+  const k = width / 2482;
+  return `<g transform="translate(${cx - width / 2}, ${cy - (1504 * k) / 2}) scale(${k}) translate(-259, -748)" fill="${ACCENT}" fill-opacity="${opacity}">${NN_PATHS}</g>`;
+}
+
+/** A generic "photo" placeholder tile with the NN mark + label. */
 function photo({ w, h, label, sub = "PLACEHOLDER PHOTO", id }) {
   const cx = w / 2;
   const cy = h / 2;
@@ -40,13 +49,7 @@ function photo({ w, h, label, sub = "PLACEHOLDER PHOTO", id }) {
   </defs>
   <rect width="${w}" height="${h}" fill="url(#g${id})"/>
   <rect width="${w}" height="${h}" fill="url(#p${id})"/>
-  <g transform="translate(${cx}, ${cy - 34})" fill="${ACCENT}" fill-opacity="0.55">
-    <circle cx="-26" cy="-10" r="9"/>
-    <circle cx="-9" cy="-20" r="9"/>
-    <circle cx="9" cy="-20" r="9"/>
-    <circle cx="26" cy="-10" r="9"/>
-    <path d="M0 -8 C 18 -8 30 6 30 20 C 30 34 16 40 0 40 C -16 40 -30 34 -30 20 C -30 6 -18 -8 0 -8 Z"/>
-  </g>
+  ${nnMark(cx, cy - 26, Math.min(96, w * 0.3), 0.55)}
   <text x="${cx}" y="${cy + 34}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="2" fill="${INK}">${esc(label.toUpperCase())}</text>
   <text x="${cx}" y="${cy + 58}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" letter-spacing="3" fill="${MUTED}">${esc(sub)}</text>
 </svg>`;
@@ -89,37 +92,13 @@ function heroPoster({ w = 1600, h = 2000 } = {}) {
   </defs>
   <rect width="${w}" height="${h}" fill="url(#hg)"/>
   <rect width="${w}" height="${h}" fill="url(#sheen)"/>
-  <g transform="translate(${w / 2}, ${h / 2 - 120})" fill="${ACCENT}" fill-opacity="0.5">
-    <circle cx="-52" cy="-20" r="18"/>
-    <circle cx="-18" cy="-40" r="18"/>
-    <circle cx="18" cy="-40" r="18"/>
-    <circle cx="52" cy="-20" r="18"/>
-    <path d="M0 -16 C 36 -16 60 12 60 40 C 60 68 32 80 0 80 C -32 80 -60 68 -60 40 C -60 12 -36 -16 0 -16 Z"/>
-  </g>
+  ${nnMark(w / 2, h / 2 - 110, 240, 0.5)}
   <text x="50%" y="52%" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="800" letter-spacing="6" fill="${INK}">HERO VIDEO</text>
   <text x="50%" y="55.5%" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" letter-spacing="8" fill="${MUTED}">PLACEHOLDER LOOP</text>
 </svg>`;
 }
 
-/** NELLY & NOVA wordmark logo. */
-function wordmark({ ink = INK } = {}) {
-  const w = 520;
-  const h = 120;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Nelly and Nova wordmark">
-  <g transform="translate(30, 60)" fill="${ACCENT}">
-    <circle cx="-8" cy="-12" r="5.5"/>
-    <circle cx="6" cy="-19" r="5.5"/>
-    <circle cx="20" cy="-19" r="5.5"/>
-    <circle cx="34" cy="-12" r="5.5"/>
-    <path d="M13 -10 C 24 -10 31 -1 31 8 C 31 17 22 21 13 21 C 4 21 -5 17 -5 8 C -5 -1 2 -10 13 -10 Z"/>
-  </g>
-  <text x="86" y="52" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" letter-spacing="3" fill="${ink}">NELLY &amp; NOVA</text>
-  <text x="88" y="82" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="600" letter-spacing="7" fill="${ACCENT}">DOG TRAINING</text>
-  <text x="88" y="100" font-family="Arial, Helvetica, sans-serif" font-size="9" letter-spacing="3" fill="${MUTED}">PLACEHOLDER LOGO</text>
-</svg>`;
-}
-
-/** Small circular-friendly avatar placeholder (paw + index). */
+/** Small circular-friendly avatar placeholder (NN mark + index). */
 function avatarTile(n) {
   const s = 160;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" role="img" aria-label="Customer dog avatar placeholder ${n}">
@@ -130,52 +109,12 @@ function avatarTile(n) {
     </radialGradient>
   </defs>
   <rect width="${s}" height="${s}" fill="url(#ag${n})"/>
-  <g transform="translate(${s / 2}, ${s / 2 - 8})" fill="${ACCENT}" fill-opacity="0.45">
-    <circle cx="-26" cy="-10" r="9"/>
-    <circle cx="-9" cy="-20" r="9"/>
-    <circle cx="9" cy="-20" r="9"/>
-    <circle cx="26" cy="-10" r="9"/>
-    <path d="M0 -8 C 18 -8 30 6 30 20 C 30 34 16 40 0 40 C -16 40 -30 34 -30 20 C -30 6 -18 -8 0 -8 Z"/>
-  </g>
+  ${nnMark(s / 2, s / 2 - 12, 72, 0.45)}
   <text x="${s / 2}" y="${s - 24}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="${MUTED}">${n}</text>
 </svg>`;
 }
 
-/** Compact " NN " monogram lockup (thin strokes) for the header. */
-function monogram() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="44" viewBox="0 0 64 44" role="img" aria-label="Nelly and Nova monogram">
-  <g fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="square">
-    <!-- reversed N -->
-    <line x1="8" y1="6" x2="8" y2="38"/>
-    <line x1="8" y1="38" x2="28" y2="6"/>
-    <line x1="28" y1="6" x2="28" y2="38"/>
-    <!-- N -->
-    <line x1="36" y1="6" x2="36" y2="38"/>
-    <line x1="36" y1="6" x2="56" y2="38"/>
-    <line x1="56" y1="6" x2="56" y2="38"/>
-  </g>
-</svg>`;
-}
-
-/** Compact square app icon / favicon mark. */
-function iconMark() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Nelly and Nova icon">
-  <rect width="64" height="64" rx="16" fill="#0a0a0a"/>
-  <g transform="translate(32, 34)" fill="${ACCENT}">
-    <circle cx="-13" cy="-8" r="4.5"/>
-    <circle cx="-4" cy="-14" r="4.5"/>
-    <circle cx="4" cy="-14" r="4.5"/>
-    <circle cx="13" cy="-8" r="4.5"/>
-    <path d="M0 -6 C 9 -6 15 1 15 8 C 15 15 8 18 0 18 C -8 18 -15 15 -15 8 C -15 1 -9 -6 0 -6 Z"/>
-  </g>
-</svg>`;
-}
-
 const files = {
-  "logo-wordmark.svg": wordmark({ ink: INK }),
-  "logo-wordmark-mono.svg": wordmark({ ink: "#ffffff" }),
-  "logo-monogram.svg": monogram(),
-  "icon-mark.svg": iconMark(),
   "hero-poster.svg": heroPoster(),
   "founder-portrait.svg": photo({ w: 900, h: 1100, label: "Charlotte", sub: "FOUNDER PORTRAIT PLACEHOLDER", id: "founder" }),
   "walk-train-bg.svg": background({ w: 1600, h: 1200, label: "Walk & Train", id: "wt" }),
