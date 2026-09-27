@@ -15,7 +15,7 @@ const BRAND = site.name;
  */
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://nelly-and-nova-website.vercel.app").replace(/\/$/, "");
 const LOGO_URL = `${SITE_URL}/brand/nn-logo-white.png`;
-const ACCENT = "#c8a24a"; // warm gold — close to the site accent
+const ACCENT = "#ffffff"; // black & white brand: buttons are white with black text
 
 function escape(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
@@ -25,16 +25,16 @@ function escape(s: string): string {
 
 /** Branded HTML shell. `bodyHtml` is trusted (built from escaped values). */
 function layout(heading: string, bodyHtml: string): string {
-  return `<!doctype html><html><body style="margin:0;background:#0f0f10;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#17171a;border-radius:16px;overflow:hidden;">
+  return `<!doctype html><html><body style="margin:0;background:#000000;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#0a0a0a;border-radius:16px;overflow:hidden;">
       <tr><td style="padding:28px 28px 8px;">
-        <img src="${LOGO_URL}" width="66" height="40" alt="${escape(BRAND)}" style="display:block;width:66px;height:40px;border:0;color:#f5f3ee;font-size:14px;font-weight:700;letter-spacing:.15em;" />
-        <h1 style="margin:18px 0 0;font-size:24px;line-height:1.2;color:#f5f3ee;">${escape(heading)}</h1>
+        <img src="${LOGO_URL}" width="66" height="40" alt="${escape(BRAND)}" style="display:block;width:66px;height:40px;border:0;color:#ffffff;font-size:14px;font-weight:700;letter-spacing:.15em;" />
+        <h1 style="margin:18px 0 0;font-size:24px;line-height:1.2;color:#ffffff;">${escape(heading)}</h1>
       </td></tr>
-      <tr><td style="padding:12px 28px 28px;color:#cfccc4;font-size:15px;line-height:1.6;">
+      <tr><td style="padding:12px 28px 28px;color:#d4d4d4;font-size:15px;line-height:1.6;">
         ${bodyHtml}
       </td></tr>
-      <tr><td style="padding:18px 28px;border-top:1px solid rgba(255,255,255,.08);color:#8a8880;font-size:12px;">
+      <tr><td style="padding:18px 28px;border-top:1px solid rgba(255,255,255,.08);color:#8c8c8c;font-size:12px;">
         ${escape(BRAND)} · Dog training in Tynemouth, Backworth &amp; local areas
       </td></tr>
     </table>
@@ -82,7 +82,7 @@ export function bookingOwnerNotification(d: {
   const who = `${d.firstName} ${d.lastName}`.trim();
   const html = layout("New booking request", `
     <p>${escape(who)} sent a meet &amp; greet request${d.serviceLabel ? ` for ${escape(d.serviceLabel)}` : ""}.</p>
-    <pre style="white-space:pre-wrap;font-family:inherit;background:#111;padding:14px;border-radius:10px;color:#cfccc4;">${escape(d.detailsText)}</pre>
+    <pre style="white-space:pre-wrap;font-family:inherit;background:#1a1a1a;padding:14px;border-radius:10px;color:#d4d4d4;">${escape(d.detailsText)}</pre>
   `);
   return {
     to: d.to,
@@ -104,7 +104,7 @@ export function paymentFailed(d: {
 }): EmailMessage {
   const name = (d.ownerName || "there").split(" ")[0];
   const cta = d.retryUrl
-    ? `<p style="margin:18px 0;"><a href="${escape(d.retryUrl)}" style="display:inline-block;background:${ACCENT};color:#1b1b1b;text-decoration:none;font-weight:600;padding:11px 20px;border-radius:999px;">Resubmit payment</a></p>`
+    ? `<p style="margin:18px 0;"><a href="${escape(d.retryUrl)}" style="display:inline-block;background:${ACCENT};color:#000000;text-decoration:none;font-weight:600;padding:11px 20px;border-radius:999px;">Resubmit payment</a></p>`
     : `<p style="margin:18px 0;">Please reply to this email and we'll send you a secure link to resubmit.</p>`;
   const html = layout("Your payment didn't go through", `
     <p>Hi ${escape(name)},</p>
@@ -144,14 +144,14 @@ export function placementConfirmed(d: {
     ? `${d.chargeDayLabel}s${cadence} — the day before each session`
     : "";
   const paymentRow = paymentLine
-    ? `<tr><td style="padding:6px 0;color:#8a8880;">Payment</td><td style="padding:6px 0 6px 16px;color:#f5f3ee;font-weight:600;">${escape(paymentLine)}</td></tr>`
+    ? `<tr><td style="padding:6px 0;color:#8c8c8c;">Payment</td><td style="padding:6px 0 6px 16px;color:#ffffff;font-weight:600;">${escape(paymentLine)}</td></tr>`
     : "";
   const html = layout("You're all booked in", `
     <p>Hi ${escape(name)},</p>
     <p>Great news — ${escape(d.dogName || "your dog")}'s place is confirmed. Here are the details:</p>
     <table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0;">
-      <tr><td style="padding:6px 0;color:#8a8880;">Training day</td><td style="padding:6px 0 6px 16px;color:#f5f3ee;font-weight:600;">${escape(d.dayLabel)}${escape(cadence)}</td></tr>
-      <tr><td style="padding:6px 0;color:#8a8880;">First session</td><td style="padding:6px 0 6px 16px;color:#f5f3ee;font-weight:600;">${escape(d.startDateLabel)}</td></tr>
+      <tr><td style="padding:6px 0;color:#8c8c8c;">Training day</td><td style="padding:6px 0 6px 16px;color:#ffffff;font-weight:600;">${escape(d.dayLabel)}${escape(cadence)}</td></tr>
+      <tr><td style="padding:6px 0;color:#8c8c8c;">First session</td><td style="padding:6px 0 6px 16px;color:#ffffff;font-weight:600;">${escape(d.startDateLabel)}</td></tr>
       ${paymentRow}
     </table>
     <p>We can't wait to get started. If anything changes before then, just reply to this email.</p>
@@ -302,10 +302,10 @@ export function meetGreetBooked(d: {
   const first = d.name.split(" ")[0] || "there";
   const html = layout("Your meet & greet is booked", `
     <p>Hi ${escape(first)},</p>
-    <p>Lovely to hear from you. We've booked your free meet &amp; greet for <b style="color:#f5f3ee;">${escape(d.whenLabel)}</b>.</p>
+    <p>Lovely to hear from you. We've booked your free meet &amp; greet for <b style="color:#ffffff;">${escape(d.whenLabel)}</b>.</p>
     ${d.notes ? `<p>${escape(d.notes).replace(/\n/g, "<br/>")}</p>` : ""}
     <p>If you haven't already, you can create your account now so you're ready to go afterwards:</p>
-    <p><a href="${escape(d.createAccountUrl)}" style="display:inline-block;background:${ACCENT};color:#0f0f10;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600;">Create your account</a></p>
+    <p><a href="${escape(d.createAccountUrl)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600;">Create your account</a></p>
     <p>Need to change the time? Just reply to this email.</p>
     <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
   `);
