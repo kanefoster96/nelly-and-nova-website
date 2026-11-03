@@ -618,6 +618,14 @@ export const faq = {
         "We will train your dog in whatever you currently have. As they progress, we will recommend training equipment that we think will benefit them the most. You'll never be forced to purchase more items, but we would advise them if needed.",
       ],
     },
+    {
+      q: "Do you use training tools?",
+      a: [
+        "We're balanced trainers, so yes, we do use tools, but we don't rely on them. We teach dogs using rewards and treats, and we make sure every dog is comfortable and fully understands each skill and behaviour.",
+        "Tools help a dog understand how to move with the lead and respond to pressure. Once a dog understands what you're asking of them, tools make their training clear and consistent.",
+        "We'll always explain why we use a certain tool, and they aren't one size fits all. We just ask every owner to be willing to learn and adjust, just as much as their dog.",
+      ],
+    },
   ] as Faq[],
 };
 
