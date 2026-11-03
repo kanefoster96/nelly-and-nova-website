@@ -132,15 +132,10 @@ export const services = {
 /**
  * Google reviews carousel.
  * ------------------------
- * `items` below are PLACEHOLDERS. To connect the real feed, fetch the Google
- * Places Details API (fields: reviews) for the business `place_id` and map each
- * returned review to the `Review` shape:
- *   author       ← review.author_name
- *   rating       ← review.rating
- *   text         ← review.text
- *   date         ← review.relative_time_description  (or format review.time)
- *   avatar       ← review.profile_photo_url          (optional; NN monogram if absent)
- * Then pass the mapped array to <Reviews items={...} />. Nothing else changes.
+ * Live reviews come from Google (lib/reviews/google.ts) once
+ * NEXT_PUBLIC_GOOGLE_PLACE_ID and GOOGLE_PLACES_API_KEY are set. Until then,
+ * or if Google can't be reached, the `items` below are shown instead.
+ * "Leave us a review" goes to /review, which forwards to Google's review box.
  */
 export type Review = {
   author: string;
@@ -153,8 +148,6 @@ export type Review = {
 export const googleReviews = {
   heading: "Our reviews.",
   cta: "Leave us a review on",
-  /** Replace with your Google "write a review" link (g.page/r/… or Maps URL). */
-  reviewUrl: "#",
   items: [
     {
       author: "Sarah M.",
@@ -663,7 +656,7 @@ export const contact = {
   phoneLabel: "0191 468 3251",
   email: "charlotte@nellyandnova.co.uk",
   /** WhatsApp click-to-chat link — replace the number (international format, no +). */
-  whatsapp: "https://wa.me/440000000000",
+  whatsapp: "https://wa.me/441914683251",
 };
 
 /** Hero trust badges. `icon` maps to benefitIcons in components/ui/Icons.tsx. */
