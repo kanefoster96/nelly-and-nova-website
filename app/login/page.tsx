@@ -8,7 +8,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Arriving from a used or expired "confirm your email" link.
+  const confirmFailed = (await searchParams).confirm === "failed";
+
   return (
     <>
       <Nav />
@@ -25,6 +32,13 @@ export default function LoginPage() {
               Log in to see your dog&apos;s profile, track their training and
               chat with us directly.
             </p>
+
+            {confirmFailed && (
+              <p className="mt-6 rounded-xl bg-white/[0.06] px-4 py-3 text-sm text-paper/85 ring-1 ring-white/10">
+                That confirmation link has already been used or has expired. If you&apos;ve
+                confirmed already, just log in below.
+              </p>
+            )}
 
             <div className="mt-8">
               <LoginForm />

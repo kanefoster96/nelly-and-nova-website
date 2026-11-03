@@ -22,6 +22,17 @@ Last updated 3 November 2026. Tick things off as they're done.
   - Click **Verify** in Resend, then tell Claude to switch the "from"
     address to `hello@nellyandnova.co.uk` (customer confirmation emails
     only start working after this)
+- [ ] **Sign-up emails (Supabase → Authentication)** — 5 minutes
+  - **Sign In / Providers → Email**: is **Confirm email** on? If it is,
+    customers only get the confirmation link once a real email sender is
+    set: Supabase's own one only emails your team. Either turn it **off**
+    for now (accounts work straight away), or do the next step
+  - **Emails → SMTP Settings** (after the Resend domain is verified): host
+    `smtp.resend.com`, port `465`, username `resend`, password = the Resend
+    API key, sender `hello@nellyandnova.co.uk`, name `Nelly & Nova`
+  - **URL Configuration → Redirect URLs**: add
+    `https://nelly-and-nova-website.vercel.app/auth/confirm` (and the
+    nellyandnova.co.uk one once the domain moves)
 - [ ] **Test the contact form** on nelly-and-nova-website.vercel.app/contact
       and check the email reaches charlotte@nellyandnova.co.uk (check spam)
 - [ ] **Real photos** for the homepage cards and How it works (they reuse
