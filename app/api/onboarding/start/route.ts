@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { createClient as createSupabase } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { requireTrainer } from "@/lib/records/server";
 import { sendEmail } from "@/lib/email/resend";
 import { onboardingStarted } from "@/lib/email/templates";
 import { createMandateRequest, gocardlessConfigured, GoCardlessError } from "@/lib/gocardless/client";
@@ -14,14 +14,29 @@ import { pushToAccount } from "@/lib/push/send";
  * plus in their chat if they already have an account. Pressing it again
  * re-sends the same link rather than starting over.
  */
+/** Signed in by cookie (website) or "Authorization: Bearer <token>" (the app). */
+async function requestClient(request: Request) {
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!bearer) return createClient();
+  return createSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    global: { headers: { Authorization: `Bearer ${bearer}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+
 export async function POST(request: Request) {
-  const denied = await requireTrainer();
-  if (denied) return denied;
+  const supabase = await requestClient(request);
+  const { data: isTrainer } = await supabase.rpc("nn_is_admin");
+  if (isTrainer !== true) return Response.json({ error: "Trainers only." }, { status: 403 });
   if (!gocardlessConfigured()) {
     return Response.json({ error: "GoCardless isn't connected yet." }, { status: 503 });
   }
 
-  let body: { enquiryId?: string; sendEmail?: boolean };
+  // `place`: from the calendar's "Add new dog → Send onboarding" — holds a
+  // regular Full Day Training place for them, filled in once they register.
+  let body: { enquiryId?: string; sendEmail?: boolean; place?: { day?: string; cadence?: string; startOn?: string } };
   try {
     body = await request.json();
   } catch {
@@ -30,7 +45,6 @@ export async function POST(request: Request) {
   const enquiryId = String(body.enquiryId ?? "");
   if (!/^[0-9a-f-]{36}$/.test(enquiryId)) return Response.json({ error: "Invalid request." }, { status: 400 });
 
-  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -77,6 +91,26 @@ export async function POST(request: Request) {
     .update({ status: "onboarding", onboarding_token: token, onboarding_started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("id", e.id);
   if (updateError) return Response.json({ error: "Couldn't update the request." }, { status: 500 });
+
+  // Hold their regular place, if one was chosen on the calendar.
+  const place = body.place;
+  if (place?.day && DAYS.includes(place.day) && /^\d{4}-\d{2}-\d{2}$/.test(place.startOn ?? "")) {
+    const cadence = place.cadence === "alternating" ? "alternating" : "weekly";
+    const { error: placeError } = await supabase.from("placements").insert({
+      day: place.day,
+      cadence,
+      start_on: place.startOn,
+      enquiry_id: e.id,
+      account_id: e.account_id,
+      holder_name: [e.name, e.dog_names].filter(Boolean).join(" — "),
+      created_by: user?.id ?? null,
+    });
+    if (placeError) return Response.json({ error: "Couldn't hold their place on the calendar." }, { status: 500 });
+    await supabase
+      .from("enquiries")
+      .update({ training_day: place.day, training_cadence: cadence, first_session_on: place.startOn, register_reminders_sent: [] })
+      .eq("id", e.id);
+  }
 
   const origin = new URL(request.url).origin;
   const joinUrl = `${origin}/join/${token}`;
