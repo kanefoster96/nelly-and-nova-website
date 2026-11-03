@@ -659,8 +659,8 @@ export const howItWorks = {
 };
 
 export const contact = {
-  phone: "+44 0000 000000",
-  phoneLabel: "07000 000000",
+  phone: "+44 191 468 3251",
+  phoneLabel: "0191 468 3251",
   email: "charlotte@nellyandnova.co.uk",
   /** WhatsApp click-to-chat link — replace the number (international format, no +). */
   whatsapp: "https://wa.me/440000000000",
