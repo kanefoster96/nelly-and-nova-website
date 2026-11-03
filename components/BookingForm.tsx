@@ -229,7 +229,7 @@ export function BookingForm() {
 
   if (status === "success") {
     return (
-      <div ref={topRef} className="rounded-3xl border border-white/10 bg-ink-soft px-6 py-12 text-center animate-fade-up sm:px-10">
+      <div ref={topRef} className="rounded-3xl bg-ink-soft px-6 py-14 text-center animate-fade-up sm:px-10">
         <CheckCircleIcon width={56} height={56} className="mx-auto text-paper" />
         <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-paper-dim">{nextSteps.kicker}</p>
         <h2 className="display-heading mt-3 text-3xl uppercase text-paper sm:text-4xl">We&apos;ll be in touch</h2>
@@ -241,7 +241,7 @@ export function BookingForm() {
         </p>
         {/* Like Kanvas's trial bookings: an account now means they can chat
             with us and follow their request in the app straight away. */}
-        <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-white/10 bg-ink p-5 text-left">
+        <div className="mx-auto mt-8 max-w-sm rounded-2xl bg-white/[0.05] p-5 text-left">
           <p className="font-semibold text-paper">Create your account</p>
           <p className="mt-1 text-sm text-paper/70">
             Message us in the app, follow your request and get updates — just add a password.
@@ -282,7 +282,7 @@ export function BookingForm() {
         {step === 0 && (
           <div className="mt-6 grid gap-6">
             {data.dogs.map((dog, i) => (
-              <div key={i} className={i > 0 ? "grid gap-5 border-t border-white/10 pt-6" : "grid gap-5"}>
+              <div key={i} className={i > 0 ? "grid gap-5 pt-8" : "grid gap-5"}>
                 {data.dogs.length > 1 && (
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-paper">Dog {i + 1}</p>
@@ -343,8 +343,8 @@ export function BookingForm() {
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggleHelp(h.value)}
-                    className={`relative flex min-h-[72px] items-center justify-center rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-colors ${
-                      on ? "border-accent bg-accent text-accent-ink" : "border-white/10 bg-ink text-paper hover:border-white/30"
+                    className={`relative flex min-h-[72px] items-center justify-center rounded-2xl px-4 py-4 text-center text-sm font-semibold transition-colors ${
+                      on ? "bg-accent text-accent-ink" : "bg-white/[0.05] text-paper hover:bg-white/[0.09]"
                     }`}
                   >
                     {on && <CheckIcon width={16} height={16} className="absolute right-3 top-3" />}

@@ -53,7 +53,7 @@ export function Reviews({
   items?: Review[];
 }) {
   return (
-    <section id="reviews" className="bg-ink py-20 sm:py-28">
+    <section id="reviews" className="bg-ink py-20 sm:py-32">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <h2 className="sr-only">
           {googleReviews.heading}
@@ -68,7 +68,7 @@ export function Reviews({
         {items.map((review, i) => (
           <li
             key={`${review.author}-${i}`}
-            className="flex min-h-[360px] w-[85%] max-w-sm shrink-0 snap-start flex-col rounded-3xl bg-white/[0.04] p-6 ring-1 ring-white/5 sm:w-[360px]"
+            className="flex min-h-[360px] w-[85%] max-w-sm shrink-0 snap-start flex-col rounded-3xl bg-white/[0.04] p-7 sm:w-[360px]"
           >
             <div className="flex items-start justify-between gap-4">
               <Stars rating={review.rating} />
@@ -95,7 +95,7 @@ export function Reviews({
           href="/review"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-full border border-white/25 px-8 text-paper transition-colors hover:border-white/50 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
+          className="inline-flex min-h-[56px] items-center justify-center gap-2 glass rounded-full px-8 text-paper transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
         >
           <span>{googleReviews.cta}</span>
           <span className="text-lg font-bold tracking-tight">Google</span>

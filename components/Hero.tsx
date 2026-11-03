@@ -91,7 +91,7 @@ export function Hero() {
           </ul>
 
           {/* Google reviews card */}
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/40 px-5 py-4 backdrop-blur-md">
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl bg-black/40 px-5 py-4 backdrop-blur-md">
             <div>
               <div className="flex gap-0.5 text-[#f5b301]">
                 {Array.from({ length: reviews.stars }).map((_, i) => (

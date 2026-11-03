@@ -21,7 +21,7 @@ export function ImageCard({
 }: ImageCardProps) {
   return (
     <figure
-      className={`relative overflow-hidden rounded-3xl bg-ink-raised ring-1 ring-white/10 ${className}`}
+      className={`relative overflow-hidden rounded-3xl bg-ink-raised ${className}`}
     >
       <div className={`relative ${aspect}`}>
         <Image

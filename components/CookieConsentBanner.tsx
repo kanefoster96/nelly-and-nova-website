@@ -68,7 +68,7 @@ export function CookieConsentBanner() {
       className="fixed inset-x-0 z-40 flex justify-center px-4 animate-fade-up"
       style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
-      <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-neutral-900 p-5 shadow-2xl shadow-black/60">
+      <div className="w-full max-w-xl rounded-2xl bg-neutral-900 p-5 shadow-2xl shadow-black/60">
         <p id="cookie-title" className="text-base font-semibold text-white">
           Cookie settings
         </p>

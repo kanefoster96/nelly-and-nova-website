@@ -65,7 +65,7 @@ export function HowItWorks() {
   const ActiveIcon = stepIcons[steps[active].icon];
 
   return (
-    <section id="how-it-works" className="bg-ink py-20 sm:py-28">
+    <section id="how-it-works" className="bg-ink py-20 sm:py-32">
       <div className="mx-auto max-w-xl px-4 sm:px-6">
         <h2 className="sr-only">
           {howItWorks.heading}
@@ -102,8 +102,8 @@ export function HowItWorks() {
                   ref={(el) => {
                     cardRefs.current[i] = el;
                   }}
-                  className={`relative isolate rounded-3xl border p-6 transition-all duration-300 ${
-                    isActive ? "border-white/20 opacity-100" : "border-white/5 opacity-55"
+                  className={`relative isolate rounded-3xl p-7 transition-all duration-300 ${
+                    isActive ? "opacity-100" : "opacity-55"
                   }`}
                 >
                   {/* Photo behind the card, kept faint so the words stay easy to read. */}
