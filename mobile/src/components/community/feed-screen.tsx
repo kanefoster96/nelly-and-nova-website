@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { FlatList, Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
@@ -8,42 +9,76 @@ import { PostComposer } from "@/components/community/post-composer";
 import { PageTitle } from "@/components/page-title";
 import { RefreshControl } from "@/components/refresh-control";
 import { LoadingState } from "@/components/ui";
-import { getFeed } from "@/data/community";
+import { getFeed, getViewer, type Post, type Viewer } from "@/data/community";
 import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
 import { animateListChange } from "@/lib/layout-animation";
-import { useAsync } from "@/lib/useAsync";
 import { colors } from "@/theme";
 
-export type Viewer = { id: string; name: string; avatarUrl?: string | null; isTrainer: boolean };
+export type { Viewer } from "@/data/community";
 
-/** The community feed — same for members and trainers (trainers can pin and delete). */
+type Feed = { viewer: Viewer; posts: Post[] };
+
+/**
+ * The community feed — the Kanvas Student Home tab, same for members and
+ * trainers (trainers can also pin and delete anything). Live from Supabase;
+ * refreshed each time the tab comes into view and on pull-to-refresh.
+ */
 export function CommunityFeedScreen() {
-  const { session, profile, isTrainer } = useAuth();
-  const viewer = useMemo<Viewer>(
-    () => ({
-      id: session?.user.id ?? "",
-      name: isTrainer ? "Nelly & Nova" : profile?.ownerName || session?.user.email || "Member",
-      avatarUrl: profile?.avatarUrl,
-      isTrainer,
-    }),
-    [session, profile, isTrainer]
-  );
-  const { data: posts, error, reload, setData } = useAsync(() => getFeed(viewer), [viewer]);
+  const { session, isTrainer } = useAuth();
+  const userId = session?.user.id ?? "";
+  const [data, setData] = useState<Feed | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const ticket = useRef(0);
   // Under the floating top buttons and over the floating bar (lib/floating-bar.tsx).
   const barScroll = useBarScroll();
   const barInset = useBarInset();
   const topInset = useTopBarInset();
 
+  const load = useCallback(async () => {
+    if (!userId) return;
+    const mine = ++ticket.current;
+    try {
+      const viewer = await getViewer(userId, isTrainer);
+      const posts = await getFeed(viewer);
+      if (mine === ticket.current) {
+        setData({ viewer, posts });
+        setError(null);
+      }
+    } catch (err) {
+      if (mine === ticket.current) setError(err instanceof Error ? err.message : "Couldn't load the community.");
+    }
+  }, [userId, isTrainer]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await reload();
+    await load();
     setRefreshing(false);
-  }, [reload]);
+  }, [load]);
 
-  if (!posts) return <LoadingState error={error?.message} />;
+  // Once the guidelines are agreed (with a first post or comment) every other
+  // composer on screen drops its checkbox too.
+  const markGuidelinesAccepted = useCallback(() => {
+    setData((prev) => (prev ? { ...prev, viewer: { ...prev.viewer, guidelinesAccepted: true } } : prev));
+  }, []);
+
+  const removePosts = useCallback((keep: (p: Post) => boolean) => {
+    animateListChange();
+    setData((prev) => (prev ? { ...prev, posts: prev.posts.filter(keep) } : prev));
+  }, []);
+
+  if (!data) return <LoadingState error={error} />;
+  const { viewer, posts } = data;
 
   return (
+    // automaticallyAdjustKeyboardInsets scrolls a comment box deep in the
+    // feed up above the keyboard.
     <FlatList
       {...barScroll}
       automaticallyAdjustKeyboardInsets
@@ -56,7 +91,8 @@ export function CommunityFeedScreen() {
       ListHeaderComponent={
         <View style={{ paddingHorizontal: 16, paddingTop: topInset + 8, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
           <PageTitle title="Community" style={{ marginHorizontal: 4, marginBottom: 12 }} />
-          <PostComposer viewer={viewer} onPosted={(post) => setData((prev) => [post, ...(prev ?? [])])} />
+          <PostComposer viewer={viewer} onPosted={load} onGuidelinesAccepted={markGuidelinesAccepted} />
+          {error && <Text style={{ color: colors.danger, fontSize: 12, marginTop: 10 }}>{error}</Text>}
         </View>
       }
       ListEmptyComponent={
@@ -69,14 +105,10 @@ export function CommunityFeedScreen() {
           <PostCard
             viewer={viewer}
             post={item}
-            onDeleted={(id) => {
-              animateListChange();
-              setData((prev) => prev?.filter((p) => p.id !== id));
-            }}
-            onAuthorBlocked={(authorId) => {
-              animateListChange();
-              setData((prev) => prev?.filter((p) => p.authorId !== authorId));
-            }}
+            onGuidelinesAccepted={markGuidelinesAccepted}
+            onDeleted={(id) => removePosts((p) => p.id !== id)}
+            onPinnedChange={() => load()}
+            onAuthorBlocked={(authorId) => removePosts((p) => p.authorId !== authorId)}
           />
         </Appear>
       )}

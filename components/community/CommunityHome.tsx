@@ -6,14 +6,13 @@ import { ReportIcon, PawIcon } from "@/components/ui/Icons";
 import { useSession, accountAvatar, accountDisplayName } from "@/lib/auth/session";
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import { CommunityFeed } from "./CommunityFeed";
-import type { Post } from "@/lib/community/types";
 
 /**
  * The scheduled member's home: their dog's avatar and quick actions (report
  * cards, dog profile) above the community feed. Shown in place of the marketing
  * homepage by HomeGate.
  */
-export function CommunityHome({ posts }: { posts: Post[] }) {
+export function CommunityHome() {
   const session = useSession();
   const unseen = useUnseenReportCount(session?.dogId);
   const dogName = session?.dogName || "your dog";
@@ -78,7 +77,7 @@ export function CommunityHome({ posts }: { posts: Post[] }) {
 
             {/* Community feed */}
             <div className="mt-8">
-              <CommunityFeed initial={posts} />
+              <CommunityFeed />
             </div>
           </div>
         </section>

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRightIcon } from "@/components/ui/Icons";
-import { useSession, accountDisplayName } from "@/lib/auth/session";
-import { useCommunityOverlay, mergeFeed } from "@/lib/community/store";
-import { sampleCommunityPosts } from "@/lib/community/sample";
+import { useSession, useAuthStatus, accountDisplayName } from "@/lib/auth/session";
+import { getMyLatestPost, getViewer } from "@/lib/community/data";
+import type { Post } from "@/lib/community/types";
 
 /**
  * The account's latest community post, shown on their profile. If they haven't
@@ -14,14 +14,27 @@ import { sampleCommunityPosts } from "@/lib/community/sample";
  */
 export function LatestCommunityPost() {
   const session = useSession();
-  const overlay = useCommunityOverlay();
+  const status = useAuthStatus();
   const accountName = accountDisplayName(session);
+  const [mine, setMine] = useState<Post | null>(null);
 
-  const mine = useMemo(() => {
-    return mergeFeed(sampleCommunityPosts, overlay)
-      .filter((p) => p.mine || (accountName && p.authorName === accountName))
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))[0];
-  }, [overlay, accountName]);
+  // Their newest post, from Supabase, once auth has resolved.
+  useEffect(() => {
+    if (status !== "authed") return;
+    let live = true;
+    (async () => {
+      try {
+        const viewer = await getViewer();
+        const post = viewer ? await getMyLatestPost(viewer) : null;
+        if (live) setMine(post);
+      } catch {
+        // Leave the "share your first post" nudge in place.
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [status]);
 
   return (
     <div className="mt-10">
