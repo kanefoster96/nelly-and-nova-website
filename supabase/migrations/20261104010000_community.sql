@@ -21,7 +21,8 @@
 --
 -- Members can't read each other's `profiles` rows, so names and avatars come
 -- from nn_community_authors(): an account is shown by its dog names
--- ("Nova & Rex"), a trainer as "Nelly & Nova" with the official tick.
+-- ("Nova & Rex"), a trainer by their display name ("Charlotte (Trainer)")
+-- and photo (the logo if none) with the official tick.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -85,7 +86,7 @@ as $$
   select
     p.id,
     case
-      when p.role = 'admin' then 'Nelly & Nova'
+      when p.role = 'admin' then coalesce(nullif(trim(p.owner_name), ''), 'Nelly & Nova')
       else coalesce(
         case cardinality(d.names)
           when 0 then null
@@ -96,7 +97,7 @@ as $$
         'Member'
       )
     end as name,
-    case when p.role = 'admin' then null else coalesce(nullif(p.avatar_url, ''), d.photo) end as avatar_url,
+    case when p.role = 'admin' then nullif(p.avatar_url, '') else coalesce(nullif(p.avatar_url, ''), d.photo) end as avatar_url,
     p.role = 'admin' as is_trainer,
     d.names as dog_names
   from public.profiles p
