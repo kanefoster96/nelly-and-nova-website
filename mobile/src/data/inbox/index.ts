@@ -1,3 +1,4 @@
+import { config } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 
 import type { Attachment, Conversation, Message } from "./types";
@@ -205,7 +206,19 @@ async function uploadAttachment(conversationId: string, attachment: Attachment):
   return path;
 }
 
-export async function sendMessage(conversationId: string, body: string, _fromStaff: boolean, attachment?: Attachment): Promise<Message> {
+/** A trainer's reply: ask the website to let the owner know in the app. Best-effort. */
+async function notifyOwner(conversationId: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return;
+  await fetch(new URL("/api/chat/notify", config.siteUrl).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ conversationId }),
+  });
+}
+
+export async function sendMessage(conversationId: string, body: string, fromStaff: boolean, attachment?: Attachment): Promise<Message> {
   const path = attachment ? await uploadAttachment(conversationId, attachment) : null;
   const { data, error } = await supabase.rpc("nn_chat_send", {
     p_conversation_id: conversationId,
@@ -215,6 +228,7 @@ export async function sendMessage(conversationId: string, body: string, _fromSta
     p_attachment_name: attachment?.name ?? null,
   });
   if (error || !data) throw new Error(error?.message ?? "Could not send that.");
+  if (fromStaff) notifyOwner(conversationId).catch(() => {});
   const [message] = await toMessages([data as MessageRow]);
   // Keep showing the local copy of what they just sent rather than re-downloading it.
   return attachment ? { ...message, attachment: { ...attachment, url: attachment.url } } : message;

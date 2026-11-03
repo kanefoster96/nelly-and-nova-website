@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 
 import { NotificationsList } from "@/components/notifications-list";
+import { RefreshControl } from "@/components/refresh-control";
 import { ScreenHeader } from "@/components/screen-header";
 import { useNotifications } from "@/lib/notifications-context";
 import { colors } from "@/theme";

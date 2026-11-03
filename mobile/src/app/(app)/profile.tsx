@@ -2,15 +2,17 @@ import * as Linking from "expo-linking";
 import { Alert, ScrollView, Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
+import { Appear } from "@/components/appear";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { BuildInfo } from "@/components/build-info";
 import { NavDivider, NavList, NavRow } from "@/components/nav-row";
 import { ScreenHeader } from "@/components/screen-header";
 import { SignOutButton } from "@/components/sign-out-button";
-import { Tag } from "@/components/ui";
+import { CARD, Tag } from "@/components/ui";
 import { getMyDogs } from "@/data/dogs";
 import { getDogProfile } from "@/data/reports";
 import { config } from "@/lib/config";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
 import { colors } from "@/theme";
@@ -47,7 +49,7 @@ function MemberSections({ userId }: { userId: string }) {
       {progress && (
         <>
           <SectionTitle>{`${progress.name}'s Progress`}</SectionTitle>
-          <View style={{ marginHorizontal: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 14, padding: 14, gap: 12 }}>
+          <View style={{ ...CARD, marginHorizontal: 20, gap: 12 }}>
             <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600" }}>
               Level {progress.level} · {progress.sessions} sessions
             </Text>
@@ -81,34 +83,46 @@ export default function ProfileScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHeader title="Profile" />
       <ScrollView contentContainerStyle={{ paddingTop: 20, paddingBottom: 48 }}>
-        <View style={{ alignItems: "center", marginTop: 8, marginBottom: 8, gap: 8 }}>
+        <Appear style={{ alignItems: "center", marginTop: 8, marginBottom: 8, gap: 8 }}>
           <AvatarCircle name={name} avatarUrl={profile?.avatarUrl} size={72} />
           <Text style={{ color: colors.foreground, fontSize: 18, fontWeight: "600", marginTop: 4 }}>{name}</Text>
           {email && <Text style={{ color: colors.muted, fontSize: 13 }}>{email}</Text>}
           <Tag label={isTrainer ? "Trainer" : "Member"} solid={isTrainer} />
-        </View>
+        </Appear>
 
-        {!isTrainer && session && <MemberSections userId={session.user.id} />}
+        {!isTrainer && session && (
+          <Appear index={1}>
+            <MemberSections userId={session.user.id} />
+          </Appear>
+        )}
 
-        <SectionTitle>Account</SectionTitle>
-        <NavList>
-          <NavRow
-            icon="key-outline"
-            title="Change Password"
-            description="We'll email you a link to set a new one."
-            onPress={async () => {
-              if (!email) return;
-              await supabase.auth.resetPasswordForEmail(email, { redirectTo: new URL("/reset-password", config.siteUrl).toString() });
-              Alert.alert("Check your inbox", "We've emailed you a link to set a new password.");
-            }}
-          />
-          <NavDivider />
-          <NavRow icon="globe-outline" title="Website" description="nellyandnova.co.uk" onPress={() => Linking.openURL("https://www.nellyandnova.co.uk")} />
-        </NavList>
+        <Appear index={2}>
+          <SectionTitle>Account</SectionTitle>
+          <NavList>
+            <NavRow
+              icon="key-outline"
+              title="Change Password"
+              description="We'll email you a link to set a new one."
+              onPress={async () => {
+                if (!email) return;
+                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: new URL("/reset-password", config.siteUrl).toString() });
+                if (error) {
+                  hapticError();
+                  Alert.alert("Couldn't send the link", error.message);
+                  return;
+                }
+                hapticSuccess();
+                Alert.alert("Check your inbox", "We've emailed you a link to set a new password.");
+              }}
+            />
+            <NavDivider />
+            <NavRow icon="globe-outline" title="Website" description="nellyandnova.co.uk" onPress={() => Linking.openURL("https://www.nellyandnova.co.uk")} />
+          </NavList>
+        </Appear>
 
-        <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
+        <Appear index={3} style={{ marginTop: 32, paddingHorizontal: 20 }}>
           <SignOutButton />
-        </View>
+        </Appear>
         <BuildInfo />
       </ScrollView>
     </View>

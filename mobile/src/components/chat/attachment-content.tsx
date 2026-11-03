@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { Pressable } from "@/components/pressable";
 import { VideoTile } from "@/components/community/video-tile";
 import type { Attachment } from "@/data/inbox";
 import { colors } from "@/theme";

@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { Appear } from "@/components/appear";
 import { initialsForName } from "@/components/avatar-circle";
+import { Pressable } from "@/components/pressable";
 import type { Notification } from "@/data/notifications";
-import { colors, pressedBg } from "@/theme";
+import { colors, GLASS_BORDER } from "@/theme";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -52,7 +54,7 @@ function Avatar({ sentByName, href }: { sentByName: string; href?: string }) {
 export function NotificationsList({ notifications, unreadIds }: { notifications: Notification[]; unreadIds?: Set<string> }) {
   if (notifications.length === 0) {
     return (
-      <View style={{ margin: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: "rgba(18,18,18,0.5)", borderRadius: 16, padding: 32 }}>
+      <View style={{ margin: 20, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, borderRadius: 18, padding: 32 }}>
         <Text style={{ color: colors.muted, textAlign: "center", fontSize: 14 }}>No notifications yet.</Text>
       </View>
     );
@@ -80,14 +82,16 @@ export function NotificationsList({ notifications, unreadIds }: { notifications:
           </View>
         );
         const rowStyle = i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border } : undefined;
-        return n.actionHref ? (
-          <Pressable key={n.id} onPress={() => router.navigate(n.actionHref as never)} style={({ pressed }) => [rowStyle, pressed && { backgroundColor: pressedBg }]}>
-            {body}
-          </Pressable>
-        ) : (
-          <View key={n.id} style={rowStyle}>
-            {body}
-          </View>
+        return (
+          <Appear key={n.id} index={i}>
+            {n.actionHref ? (
+              <Pressable onPress={() => router.navigate(n.actionHref as never)} style={rowStyle}>
+                {body}
+              </Pressable>
+            ) : (
+              <View style={rowStyle}>{body}</View>
+            )}
+          </Appear>
         );
       })}
     </View>

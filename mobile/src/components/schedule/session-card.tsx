@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 
 import { Tag } from "@/components/ui";
-import { colors } from "@/theme";
+import { colors, GLASS_BORDER } from "@/theme";
 
 /** "Thursday 21 August" heading, then the day's cards — the Kanvas calendar layout. */
 export function DayGroup({ heading, children }: { heading: string; children: ReactNode }) {
@@ -33,10 +33,11 @@ export function SessionCard({
     <View
       style={{
         borderWidth: 1,
-        borderColor: highlight ? "rgba(34,197,94,0.4)" : colors.border,
+        ...GLASS_BORDER,
+        ...(highlight ? { borderColor: "rgba(34,197,94,0.4)" } : null),
         backgroundColor: colors.surface,
-        borderRadius: 14,
-        padding: 14,
+        borderRadius: 18,
+        padding: 16,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

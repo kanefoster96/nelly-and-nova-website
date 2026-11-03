@@ -28,8 +28,14 @@ function RootStack() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
+      {/* Signed out: the email-first log in (sign-in → password / check-email /
+          no-account → create-password), like Kanvas's app. */}
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
+        <Stack.Screen name="password" />
+        <Stack.Screen name="no-account" />
+        <Stack.Screen name="check-email" />
+        <Stack.Screen name="create-password" />
       </Stack.Protected>
     </Stack>
   );

@@ -22,7 +22,12 @@
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:nelly-and-nova-website.vercel.app",
+        "applinks:nellyandnova.co.uk",
+        "applinks:www.nellyandnova.co.uk"
+      ]
     },
     "android": {
       "package": "uk.co.nellyandnova.app",
@@ -34,7 +39,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -62,6 +66,12 @@
         {
           "photosPermission": "Nelly & Nova uses your photos so you can share them in the community and in chat.",
           "cameraPermission": "Nelly & Nova uses the camera so you can share photos of your dog."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0a0a0a"
         }
       ]
     ],
