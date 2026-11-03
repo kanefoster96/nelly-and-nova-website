@@ -1,6 +1,6 @@
 /**
  * Reschedule + extra-session requests. A member either moves an existing
- * session to another day, or books an extra session (Walk & Train or 1-1). The
+ * session to another day, or books an extra session (Full Day Training or 1-1). The
  * request goes to the admin queue to be approved, rejected, or offered a
  * different date. Approving an extra session charges the customer via GoCardless.
  * An approved request becomes an exception applied to that member's schedule.
@@ -13,7 +13,7 @@ export type RescheduleKind = "reschedule" | "extra";
 export type RescheduleRequest = {
   id: string;
   kind: RescheduleKind;
-  /** For extra sessions — "Walk & Train" or "1-1 Training". */
+  /** For extra sessions — "Full Day Training" or "1-1 Training". */
   service?: string;
   dogId: string;
   dogName: string;

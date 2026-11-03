@@ -31,7 +31,7 @@ import { useHolidays, holidayCoveringDate } from "@/lib/holidays/store";
 import { formatRange } from "@/lib/holidays/dates";
 
 type Plan = { dayId: DayId; cadence: Cadence; service: string; day: string };
-const EXTRA_SERVICES = ["Walk & Train", "1-1 Training"];
+const EXTRA_SERVICES = ["Full Day Training", "1-1 Training"];
 
 export function UpcomingSessions({
   todayISO,

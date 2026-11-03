@@ -80,7 +80,7 @@ export function AddCustomer({
 
   async function submit() {
     if (!valid || !customer || !day) return;
-    const svcLabel = /1-1|one-to-one/i.test(customer.service) ? "1-1 Training" : "Walk & Train";
+    const svcLabel = /1-1|one-to-one/i.test(customer.service) ? "1-1 Training" : "Full Day Training";
     const rec = recurringPrice();
     const opts =
       placement === "permanent"

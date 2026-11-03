@@ -48,7 +48,7 @@ export const sampleTrainerNotifications: Notification[] = [
   {
     id: "n-t2",
     title: "New booking request",
-    body: "Rachel T. requested a Walk & Train weekly membership for Nova.",
+    body: "Rachel T. requested a Full Day Training weekly membership for Nova.",
     createdAt: "2026-08-11T12:02:00Z",
     actionHref: "/schedule",
     sentByName: "Nelly & Nova",

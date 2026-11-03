@@ -17,13 +17,13 @@ export function extraSessionPrice(serviceLabel: string): number {
 }
 
 /** Recurring price for a membership, e.g. { amount: 60, unit: "week" }. */
-export function recurringPrice(serviceLabel = "Walk & Train"): { amount: number; unit: string } {
+export function recurringPrice(serviceLabel = "Full Day Training"): { amount: number; unit: string } {
   const svc = booking.services.find((s) => s.label === serviceLabel);
   const bt = svc?.bookingTypes.find((b) => b.unit === "week") ?? svc?.bookingTypes[0];
   return bt ? { amount: bt.base, unit: bt.unit } : { amount: 0, unit: "week" };
 }
 
-export function recurringPriceLabel(serviceLabel = "Walk & Train"): string {
+export function recurringPriceLabel(serviceLabel = "Full Day Training"): string {
   const p = recurringPrice(serviceLabel);
   return `${money(p.amount)} per ${p.unit}`;
 }

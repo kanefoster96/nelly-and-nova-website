@@ -117,7 +117,7 @@ mirror the new value in `config/theme.ts`.
 - **Nav links, service areas, contact details, social links, tagline** →
   `config/site.ts`
 - **Testimonials** → the `TESTIMONIALS` array in `components/Testimonials.tsx`
-- **Walk & Train skills list** → the `SKILLS` array in
+- **Full Day Training skills list** → the `SKILLS` array in
   `components/WalkAndTrain.tsx`
 
 All booking CTAs currently point at `#book` (see `BOOKING_HREF` in

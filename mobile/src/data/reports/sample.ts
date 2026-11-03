@@ -13,7 +13,7 @@ export const sampleDog: DogProfile = {
   sessions: 8,
   level: 2,
   plan: {
-    service: "Walk & Train",
+    service: "Full Day Training",
     day: "Thursdays",
     dayId: "thu",
     cadence: "weekly",

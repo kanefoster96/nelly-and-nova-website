@@ -53,7 +53,7 @@ export function Reviews({
   return (
     <section id="reviews" className="bg-ink py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <h2 className="display-heading text-center text-3xl text-paper sm:text-4xl">
+        <h2 className="sr-only">
           {googleReviews.heading}
         </h2>
       </div>

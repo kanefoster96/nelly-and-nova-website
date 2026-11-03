@@ -3,7 +3,6 @@ import { Hero } from "@/components/Hero";
 import { WeUnderstand } from "@/components/WeUnderstand";
 import { WhatWeDo } from "@/components/WhatWeDo";
 import { HowItWorks } from "@/components/HowItWorks";
-import { LeaveWhenReady } from "@/components/LeaveWhenReady";
 import { Faq } from "@/components/Faq";
 import { Reviews } from "@/components/Reviews";
 import { Footer } from "@/components/Footer";
@@ -26,7 +25,6 @@ export default async function Home() {
           <WeUnderstand />
           <WhatWeDo />
           <HowItWorks />
-          <LeaveWhenReady />
           <Faq />
           <Reviews />
         </main>

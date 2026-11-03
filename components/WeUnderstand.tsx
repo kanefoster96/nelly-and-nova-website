@@ -1,39 +1,30 @@
 import { Reveal } from "./ui/Reveal";
 import { Button } from "./ui/Button";
-import { painIcons, ArrowRightIcon } from "./ui/Icons";
+import { OverlayCard } from "./ui/OverlayCard";
+import { ArrowRightIcon } from "./ui/Icons";
 import { understand, CONTACT_HREF } from "@/config/site";
 
 export function WeUnderstand() {
   return (
-    <section id="understand" className="bg-ink py-20 sm:py-28">
+    <section id="understand" aria-labelledby="understand-heading" className="bg-ink py-20 sm:py-28">
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
-        <Reveal>
-          <h2 className="display-heading text-center text-3xl text-paper sm:text-4xl">
-            {understand.heading}
-          </h2>
-        </Reveal>
+        {/* No visible title — the cards speak for themselves. */}
+        <h2 id="understand-heading" className="sr-only">
+          {understand.heading}
+        </h2>
 
-        <div className="mt-12 flex flex-col gap-5">
-          {understand.points.map((point, i) => {
-            const Icon = painIcons[point.icon];
-            return (
-              <Reveal key={point.title} delay={i * 0.08}>
-                <article className="rounded-3xl bg-white/[0.04] px-6 py-10 text-center ring-1 ring-white/5 sm:px-10">
-                  <Icon
-                    width={34}
-                    height={34}
-                    className="mx-auto text-paper"
-                  />
-                  <h3 className="display-heading mt-5 text-xl text-paper sm:text-2xl">
-                    {point.title}
-                  </h3>
-                  <p className="mx-auto mt-4 max-w-md text-paper/70">
-                    {point.body}
-                  </p>
-                </article>
-              </Reveal>
-            );
-          })}
+        <div className="flex flex-col gap-4">
+          {understand.points.map((point, i) => (
+            <Reveal key={point.title} delay={i * 0.08}>
+              <OverlayCard
+                image={point.image}
+                eyebrow={point.eyebrow}
+                title={point.title}
+                body={point.body}
+                index={i + 1}
+              />
+            </Reveal>
+          ))}
         </div>
 
         <Reveal delay={0.1}>

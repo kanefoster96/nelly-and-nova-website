@@ -1,3 +1,4 @@
+import { media } from "./media";
 /**
  * Site-wide content & configuration.
  * ----------------------------------
@@ -10,23 +11,37 @@ export const BOOKING_HREF = "/book";
 export const CONTACT_HREF = "/contact";
 
 /** "We understand" pain points. `icon` maps to painIcons in components/ui/Icons.tsx. */
-export type PainPoint = { icon: "paw" | "help" | "cross"; title: string; body: string };
+export type PainPoint = {
+  icon: "paw" | "help" | "cross";
+  /** Small spaced-out label above the title on the card. */
+  eyebrow: string;
+  title: string;
+  body: string;
+  /** Card photo — see media.understand. */
+  image: string;
+};
 
 export const understand = {
   heading: "We understand.",
   points: [
     {
       icon: "paw",
+      eyebrow: "Walks",
+      image: media.understand.walks,
       title: "Walks aren't enjoyable.",
       body: "You get anxious or stressed taking your dog out, thinking about the challenge.",
     },
     {
       icon: "help",
+      eyebrow: "Training",
+      image: media.understand.training,
       title: "Nothing seems to work.",
       body: "You've got a cupboard full of different leads you thought might give you more control, but nothing is changing.",
     },
     {
       icon: "cross",
+      eyebrow: "Advice",
+      image: media.understand.advice,
       title: "You're stuck.",
       body: "You've heard conflicting advice, and now you're stuck in a loop.",
     },
@@ -38,7 +53,7 @@ export const understand = {
 export type NavLink = { label: string; href: string };
 
 export const navLinks: NavLink[] = [
-  { label: "Walk & Train", href: "/walk-and-train" },
+  { label: "Full Day Training", href: "/full-day-training" },
   { label: "1-1 Training", href: "/one-to-one" },
   { label: "Contact", href: "/contact" },
 ];
@@ -61,6 +76,10 @@ export type ServiceTab = {
   id: string;
   label: string;
   subtitle: string;
+  /** A line or two on the card. */
+  description: string;
+  /** Card photo. */
+  image: string;
   points: string[];
   cta: string;
   ctaHref: string;
@@ -73,8 +92,11 @@ export const services = {
   tabs: [
     {
       id: "walk-train",
-      label: "Walk & Train.",
-      subtitle: "Full day training.",
+      label: "Full Day Training.",
+      subtitle: "We collect, train and drop off.",
+      description:
+        "We collect your dog, train them out in the real world all day and bring them home — with a report card and homework for you.",
+      image: media.walkTrain.hero,
       points: [
         "We collect and drop them off from your home",
         "We build confidence through structured, positive experiences.",
@@ -83,12 +105,15 @@ export const services = {
       ],
       cta: "Book a Visit",
       ctaHref: BOOKING_HREF,
-      pageHref: "/walk-and-train",
+      pageHref: "/full-day-training",
     },
     {
       id: "one-to-one",
       label: "1-1 Training.",
       subtitle: "Learn how to train your dog.",
+      description:
+        "An hour with you and your dog, built around your goals — so you leave knowing exactly how to train them.",
+      image: media.oneToOne.hero,
       points: [
         "1 hour of training with you and your dog tailored to your goals",
         "We look at dog and handler skillsets so you feel confident training",
@@ -136,7 +161,7 @@ export const googleReviews = {
       rating: 5,
       date: "8 Sep 2025",
       avatar: "/placeholders/avatar-1.svg",
-      text: "Our 6 month old bull lurcher has weekly walk & train sessions with Charlotte and she absolutely loves them. So patient and understanding, and we have seen so much progress over the last couple of months. Couldn't recommend them more.",
+      text: "Our 6 month old bull lurcher has weekly full day training sessions with Charlotte and she absolutely loves them. So patient and understanding, and we have seen so much progress over the last couple of months. Couldn't recommend them more.",
     },
     {
       author: "Rachel T.",
@@ -149,7 +174,7 @@ export const googleReviews = {
       rating: 5,
       date: "2 Aug 2025",
       avatar: "/placeholders/avatar-2.svg",
-      text: "Loose lead walking felt impossible before we started. After a few weeks of Walk & Train our dog is calm and focused on walks. The report cards make it easy to keep it up at home.",
+      text: "Loose lead walking felt impossible before we started. After a few weeks of Full Day Training our dog is calm and focused on walks. The report cards make it easy to keep it up at home.",
     },
     {
       author: "Emma W.",
@@ -161,13 +186,13 @@ export const googleReviews = {
   ] as Review[],
 };
 
-/** Walk & Train page content. */
+/** Full Day Training page content. */
 export const walkTrainPage = {
   intro: {
     eyebrow: "Real World Dog Training",
-    titleLines: ["Walk & Train."],
+    titleLines: ["Full Day Training."],
     paragraphs: [
-      "Our Full Day Walk & Train sessions give dogs the time and structure to build lasting skills in real-world environments. Training takes place throughout the day in different outdoor settings, helping dogs stay calm, confident, and focused no matter what's happening around them.",
+      "Our Full Day Training sessions give dogs the time and structure to build lasting skills in real-world environments. Training takes place throughout the day in different outdoor settings, helping dogs stay calm, confident, and focused no matter what's happening around them.",
       "Your dog will take part in multiple short training sessions mixed with rest breaks, social exposure, and training around other dogs. We focus on key obedience skills such as loose lead walking, recall, and engagement, while also teaching dogs to settle and relax in public spaces.",
       "At the end of the day, you'll receive a detailed report on what your dog worked on, how they progressed, and homework to keep their learning consistent at home.",
       "Our goal is to help dogs return home calm, fulfilled, and better prepared for everyday life both on and off the lead.",
@@ -409,7 +434,7 @@ export const terms = {
     {
       heading: "1. Services and Products",
       blocks: [
-        { p: "This website offers visitors the ability to purchase dog accessories such as collars and leads, and to book professional dog training services including Walk & Train, Full Day Training, and Puppy Training." },
+        { p: "This website offers visitors the ability to purchase dog accessories such as collars and leads, and to book professional dog training services including Full Day Training, 1-1 Training, and Puppy Training." },
         { p: "By completing a booking or purchase, you agree that:" },
         { ul: [
           "You are responsible for reading all product or service details before placing an order or making a booking.",
@@ -561,8 +586,8 @@ export const faq = {
     {
       q: "How much is dog training?",
       a: [
-        "Our Walk & Train days are £60 per week, if you sign up for a membership with a fixed slot.",
-        "We also offer one-off Walk & Train days for £80, if you'd like to book in as and when you need it without a membership.",
+        "Our Full Day Training days are £60 per week, if you sign up for a membership with a fixed slot.",
+        "We also offer one-off Full Day Training days for £80, if you'd like to book in as and when you need it without a membership.",
         "Our 1-1 sessions are an hour of in-person training, where we work with you and your dog to improve handling skills and address specific issues you're having. These are £90 per hour.",
       ],
     },
@@ -594,16 +619,6 @@ export const faq = {
       ],
     },
   ] as Faq[],
-};
-
-/** "Leave when you're ready" reassurance section. */
-export const leaveWhenReady = {
-  heading: "Leave when you're ready",
-  intro:
-    "Our training works by first teaching the foundations your dog needs, to be able to learn. We will show you how to communicate with them and how to improve the behaviours you feel are impossible to change. You'll start to understand why they act the way they do, and what you need to do to support them.",
-  emphasis:
-    "Most of our dog owners stay with us throughout their dog's journey. There is always something they can learn to give them a better, more confident life. However, once you feel confident enough to take over the training yourself, you can cancel anytime with no fees and no notice period.",
-  caption: "Pay weekly via Direct Debit. Cancel anytime, no fees or notice.",
 };
 
 /** "How it works" steps. `icon` maps to stepIcons in components/ui/Icons.tsx. */
@@ -686,7 +701,7 @@ export const site = {
   name: "Nelly & Nova",
   tagline: "Dog training in Tynemouth, Backworth & local areas",
   description:
-    "Dog training through engagement and motivation across Tynemouth, Backworth and the North East. Walk & Train day training, 1-1 sessions and confidence building.",
+    "Dog training through engagement and motivation across Tynemouth, Backworth and the North East. Full day training, 1-1 sessions and confidence building.",
   region: "North East England",
   year: 2026,
 };

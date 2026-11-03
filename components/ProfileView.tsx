@@ -41,7 +41,7 @@ import type { WeatherReminder } from "@/lib/weather/data";
 /**
  * The account profile — centred on the dog. Shows their photo, name, age and
  * number of training sessions; a report-card button (badged when a new card is
- * waiting); their training plan (the Walk & Train day they do); a placeholder
+ * waiting); their training plan (the Full Day Training day they do); a placeholder
  * for stats/skills; and an "Account holder information" button at the bottom
  * for the owner's own details and password.
  */

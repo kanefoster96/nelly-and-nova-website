@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
+  // Walk & Train is now Full Day Training — old links keep working.
+  async redirects() {
+    return [
+      { source: "/walk-and-train", destination: "/full-day-training", permanent: true },
+    ];
+  },
+
   // When wrapping with Capacitor, add:  output: "export",
 };
 

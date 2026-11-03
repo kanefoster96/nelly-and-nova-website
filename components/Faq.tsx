@@ -21,7 +21,7 @@ export function Faq() {
   return (
     <section id="faq" className="bg-ink py-20 sm:py-28">
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
-        <h2 className="display-heading text-center text-3xl text-paper sm:text-4xl">
+        <h2 className="sr-only">
           {faq.heading}
         </h2>
 

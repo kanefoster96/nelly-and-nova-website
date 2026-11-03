@@ -39,6 +39,25 @@ export const media = {
     portrait: "/placeholders/founder-portrait.svg",
   },
 
+  /** Photos on the "We understand" cards (one per card). */
+  understand: {
+    walks: "/media/leave-when-ready.jpg",
+    training: "/media/what-we-do.jpg",
+    advice: "/media/hero.jpg",
+  },
+
+  /**
+   * Photos behind the four "How it works" cards, in step order. PLACEHOLDERS
+   * reusing existing photos — swap for a meet & greet, the booking calendar,
+   * a training day and a report card.
+   */
+  howItWorks: [
+    "/media/what-we-do.jpg",
+    "/media/one-to-one-hero.jpg",
+    "/media/walk-train-hero.jpg",
+    "/media/one-to-one-consult.jpg",
+  ],
+
   services: {
     /** Background photo behind the "What we do" section. */
     background: "/media/what-we-do.jpg",
@@ -52,7 +71,7 @@ export const media = {
     consultation: "/media/one-to-one-consult.jpg", // running puppy
   },
 
-  /** Walk & Train page photos. */
+  /** Full Day Training page photos. */
   walkTrain: {
     hero: "/media/walk-train-hero.jpg", // white van in a field
     van: "/media/walk-train-van.jpg", // dog in a transport crate
@@ -60,10 +79,6 @@ export const media = {
     meetGreet: "/media/what-we-do.jpg", // reuses the trainers + dogs photo
   },
 
-  leaveWhenReady: {
-    /** Photo card in the "Leave when you're ready" section. */
-    image: "/media/leave-when-ready.jpg", // rottweiler in the forest
-  },
 
   dogs: [
     "/placeholders/dog-1.svg",
