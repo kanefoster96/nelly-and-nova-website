@@ -67,6 +67,8 @@ export default function OneToOnePage() {
           imageAlt="A puppy running happily on a training walk"
           imageAspect="aspect-[16/11]"
           cta
+          ctaLabel="Book a 1-1 Session"
+          ctaHref="/book?service=one-to-one"
         />
 
         <Reviews />

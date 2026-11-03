@@ -5,6 +5,7 @@
  */
 import { site } from "@/config/site";
 import type { EmailMessage } from "./resend";
+import { requestNextSteps } from "@/config/booking";
 
 const BRAND = site.name;
 
@@ -47,23 +48,26 @@ export function bookingConfirmation(d: {
   firstName: string;
   email: string;
   dogName: string;
+  /** Service key (full-day-training, one-to-one, online-training, not-sure). */
+  service?: string;
   serviceLabel?: string;
 }): EmailMessage {
   const name = d.firstName || "there";
   const dog = d.dogName || "your dog";
+  const next = requestNextSteps(d.service ?? "", dog);
   const html = layout("We'll be in touch", `
     <p>Hi ${escape(name)},</p>
-    <p>Thanks for your free meet &amp; greet request for ${escape(dog)}${d.serviceLabel && d.serviceLabel !== "Not sure yet" ? ` (${escape(d.serviceLabel)})` : ""}. We've got everything you sent us.</p>
-    <p>We'll read through it, give you a call or message with a few questions, and book a day that suits you to meet ${escape(dog)} — completely free.</p>
+    <p>Thanks for getting in touch about ${escape(dog)}${d.serviceLabel && d.serviceLabel !== "Not sure yet" ? ` and ${escape(d.serviceLabel)}` : ""}. We've got everything you sent us.</p>
+    <p>${escape(next.body)}</p>
     <p>There's nothing else you need to do for now. Usually we're back in touch within a day or two.</p>
     <p style="margin-top:20px;">Speak soon,<br/>The ${escape(BRAND)} team</p>
   `);
   const text = [
     `Hi ${name},`,
     "",
-    `Thanks for your free meet & greet request for ${dog}. We've got everything you sent us.`,
+    `Thanks for getting in touch about ${dog}. We've got everything you sent us.`,
     "",
-    `We'll read through it, give you a call or message with a few questions, and book a day that suits you to meet ${dog} — completely free.`,
+    next.body,
     "",
     "There's nothing else you need to do for now. Usually we're back in touch within a day or two.",
     "",
@@ -83,13 +87,13 @@ export function bookingOwnerNotification(d: {
   to: string;
 }): EmailMessage {
   const who = `${d.firstName} ${d.lastName}`.trim();
-  const html = layout("New meet & greet request", `
-    <p>${escape(who)} sent a meet &amp; greet request${d.serviceLabel ? ` (${escape(d.serviceLabel)})` : ""}. It's in your Onboarding list.</p>
+  const html = layout("New request", `
+    <p>${escape(who)} sent a request${d.serviceLabel ? ` for ${escape(d.serviceLabel)}` : ""}. It's in your Onboarding list.</p>
     <pre style="white-space:pre-wrap;font-family:inherit;background:#1a1a1a;padding:14px;border-radius:10px;color:#d4d4d4;">${escape(d.detailsText)}</pre>
   `);
   return {
     to: d.to,
-    subject: `New meet & greet request — ${who} (${d.serviceLabel ?? "enquiry"})`,
+    subject: `New request — ${who} (${d.serviceLabel ?? "enquiry"})`,
     html,
     text: d.detailsText,
     replyTo: d.email,
@@ -415,4 +419,47 @@ export function registerReminder(d: {
     `See you soon, The ${BRAND} team`,
   ].join("\n");
   return { to: d.email, subject: `Register ${dog} before ${d.daysToGo <= 1 ? "tomorrow" : "their first session"} — ${BRAND}`, html, text };
+}
+
+// --- Customer: a new report card after a session ----------------------------
+
+export function reportCardPublished(d: {
+  name: string;
+  email: string;
+  dogName: string;
+  title: string; // "Recall · Settle"
+  summary: string;
+  dateLabel: string; // "Tuesday 4 November"
+  homeworkCount: number;
+  url: string; // the website's report cards page
+}): EmailMessage {
+  const first = d.name.split(" ")[0] || "there";
+  const dog = d.dogName || "your dog";
+  const homework =
+    d.homeworkCount > 0
+      ? `There ${d.homeworkCount === 1 ? "is 1 drill" : `are ${d.homeworkCount} drills`} to practise. Do them on 3 separate days in the next 2 weeks and tap “I practised today” each time.`
+      : "";
+  const html = layout(`${dog}'s report card is ready`, `
+    <p>Hi ${escape(first)},</p>
+    <p>Here's how ${escape(dog)} got on at ${escape(d.dateLabel)}'s session${d.title ? `: <strong style="color:#ffffff;">${escape(d.title)}</strong>` : ""}.</p>
+    ${d.summary ? `<p style="border-left:2px solid rgba(255,255,255,.2);padding-left:12px;color:#bdbdbd;">${escape(d.summary)}</p>` : ""}
+    ${homework ? `<p>${escape(homework)}</p>` : ""}
+    <p><a href="${escape(d.url)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;">See the report card</a></p>
+    <p>It's in the app under Homework too. Any questions, ask on the card or just reply to this email.</p>
+    <p style="margin-top:20px;">Thanks,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${first},`,
+    "",
+    `Here's how ${dog} got on at ${d.dateLabel}'s session${d.title ? `: ${d.title}` : ""}.`,
+    ...(d.summary ? ["", d.summary] : []),
+    ...(homework ? ["", homework] : []),
+    "",
+    `See the report card: ${d.url}`,
+    "",
+    "It's in the app under Homework too. Any questions, ask on the card or just reply to this email.",
+    "",
+    `Thanks, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `${dog}'s report card is ready — ${BRAND}`, html, text };
 }

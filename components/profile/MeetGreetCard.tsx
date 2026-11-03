@@ -32,6 +32,8 @@ export function MeetGreetCard() {
   }, []);
 
   if (!mg) return null;
+  // Only Full Day Training starts with a meet & greet; 1-1 and Online go straight to a chat.
+  const isDayTraining = mg.service === "Full Day Training";
   const dog = (mg.dogNames ?? "your dog").replace(/, ([^,]*)$/, " & $1");
   const when = mg.meetGreetAt
     ? new Date(mg.meetGreetAt).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
@@ -39,12 +41,16 @@ export function MeetGreetCard() {
 
   return (
     <div className="mb-8 rounded-3xl border border-white/10 bg-ink-soft p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-paper/60">Your free meet &amp; greet</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-paper/60">
+        {isDayTraining ? "Your free meet & greet" : `Your request${mg.service && mg.service !== "Not sure yet" ? ` · ${mg.service}` : ""}`}
+      </p>
       {mg.status === "new" && (
         <>
           <p className="mt-2 text-lg font-semibold text-paper">Request received</p>
           <p className="mt-1 text-sm text-paper/70">
-            We&apos;ll be in touch to ask a few questions and book a day to meet {dog}. Message us any time.
+            {isDayTraining
+              ? `We'll be in touch to ask a few questions and book a day to meet ${dog}. Message us any time.`
+              : `We'll be in touch to chat about ${dog} and get you started. Message us any time.`}
           </p>
         </>
       )}

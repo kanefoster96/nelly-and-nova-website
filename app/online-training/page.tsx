@@ -10,7 +10,7 @@ import { onlineTrainingPage } from "@/config/site";
 export const metadata: Metadata = {
   title: "Online Training",
   description:
-    "Online dog training from Nelly & Nova — £25 a week for regular training videos, feedback on your own videos, and 24/7 help in our app and on WhatsApp, wherever you live.",
+    "Online dog training from Nelly & Nova — £25 a week. We learn your dog and your goal, teach you the communication, lead handling, socialisation and management skills to get there, and you can message us any time.",
 };
 
 export default function OnlineTrainingPage() {
@@ -67,6 +67,8 @@ export default function OnlineTrainingPage() {
           imageAlt="Three dogs sitting together on a path"
           imageAspect="aspect-[16/11]"
           cta
+          ctaLabel="Get Started"
+          ctaHref="/book?service=online-training"
         />
 
         <Reviews />
