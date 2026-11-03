@@ -55,6 +55,7 @@ export type NavLink = { label: string; href: string };
 export const navLinks: NavLink[] = [
   { label: "Full Day Training", href: "/full-day-training" },
   { label: "1-1 Training", href: "/one-to-one" },
+  { label: "Online Training", href: "/online-training" },
   { label: "Contact", href: "/contact" },
 ];
 
@@ -123,6 +124,23 @@ export const services = {
       cta: "Book a Session",
       ctaHref: BOOKING_HREF,
       pageHref: "/one-to-one",
+    },
+    {
+      id: "online-training",
+      label: "Online Training.",
+      subtitle: "Train at home, with us beside you.",
+      description:
+        "£25 a week: regular training videos, feedback on your own videos, and 24/7 help from us in the app and on WhatsApp — wherever you are.",
+      image: media.oneToOne.consultation,
+      points: [
+        "Regular training videos to follow at home",
+        "Send us videos of your training and we'll review them",
+        "Tell us what you're struggling with and we'll help you through it",
+        "24/7 access to us for questions and tips, in the app and on WhatsApp",
+      ],
+      cta: "Get started",
+      ctaHref: BOOKING_HREF,
+      pageHref: "/online-training",
     },
   ] as ServiceTab[],
   areaCta: "Check if we cover your area",
@@ -569,6 +587,41 @@ export const oneToOnePage = {
   },
 };
 
+/** Online Training page content. */
+export const onlineTrainingPage = {
+  intro: {
+    eyebrow: "Train From Anywhere",
+    titleLines: ["Online Training."],
+    paragraphs: [
+      "Online Training gives you everything you need to train your dog at home, with us guiding you every step of the way. It's £25 a week, there's no travel involved, and it works wherever you live.",
+      "You'll get regular training videos to follow, showing you exactly what to practise and how. Tell us what you're struggling with, and we'll shape your training around it.",
+    ],
+  },
+  review: {
+    eyebrow: "Video Feedback",
+    titleLines: ["Show.", "Us.", "Your.", "Training."],
+    paragraphs: [
+      "Film your training sessions and send them to us. We'll watch them back and give you clear, personal feedback: what's working, what to change, and what to try next — the same eye for detail you'd get from us in person.",
+      "It's the quickest way to fix the small things — timing, lead handling, reward placement — that make the biggest difference.",
+    ],
+  },
+  support: {
+    eyebrow: "Always Here",
+    titleLines: ["24/7.", "Support."],
+    paragraphs: [
+      "You'll have 24/7 access to us for questions and tips, through live chat in the Nelly & Nova app and on WhatsApp. Had a tricky walk? Not sure what to do next? Just message us.",
+      "Everything happens in our app: your videos, your progress and your chat with us, all in one place.",
+    ],
+  },
+  start: {
+    eyebrow: "Get Started",
+    titleLines: ["Free Chat First."],
+    paragraphs: [
+      "Tell us about your dog and what you'd like help with, and we'll have a free, relaxed chat to make sure Online Training is right for you before you sign up. £25 per week, cancel any time.",
+    ],
+  },
+};
+
 /** FAQ accordion. Each answer is an array of paragraphs. */
 export type Faq = { q: string; a: string[] };
 
@@ -582,6 +635,7 @@ export const faq = {
         "Our Full Day Training days are £60 per week, if you sign up for a membership with a fixed slot.",
         "We also offer one-off Full Day Training days for £80, if you'd like to book in as and when you need it without a membership.",
         "Our 1-1 sessions are an hour of in-person training, where we work with you and your dog to improve handling skills and address specific issues you're having. These are £90 per hour.",
+        "Online Training is £25 per week: regular training videos, feedback on videos of your own training, and 24/7 access to us for questions and tips, in our app and on WhatsApp.",
       ],
     },
     {

@@ -51,6 +51,15 @@ export const booking = {
         { value: "session", label: "1-1 Session", desc: "One hour with you and your dog", base: 90, unit: "session" },
       ],
     },
+    {
+      value: "online-training",
+      label: "Online Training",
+      desc: "Videos, feedback and 24/7 help",
+      icon: "handshake",
+      bookingTypes: [
+        { value: "weekly", label: "Weekly", desc: "Cancel any time", base: 25, unit: "week" },
+      ],
+    },
   ] as ServiceOption[],
 
   findUs: [
@@ -129,6 +138,7 @@ export const meetGreet = {
   services: [
     { value: "full-day-training", label: "Full Day Training", desc: "We collect, train all day and drop off", icon: "paw" },
     { value: "one-to-one", label: "1-1 Training", desc: "An hour with you and your dog", icon: "handshake" },
+    { value: "online-training", label: "Online Training", desc: "Videos, feedback & 24/7 help — £25 a week" },
     { value: "not-sure", label: "Not sure yet", desc: "We'll help you choose at the meet & greet" },
   ] as MeetGreetChoice[],
 

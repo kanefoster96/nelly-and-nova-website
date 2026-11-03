@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     "dog training",
     "puppy training",
     "Full Day Dog Training",
+    "Online Dog Training",
     "Tynemouth",
     "Backworth",
     "North East",

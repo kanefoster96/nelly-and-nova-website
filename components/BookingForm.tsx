@@ -384,7 +384,13 @@ export function BookingForm() {
                   Great — we cover {pc.area}.
                 </p>
               )}
-              {pc.status === "outside" && (
+              {pc.status === "outside" && data.service === "online-training" && (
+                <p className="mt-2 flex items-center gap-2 text-sm text-emerald-300">
+                  <MapPinIcon width={16} height={16} />
+                  Online Training works wherever you are.
+                </p>
+              )}
+              {pc.status === "outside" && data.service !== "online-training" && (
                 <p className="mt-2 flex items-start gap-2 text-sm text-amber-300">
                   <MapPinIcon width={16} height={16} className="mt-0.5 shrink-0" />
                   We don&apos;t usually travel to {pc.outward}, but send your request and we&apos;ll let you know if we can.

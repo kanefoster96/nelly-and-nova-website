@@ -71,6 +71,14 @@ export const media = {
     consultation: "/media/one-to-one-consult.jpg", // running puppy
   },
 
+  /** Online Training page photos — PLACEHOLDERS reusing existing photos. */
+  onlineTraining: {
+    hero: "/media/what-we-do.jpg",
+    review: "/media/one-to-one-consult.jpg",
+    support: "/placeholders/walk-train-report.svg",
+    start: "/media/hero.jpg",
+  },
+
   /** Full Day Training page photos. */
   walkTrain: {
     hero: "/media/walk-train-hero.jpg", // white van in a field
