@@ -100,6 +100,10 @@ export type Enquiry = {
   /** Private join link token, once onboarding has started. */
   onboardingToken: string | null;
   onboardingStartedAt: string | null;
+  /** Their regular Full Day Training day, set by the trainer. */
+  trainingDay: string | null;
+  trainingCadence: "weekly" | "alternating" | null;
+  firstSessionOn: string | null; // YYYY-MM-DD
 };
 
 /** "2 yrs" / "7 months" from a date of birth. */

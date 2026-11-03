@@ -276,9 +276,23 @@ export async function listEnquiries(): Promise<Enquiry[]> {
 
 export async function updateEnquiry(
   id: string,
-  patch: { status?: EnquiryStatus; meetGreetAt?: string | null; meetGreetNotes?: string; closedReason?: string | null }
+  patch: {
+    status?: EnquiryStatus;
+    meetGreetAt?: string | null;
+    meetGreetNotes?: string;
+    closedReason?: string | null;
+    trainingDay?: string | null;
+    trainingCadence?: string | null;
+    firstSessionOn?: string | null;
+  }
 ): Promise<void> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.trainingDay !== undefined) row.training_day = patch.trainingDay;
+  if (patch.trainingCadence !== undefined) row.training_cadence = patch.trainingCadence;
+  if (patch.firstSessionOn !== undefined) {
+    row.first_session_on = patch.firstSessionOn;
+    row.register_reminders_sent = []; // a new date starts the reminders again
+  }
   if (patch.status) row.status = patch.status;
   if (patch.closedReason !== undefined) row.closed_reason = patch.closedReason;
   if (patch.meetGreetAt !== undefined) row.meet_greet_at = patch.meetGreetAt;

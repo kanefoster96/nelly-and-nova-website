@@ -11,6 +11,9 @@ type MeetGreet = {
   meetGreetAt: string | null;
   meetGreetNotes: string | null;
   joinToken: string | null;
+  trainingDay: string | null;
+  trainingCadence: "weekly" | "alternating" | null;
+  firstSessionOn: string | null;
 } | null;
 
 /**
@@ -56,6 +59,12 @@ export function MeetGreetCard() {
         <>
           <p className="mt-2 text-lg font-semibold text-paper">Let&apos;s get you set up</p>
           <p className="mt-1 text-sm text-paper/70">Set up your Direct Debit and register {dog} before your first session.</p>
+          {mg.trainingDay && mg.firstSessionOn && (
+            <p className="mt-2 text-sm font-medium text-paper">
+              {mg.trainingDay.charAt(0).toUpperCase() + mg.trainingDay.slice(1)}s, {mg.trainingCadence === "alternating" ? "every other week" : "every week"} · first session{" "}
+              {new Date(`${mg.firstSessionOn}T12:00:00`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
+          )}
           {mg.joinToken && (
             <Link
               href={`/join/${mg.joinToken}`}

@@ -121,5 +121,8 @@ export function toEnquiry(r: any): Enquiry {
     createdAt: r.created_at,
     onboardingToken: r.onboarding_token ?? null,
     onboardingStartedAt: r.onboarding_started_at ?? null,
+    trainingDay: r.training_day ?? null,
+    trainingCadence: r.training_cadence ?? null,
+    firstSessionOn: r.first_session_on ?? null,
   };
 }

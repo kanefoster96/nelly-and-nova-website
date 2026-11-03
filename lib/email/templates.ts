@@ -381,3 +381,38 @@ export function appSetupLink(d: { email: string; url: string; isNew: boolean }):
   ].join("\n");
   return { to: d.email, subject: d.isNew ? `Set up your ${BRAND} account` : `Reset your ${BRAND} password`, html, text };
 }
+
+// --- Customer: register your dog before the first session -------------------
+
+export function registerReminder(d: {
+  name: string;
+  email: string;
+  dogNames: string;
+  firstSessionLabel: string; // "Thursday 13 November"
+  daysToGo: number;
+  joinUrl: string;
+}): EmailMessage {
+  const first = d.name.split(" ")[0] || "there";
+  const dog = d.dogNames || "your dog";
+  const when = d.daysToGo <= 0 ? "today" : d.daysToGo === 1 ? "tomorrow" : `on ${d.firstSessionLabel}`;
+  const html = layout(`Register ${dog} before ${d.daysToGo <= 1 ? "tomorrow" : "their first session"}`, `
+    <p>Hi ${escape(first)},</p>
+    <p>${escape(dog)}'s first session is ${escape(when)} — we can't wait! Before we can collect them, we need them registered: their health and vet details, emergency contacts, and the consent &amp; waiver.</p>
+    <p>It only takes a few minutes:</p>
+    <p><a href="${escape(d.joinUrl)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;">Register ${escape(dog)}</a></p>
+    <p>If it isn't done before the session, we won't be able to pick ${escape(dog)} up. Any questions, just reply to this email.</p>
+    <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${first},`,
+    "",
+    `${dog}'s first session is ${when} — we can't wait! Before we can collect them, we need them registered: their health and vet details, emergency contacts, and the consent & waiver.`,
+    "",
+    `Register ${dog}: ${d.joinUrl}`,
+    "",
+    `If it isn't done before the session, we won't be able to pick ${dog} up. Any questions, just reply to this email.`,
+    "",
+    `See you soon, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Register ${dog} before ${d.daysToGo <= 1 ? "tomorrow" : "their first session"} — ${BRAND}`, html, text };
+}

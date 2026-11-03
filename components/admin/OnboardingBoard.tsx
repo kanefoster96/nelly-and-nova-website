@@ -153,6 +153,7 @@ function EnquiryCard({
 }) {
   const [booking, setBooking] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [settingDay, setSettingDay] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -294,6 +295,15 @@ function EnquiryCard({
             detail={progress?.accountLinked ? "Created and linked" : "Not created yet (or not opened the link signed in)"}
           />
           <Tick
+            done={!!e.trainingDay && !!e.firstSessionOn}
+            label="Training day"
+            detail={
+              e.trainingDay && e.firstSessionOn
+                ? `${cap(e.trainingDay)}s, ${e.trainingCadence === "alternating" ? "every other week" : "every week"} · first session ${new Date(`${e.firstSessionOn}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`
+                : "Not set yet"
+            }
+          />
+          <Tick
             done={!!progress && progress.dogs.length > 0 && progress.dogs.every((d) => d.registered)}
             label="Dog registered (health, vet, consent & waiver)"
             detail={
@@ -303,6 +313,18 @@ function EnquiryCard({
             }
           />
         </ul>
+      )}
+
+      {settingDay && (
+        <TrainingDayForm
+          enquiry={e}
+          onCancel={() => setSettingDay(false)}
+          onSaved={(p) => {
+            onChange(p);
+            setSettingDay(false);
+            setNote("Training day saved. They'll get reminders to register before the first session.");
+          }}
+        />
       )}
 
       {booking ? (
@@ -335,6 +357,9 @@ function EnquiryCard({
           )}
           {e.status === "onboarding" && (
             <>
+              <Button radius="xl" onClick={() => setSettingDay(true)}>
+                {e.trainingDay ? "Change training day" : "Set training day"}
+              </Button>
               <Button radius="xl" variant="secondary" onClick={() => void copyJoinLink()} disabled={!e.onboardingToken}>
                 Copy join link
               </Button>
@@ -415,6 +440,79 @@ function BookMeetGreet({
         <input type="checkbox" checked={emailThem} onChange={(ev) => setEmailThem(ev.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
         Email {e.name.split(" ")[0]} the day and time
       </label>
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      <div className="flex gap-2">
+        <Button radius="xl" onClick={() => void save()} disabled={busy} className="disabled:opacity-60">
+          {busy ? "Saving…" : "Save"}
+        </Button>
+        <Button radius="xl" variant="ghost" onClick={onCancel} disabled={busy}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+/**
+ * Their regular Full Day Training day (usually repeats weekly or every
+ * other week) and first session. Agreed with them directly; this just
+ * records it. Owners without a registered dog get reminders before the
+ * first session (/api/cron/register-reminders).
+ */
+function TrainingDayForm({
+  enquiry: e,
+  onCancel,
+  onSaved,
+}: {
+  enquiry: Enquiry;
+  onCancel: () => void;
+  onSaved: (p: Partial<Enquiry>) => void;
+}) {
+  const [day, setDay] = useState(e.trainingDay ?? "");
+  const [cadence, setCadence] = useState<string>(e.trainingCadence ?? "weekly");
+  const [first, setFirst] = useState(e.firstSessionOn ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    if (!day || !first) return setError("Choose the day and the first session date.");
+    const firstDay = DAYS[(new Date(`${first}T12:00:00`).getDay() + 6) % 7];
+    if (firstDay !== day) return setError(`The first session should be on a ${cap(day)} (that date is a ${cap(firstDay)}).`);
+    setBusy(true);
+    setError("");
+    try {
+      await updateEnquiry(e.id, { trainingDay: day, trainingCadence: cadence, firstSessionOn: first });
+      onSaved({ trainingDay: day, trainingCadence: cadence as "weekly" | "alternating", firstSessionOn: first });
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 grid gap-4 rounded-lg border border-white/10 bg-ink p-4">
+      <Field
+        label="Training day"
+        name={`day-${e.id}`}
+        required
+        value={day}
+        onChange={setDay}
+        options={[{ value: "", label: "Choose…" }, ...DAYS.slice(0, 5).map((d) => ({ value: d, label: `${cap(d)}s` }))]}
+      />
+      <Field
+        label="How often"
+        name={`cadence-${e.id}`}
+        value={cadence}
+        onChange={setCadence}
+        options={[
+          { value: "weekly", label: "Every week" },
+          { value: "alternating", label: "Every other week" },
+        ]}
+      />
+      <Field label="First session" name={`first-${e.id}`} type="date" required value={first} onChange={setFirst} />
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="flex gap-2">
         <Button radius="xl" onClick={() => void save()} disabled={busy} className="disabled:opacity-60">
