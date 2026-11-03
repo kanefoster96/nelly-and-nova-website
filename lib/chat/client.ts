@@ -71,7 +71,8 @@ export async function getMessagesSince(conversationId: string, afterIso: string)
 
 export async function sendChatMessage(
   conversationId: string,
-  input: SendInput
+  input: SendInput,
+  notifyOwner = false
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { error } = await chatSupabase().rpc("nn_chat_send", {
     p_conversation_id: conversationId,
@@ -84,6 +85,8 @@ export async function sendChatMessage(
     console.error("sendChatMessage failed", error);
     return { success: false, error: "Could not send your message — please try again." };
   }
+  // A trainer's reply: let the owner know in the app (the route checks it's a trainer).
+  if (notifyOwner) void fetch("/api/chat/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId }) }).catch(() => {});
   return { success: true };
 }
 

@@ -8,6 +8,7 @@ import { CheckCircleIcon, CheckIcon, MapPinIcon, PlusIcon } from "./ui/Icons";
 import { DraftRestored, StepCard, WizardHeading, WizardNav, WizardProgress } from "./ui/WizardProgress";
 import { clearFormDraft, loadFormDraft, saveFormDraft } from "@/lib/forms/draft";
 import { checkPostcode, meetGreet } from "@/config/booking";
+import { EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 
 /**
  * Free meet & greet request — four short steps, laid out like Kanvas
@@ -197,6 +198,28 @@ export function BookingForm() {
 
   const names = dogNames(data.dogs);
 
+  // Their details carry into sign-up, so it's just a password.
+  const createAccountHref = `/create-account?${new URLSearchParams({
+    name: data.firstName.trim(),
+    lastName: data.lastName.trim(),
+    email: data.email.trim(),
+    phone: data.phone.trim(),
+    address: checkPostcode(data.postcode).formatted ?? data.postcode.trim(),
+    dogName: data.dogs[0]?.name.trim() ?? "",
+    breed: data.dogs[0]?.breed.trim() ?? "",
+    next: "/profile",
+  })}`;
+  function handOffDogs() {
+    try {
+      sessionStorage.setItem(
+        EXTRA_DOGS_HANDOFF_KEY,
+        JSON.stringify(data.dogs.slice(1).map((d) => ({ name: d.name.trim(), breed: d.breed.trim() })))
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (status === "success") {
     return (
       <div ref={topRef} className="rounded-3xl border border-white/10 bg-ink-soft px-6 py-12 text-center animate-fade-up sm:px-10">
@@ -211,15 +234,24 @@ export function BookingForm() {
         <p className="mx-auto mt-3 max-w-md text-sm text-paper-dim">
           We&apos;ve emailed you a copy. Usually we&apos;re back in touch within a day or two.
         </p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
+        {/* Like Kanvas's trial bookings: an account now means they can chat
+            with us and follow their request in the app straight away. */}
+        <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-white/10 bg-ink p-5 text-left">
+          <p className="font-semibold text-paper">Create your account</p>
+          <p className="mt-1 text-sm text-paper/70">
+            Message us in the app, see when your meet &amp; greet is booked, and get updates — just add a password.
+          </p>
           <Link
-            href="/"
-            className="inline-flex min-h-[44px] items-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90"
+            href={createAccountHref}
+            onClick={handOffDogs}
+            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90"
           >
-            Back to Home
+            Create account
           </Link>
-          <Link href="/messages" className="glass inline-flex min-h-[44px] items-center rounded-full px-6 text-sm font-semibold text-paper">
-            Message us
+        </div>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <Link href="/" className="glass inline-flex min-h-[44px] items-center rounded-full px-6 text-sm font-semibold text-paper">
+            Back to Home
           </Link>
         </div>
       </div>

@@ -422,7 +422,7 @@ export function ChatThread({
     const tempId = addOptimistic({ body });
     setDraft("");
     setTyping(false);
-    const result = await sendChatMessage(conversationId, { body });
+    const result = await sendChatMessage(conversationId, { body }, isStaff);
     setSending(false);
     if (!result.success) {
       setError(result.error);
@@ -457,12 +457,11 @@ export function ChatThread({
       setDraft(caption);
       return;
     }
-    const result = await sendChatMessage(conversationId, {
-      body: caption,
-      attachmentPath: path,
-      attachmentType: type,
-      attachmentName: file.name,
-    });
+    const result = await sendChatMessage(
+      conversationId,
+      { body: caption, attachmentPath: path, attachmentType: type, attachmentName: file.name },
+      isStaff
+    );
     setSending(false);
     if (!result.success) {
       setError(result.error);

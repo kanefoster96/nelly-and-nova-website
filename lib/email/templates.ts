@@ -363,3 +363,21 @@ export function onboardingStarted(d: {
   ].join("\n");
   return { to: d.email, subject: `Next steps for ${dog} — ${BRAND}`, html, text };
 }
+
+// --- App log in: set up account / reset password ---------------------------
+
+export function appSetupLink(d: { email: string; url: string; isNew: boolean }): EmailMessage {
+  const button = d.isNew ? "Set Up My Account" : "Reset My Password";
+  const html = layout(d.isNew ? "Set up your account" : "Reset your password", `
+    <p>${d.isNew ? "Tap below on your phone to choose a password and set up your Nelly &amp; Nova account." : "Tap below on your phone to choose a new password."}</p>
+    <p><a href="${escape(d.url)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;">${button}</a></p>
+    <p style="color:#8c8c8c;font-size:13px;">This button works for an hour. Didn't ask for it? You can ignore this email.</p>
+  `);
+  const text = [
+    d.isNew ? "Set up your Nelly & Nova account:" : "Reset your Nelly & Nova password:",
+    d.url,
+    "",
+    "This link works for an hour. Didn't ask for it? You can ignore this email.",
+  ].join("\n");
+  return { to: d.email, subject: d.isNew ? `Set up your ${BRAND} account` : `Reset your ${BRAND} password`, html, text };
+}
