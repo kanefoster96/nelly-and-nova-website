@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/nav/next";
 
 /**
  * Where the "confirm your email" link lands. Handles both kinds of link
@@ -26,5 +27,7 @@ export async function GET(request: NextRequest) {
     ok = false;
   }
 
-  return NextResponse.redirect(new URL(ok ? "/profile?welcome=1" : "/login?confirm=failed", url.origin));
+  const next = safeNext(url.searchParams.get("next"));
+  const target = ok ? next ?? "/profile?welcome=1" : `/login?confirm=failed${next ? `&next=${encodeURIComponent(next)}` : ""}`;
+  return NextResponse.redirect(new URL(target, url.origin));
 }

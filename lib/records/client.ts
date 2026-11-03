@@ -276,14 +276,49 @@ export async function listEnquiries(): Promise<Enquiry[]> {
 
 export async function updateEnquiry(
   id: string,
-  patch: { status?: EnquiryStatus; meetGreetAt?: string | null; meetGreetNotes?: string }
+  patch: { status?: EnquiryStatus; meetGreetAt?: string | null; meetGreetNotes?: string; closedReason?: string | null }
 ): Promise<void> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.status) row.status = patch.status;
+  if (patch.closedReason !== undefined) row.closed_reason = patch.closedReason;
   if (patch.meetGreetAt !== undefined) row.meet_greet_at = patch.meetGreetAt;
   if (patch.meetGreetNotes !== undefined) row.meet_greet_notes = patch.meetGreetNotes.trim() || null;
   const { error } = await sb().from("enquiries").update(row).eq("id", id);
   if (error) fail("Couldn't update the enquiry", error);
+}
+
+/** Where each onboarding customer is up to: Direct Debit, account, dogs registered. */
+export type OnboardingProgress = {
+  directDebit: string; // none | link_sent | pending_submission | submitted | active | failed | …
+  accountLinked: boolean;
+  dogs: { name: string; registered: boolean }[];
+};
+
+export async function getOnboardingProgress(enquiries: Enquiry[]): Promise<Record<string, OnboardingProgress>> {
+  const ids = enquiries.map((e) => e.id);
+  const accounts = enquiries.map((e) => e.accountId).filter((x): x is string => !!x);
+  if (ids.length === 0) return {};
+  const [mandates, dogs] = await Promise.all([
+    sb().from("payment_mandates").select("enquiry_id, account_id, status, created_at").or(
+      [`enquiry_id.in.(${ids.join(",")})`, accounts.length ? `account_id.in.(${accounts.join(",")})` : ""].filter(Boolean).join(",")
+    ).order("created_at", { ascending: false }),
+    accounts.length
+      ? sb().from("dogs").select("account_id, name, waiver_signed_at, sort_order").in("account_id", accounts).order("sort_order")
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (mandates.error) fail("Couldn't load Direct Debits", mandates.error);
+  const out: Record<string, OnboardingProgress> = {};
+  for (const e of enquiries) {
+    const m = (mandates.data ?? []).find((x) => x.enquiry_id === e.id || (e.accountId && x.account_id === e.accountId));
+    out[e.id] = {
+      directDebit: (m?.status as string) ?? "none",
+      accountLinked: !!e.accountId,
+      dogs: ((dogs.data ?? []) as { account_id: string; name: string; waiver_signed_at: string | null }[])
+        .filter((d) => d.account_id === e.accountId)
+        .map((d) => ({ name: d.name, registered: !!d.waiver_signed_at })),
+    };
+  }
+  return out;
 }
 
 /** Record a signed consent & waiver and mark the dog as signed. */

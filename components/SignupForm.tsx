@@ -9,6 +9,7 @@ import { AvatarUpload } from "./ui/AvatarUpload";
 import { CheckCircleIcon, EyeIcon, EyeOffIcon, MailIcon, ArrowRightIcon } from "./ui/Icons";
 import { DOG_PHOTO_HANDOFF_KEY, EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 import { signUpNewAccount } from "@/lib/auth/session";
+import { safeNext } from "@/lib/nav/next";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -32,6 +33,8 @@ const STRENGTH = ["Too short", "Okay", "Good", "Strong", "Very strong"];
  */
 export function SignupForm() {
   const params = useSearchParams();
+  // Where to carry on afterwards (e.g. their onboarding checklist).
+  const next = safeNext(params.get("next"));
 
   // Prefilled when redirected from the booking/enquiry form.
   const [firstName, setFirstName] = useState(params.get("name") ?? "");
@@ -93,6 +96,7 @@ export function SignupForm() {
       dogs,
       phone,
       address,
+      next: next ?? undefined,
     });
 
     if (error) {
@@ -160,13 +164,22 @@ export function SignupForm() {
           and complete your consent &amp; waiver whenever you like — it all saves as you go.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Button href="/profile" radius="xl">
-            Go to your profile
-            <ArrowRightIcon width={18} height={18} />
-          </Button>
-          <Button href="/waiver" variant="secondary" radius="xl">
-            Consent &amp; waiver
-          </Button>
+          {next ? (
+            <Button href={next} radius="xl">
+              Carry on
+              <ArrowRightIcon width={18} height={18} />
+            </Button>
+          ) : (
+            <>
+              <Button href="/profile" radius="xl">
+                Go to your profile
+                <ArrowRightIcon width={18} height={18} />
+              </Button>
+              <Button href="/waiver" variant="secondary" radius="xl">
+                Consent &amp; waiver
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );

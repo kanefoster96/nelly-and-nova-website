@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "./ui/Button";
 import { Field } from "./ui/Field";
 import { signInWithPassword } from "@/lib/auth/session";
+import { safeNext } from "@/lib/nav/next";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export function LoginForm() {
   const router = useRouter();
+  const next = safeNext(useSearchParams().get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -35,7 +37,7 @@ export function LoginForm() {
       setFormError(error);
       return;
     }
-    router.push(role === "admin" ? "/admin" : "/profile");
+    router.push(next ?? (role === "admin" ? "/admin" : "/profile"));
   }
 
   return (

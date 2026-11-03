@@ -119,5 +119,7 @@ export function toEnquiry(r: any): Enquiry {
     meetGreetNotes: str(r.meet_greet_notes),
     accountId: r.account_id ?? null,
     createdAt: r.created_at,
+    onboardingToken: r.onboarding_token ?? null,
+    onboardingStartedAt: r.onboarding_started_at ?? null,
   };
 }

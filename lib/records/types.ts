@@ -97,6 +97,9 @@ export type Enquiry = {
   meetGreetNotes: string;
   accountId: string | null;
   createdAt: string;
+  /** Private join link token, once onboarding has started. */
+  onboardingToken: string | null;
+  onboardingStartedAt: string | null;
 };
 
 /** "2 yrs" / "7 months" from a date of birth. */

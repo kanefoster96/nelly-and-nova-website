@@ -25,15 +25,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing email or time." }, { status: 400 });
   }
 
-  const origin = new URL(request.url).origin;
-  const params = new URLSearchParams({ name: String(d.name ?? "").split(" ")[0] ?? "", email });
   const sent = await sendEmail(
     meetGreetBooked({
       name: String(d.name ?? "").trim(),
       email,
       whenLabel,
       notes: String(d.notes ?? "").trim() || undefined,
-      createAccountUrl: `${origin}/create-account?${params.toString()}`,
     })
   );
   return Response.json({ ok: true, sent });

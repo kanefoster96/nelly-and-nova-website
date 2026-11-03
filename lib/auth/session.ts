@@ -228,6 +228,8 @@ export async function signUpNewAccount(input: {
   /** Contact details from the meet & greet form, saved onto the profile. */
   phone?: string;
   address?: string;
+  /** Where to land after confirming their email (a path on this site). */
+  next?: string;
 }): Promise<{ error: string | null; needsConfirmation: boolean }> {
   const { data, error } = await sb().auth.signUp({
     email: input.email,
@@ -235,7 +237,7 @@ export async function signUpNewAccount(input: {
     options: {
       // The "confirm your email" link (if confirmation is switched on) lands
       // on /auth/confirm, which signs them in and opens their profile.
-      emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      emailRedirectTo: `${window.location.origin}/auth/confirm${input.next ? `?next=${encodeURIComponent(input.next)}` : ""}`,
       data: {
         owner_name: input.ownerName,
         phone: input.phone?.trim() || undefined,
