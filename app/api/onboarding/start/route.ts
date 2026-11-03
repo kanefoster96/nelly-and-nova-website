@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/resend";
 import { onboardingStarted } from "@/lib/email/templates";
 import { createMandateRequest, gocardlessConfigured, GoCardlessError } from "@/lib/gocardless/client";
-import { pushToAccount } from "@/lib/push/send";
+import { notifyAccount } from "@/lib/notifications/send";
 
 /**
  * Trainer: "Start onboarding" on a meet & greet request, once you've met and
@@ -131,10 +131,11 @@ export async function POST(request: Request) {
       });
       messaged = !error;
     }
-    await pushToAccount(supabase, e.account_id, {
+    await notifyAccount(supabase, e.account_id, {
       title: `🐾 Next steps for ${dogNames || "your dog"}`,
       body: "Set up your Direct Debit and register them before your first session.",
       path: "/chat",
+      kind: "onboarding",
     });
   }
 

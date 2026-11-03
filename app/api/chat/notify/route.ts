@@ -1,10 +1,11 @@
 import { createClient as createSupabase } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { pushToAccount } from "@/lib/push/send";
+import { notifyAccount } from "@/lib/notifications/send";
 
 /**
  * A trainer has just replied in someone's chat: let the owner know in the
- * app. Called by the website's and the app's chat after a trainer sends.
+ * app (and on their Notifications). Called by the website's and the app's
+ * chat after a trainer sends.
  * Signed in by cookie (website) or a Bearer token (the app). Trainers only,
  * and only pushes the owner of that conversation.
  */
@@ -36,10 +37,13 @@ export async function POST(request: Request) {
     .limit(1)
     .maybeSingle();
   const preview = last?.body || (last?.attachment_type ? "Sent you a file" : "New message");
-  const pushed = await pushToAccount(supabase, conv.account_id as string, {
+  // A row on their Notifications too, and the push.
+  const { pushed } = await notifyAccount(supabase, conv.account_id as string, {
     title: `💬 ${last?.sender_name || "Nelly & Nova"}`,
     body: preview.length > 140 ? `${preview.slice(0, 137)}…` : preview,
     path: "/chat",
+    kind: "chat_message",
+    sentByName: last?.sender_name || undefined,
   });
   return Response.json({ ok: true, pushed });
 }

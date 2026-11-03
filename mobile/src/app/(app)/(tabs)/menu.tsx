@@ -1,4 +1,5 @@
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import * as WebBrowser from "expo-web-browser";
 import { ScrollView, View } from "react-native";
 
@@ -7,6 +8,7 @@ import { Appear } from "@/components/appear";
 import { BuildInfo } from "@/components/build-info";
 import { PageTitle } from "@/components/page-title";
 import { GroupHeading, MenuCard } from "@/components/trainer/cards";
+import { countPendingRequests, countUnpaid } from "@/data/sessions";
 import { config } from "@/lib/config";
 import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
 import { colors } from "@/theme";
@@ -24,6 +26,20 @@ export default function TrainerMenuScreen() {
   const barInset = useBarInset();
   const barScroll = useBarScroll();
   const topInset = useTopBarInset();
+  const [counts, setCounts] = useState({ requests: 0, unpaid: 0 });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isTrainer) return;
+      let live = true;
+      Promise.all([countPendingRequests(), countUnpaid()])
+        .then(([requests, unpaid]) => live && setCounts({ requests, unpaid }))
+        .catch(() => undefined);
+      return () => {
+        live = false;
+      };
+    }, [isTrainer]),
+  );
 
   if (!isTrainer) return <Redirect href="/community" />;
 
@@ -38,6 +54,13 @@ export default function TrainerMenuScreen() {
       <Appear index={0}>
         <GroupHeading>Training</GroupHeading>
         <View style={{ gap: 10 }}>
+          <MenuCard
+            icon="swap-horizontal-outline"
+            title="Requests"
+            description={`Replacement days, extra sessions and day switches to accept.${counts.unpaid ? ` ${counts.unpaid} unpaid session${counts.unpaid === 1 ? "" : "s"} to charge.` : " Unpaid sessions to charge."}`}
+            count={counts.requests + counts.unpaid}
+            onPress={() => router.push("/requests")}
+          />
           <MenuCard
             icon="calendar-outline"
             title="Calendar"
@@ -73,6 +96,12 @@ export default function TrainerMenuScreen() {
             title="Messages"
             description="Conversations with owners."
             onPress={() => router.navigate("/chat")}
+          />
+          <MenuCard
+            icon="megaphone-outline"
+            title="Send a notification"
+            description="To every owner or the ones you choose: on their phone and their Notifications."
+            onPress={() => router.push("/send-notification")}
           />
         </View>
       </Appear>

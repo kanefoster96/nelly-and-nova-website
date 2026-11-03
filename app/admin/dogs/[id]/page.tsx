@@ -4,6 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { DogRecordView } from "@/components/dogs/DogRecordView";
+import { DogProgress } from "@/components/reports/DogProgress";
 
 export const metadata: Metadata = {
   title: "Dog",
@@ -24,6 +25,7 @@ export default async function AdminDogPage({ params }: { params: Promise<{ id: s
             <div className="mt-6">
               <RequireAdmin>
                 <DogRecordView dogId={id} mode="trainer" />
+                <DogProgress dogId={id} mode="trainer" />
               </RequireAdmin>
             </div>
           </div>

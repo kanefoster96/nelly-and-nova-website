@@ -54,7 +54,8 @@ function Avatar({ sentByName, href }: { sentByName: string; href?: string }) {
 export function NotificationsList({ notifications, unreadIds }: { notifications: Notification[]; unreadIds?: Set<string> }) {
   if (notifications.length === 0) {
     return (
-      <View style={{ margin: 20, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, borderRadius: 18, padding: 32 }}>
+      <View style={{ margin: 16, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, borderRadius: 16, paddingVertical: 32, paddingHorizontal: 20, alignItems: "center", gap: 10 }}>
+        <Ionicons name="notifications-outline" size={26} color={colors.muted} />
         <Text style={{ color: colors.muted, textAlign: "center", fontSize: 14 }}>No notifications yet.</Text>
       </View>
     );

@@ -1,79 +1,15 @@
 /**
- * Data-access seam for the dog profile + report cards.
- * ----------------------------------------------------
- * The ONE place to swap the scaffold's sample data for a real backend.
- * Intended backend (Supabase):
- *   - getDogProfile()        → select from `dogs` where owner = auth.uid()
- *   - getReportCards(dogId)  → select from `report_cards` order by date desc
- *   - setHomeworkDone(...)   → update `homework` set done = $bool
- *   - addReportComment(...)  → insert into `report_comments` (RLS: owner or staff)
- *   - markReportSeen(id)     → update `report_cards` set seen_at = now()
- *
- * Report comments are visible only to the owner and staff (RLS). A new report
- * card notifies the owner; an owner comment notifies staff.
+ * Data-access seam for the dog profile (server).
+ * ----------------------------------------------
+ * Report cards, homework and resets are live in Supabase and read in the
+ * browser (lib/reports/client.ts), so Row Level Security decides what each
+ * account sees. What's left here is the profile's training plan, which still
+ * comes from the sample until the schedule is wired up.
  */
-import type { DogProfile, ReportCard, ReportComment } from "./types";
-import { sampleDog, sampleReportCards } from "./sample";
+import type { DogProfile } from "./types";
+import { sampleDog } from "./sample";
 
 export async function getDogProfile(): Promise<DogProfile> {
-  // TODO(backend): select * from dogs where owner_id = auth.uid() limit 1
+  // TODO(backend): the plan comes from the schedule once that's live.
   return sampleDog;
-}
-
-export async function getReportCards(): Promise<ReportCard[]> {
-  // TODO(backend): select * from report_cards where dog_id = $1 order by date desc
-  return sampleReportCards;
-}
-
-/**
- * Reset a dog's homework completion to 100% — offered when they book a 1-1, so
- * any missed homework before this point no longer counts.
- */
-export async function resetHomework(dogId: string, at: string): Promise<void> {
-  // TODO(backend): store a homework_reset (dog_id, reset_at); completion is then
-  // computed only from report cards dated on/after reset_at.
-  console.log(`[reports] homework reset to 100% for ${dogId} at ${at} (scaffold)`);
-}
-
-/** Log a day's homework completion for a report card (one per day per card). */
-export async function logHomeworkDay(reportId: string, date: string): Promise<void> {
-  // TODO(backend): insert into homework_completions (report_id, date) with a
-  // UNIQUE(report_id, date) constraint so the one-per-day rule holds server-side.
-  console.log(`[reports] homework day logged for ${reportId} on ${date} (scaffold)`);
-}
-
-/** Save an edited set of homework categories/drills for a report card. */
-export async function saveHomework(
-  reportId: string,
-  categories: import("./types").HomeworkCategory[]
-): Promise<void> {
-  // TODO(backend): upsert homework_categories + drills for this report card,
-  // preserving each drill's done state where its id is unchanged.
-  const drills = categories.reduce((n, c) => n + c.drills.length, 0);
-  console.log(`[reports] homework saved for ${reportId} — ${categories.length} categories, ${drills} drills (scaffold)`);
-}
-
-export async function addReportComment(
-  reportId: string,
-  comment: ReportComment
-): Promise<void> {
-  // TODO(backend): insert into report_comments (...); if comment.author = 'owner',
-  // create a staff notification linking back to this report card.
-  console.log(`[reports] comment on ${reportId} by ${comment.author} (scaffold)`);
-}
-
-export async function markReportSeen(reportId: string): Promise<void> {
-  // TODO(backend): update report_cards set seen_at = now() where id = $1
-  console.log(`[reports] report ${reportId} marked seen (scaffold)`);
-}
-
-/**
- * Send the day's report cards to owners (trainer dashboard → "Send all").
- * TODO(backend): insert each ReportCard into `report_cards` and create a
- * "new report card" notification per owner (delivered live over Realtime).
- * In the scaffold the dashboard also writes them to the client-side outbox
- * (lib/reports/outbox.ts) so the owner sees them straight away.
- */
-export async function sendReportCards(cards: ReportCard[]): Promise<void> {
-  console.log(`[reports] sending ${cards.length} report card(s) to owners (scaffold)`);
 }

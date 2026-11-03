@@ -4,9 +4,10 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { RequireAdmin } from "@/components/admin/RequireAdmin";
 import { HomeworkLibrary } from "@/components/admin/HomeworkLibrary";
+import { EYEBROW, TITLE, INTRO, BACK } from "@/components/reports/styles";
 
 export const metadata: Metadata = {
-  title: "Homework",
+  title: "Drill library",
   robots: { index: false, follow: false },
 };
 
@@ -17,19 +18,14 @@ export default async function HomeworkPage() {
       <main id="main" className="flex-1">
         <section className="bg-ink pb-24 pt-28 sm:pt-32">
           <div className="mx-auto max-w-2xl px-4 sm:px-6">
-            <Link
-              href="/admin"
-              className="text-sm text-paper-dim underline underline-offset-2 hover:text-accent"
-            >
-              ← Back to dashboard
+            <Link href="/admin" className={BACK}>
+              ← Trainer dashboard
             </Link>
-            <h1 className="display-heading mt-4 text-3xl text-paper sm:text-4xl">
-              Homework library
-            </h1>
-            <p className="mt-3 text-paper/75">
-              Your drills, organised by pillar → category → level. Open a pillar to
-              see its categories, then a category to view and add drills at each
-              level.
+            <p className={`mt-6 ${EYEBROW}`}>Trainer</p>
+            <h1 className={TITLE}>Drill library</h1>
+            <p className={INTRO}>
+              The drills report-card homework is picked from, by pillar, category and level. Open a
+              drill to build its how-to page; owners open it from their homework.
             </p>
 
             <RequireAdmin>

@@ -23,7 +23,7 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-/** Raw row from chat_messages (Realtime payloads and selects). */
+/** Raw row from messages (Realtime payloads and selects). */
 export type ChatMessageRow = {
   id: string;
   conversation_id: string;
@@ -58,6 +58,8 @@ export type InboxConversation = {
   lastFromStaff: boolean;
   unread: boolean;
   completed: boolean;
+  /** The owner's chat was last open (heartbeat), for "In the chat now". */
+  memberLastActiveAt: string | null;
 };
 
 export type SendInput = {

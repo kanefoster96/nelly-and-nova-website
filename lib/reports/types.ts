@@ -1,6 +1,9 @@
 /**
  * Dog profile + report cards (training progress).
  * ------------------------------------------------
+ * Stored in Supabase: report_cards (+ wins, seen_at), report_card_items (one
+ * row per drill, grouped here by category), report_card_comments and
+ * homework_completions. See lib/reports/client.ts.
  * The account is centred on the dog. After each Full Day Training session the dog
  * gets a report card with homework the owner marks complete; owners can ask
  * questions about homework in a thread only they and staff can see.
@@ -14,6 +17,10 @@
 export type HomeworkDrill = {
   id: string;
   name: string;
+  /** The library drill it came from (library_drills.id), if picked from there. */
+  ref?: string | null;
+  /** Which pillar it trains, when known. */
+  pillar?: string | null;
 };
 
 /**
@@ -39,10 +46,18 @@ export type ReportCard = {
   id: string;
   /** Which dog this card belongs to — lets a multi-dog account filter per dog. */
   dogId?: string;
+  dogName?: string;
+  dogPhoto?: string | null;
+  /** Trainers see drafts; owners only ever get published cards (RLS). */
+  status?: "draft" | "published";
+  publishedAt?: string | null;
   date: string; // ISO — the session date
   focus: string; // title — derived from the homework categories
   summary: string; // what they worked on
   wins: string[]; // what went well
+  /** The trainer's biggest strength / biggest area to improve. */
+  strength?: string;
+  toImprove?: string;
   homework: HomeworkCategory[]; // categories, each with drills
   comments: ReportComment[];
   /** Unseen by the owner → shows as a notification with a badge. */

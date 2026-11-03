@@ -11,6 +11,7 @@ import { Pressable } from "@/components/pressable";
 import { RefreshControl } from "@/components/refresh-control";
 import { EntryRow } from "@/components/trainer/entry-row";
 import { Tag } from "@/components/ui";
+import { countPendingRequests, countUnpaid, DAY_CAPACITY, listRequests, requestsForDate, type SessionRequest } from "@/data/sessions";
 import {
   addDays,
   formatDay,
@@ -66,6 +67,9 @@ export default function RegistersScreen() {
   const [entries, setEntries] = useState<Map<string, CalendarEntry[]> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Requests waiting, sessions to charge, and the open requests by date (shown faded on their day).
+  const [waiting, setWaiting] = useState<{ requests: number; unpaid: number }>({ requests: 0, unpaid: 0 });
+  const [openRequests, setOpenRequests] = useState<SessionRequest[]>([]);
   // The week a load is for, so a slow one for a week left behind doesn't land.
   const loadingFor = useRef(monday);
 
@@ -73,8 +77,16 @@ export default function RegistersScreen() {
     loadingFor.current = week;
     setError(null);
     try {
-      const rows = await getTrainerCalendar(week, addDays(week, 4));
-      if (loadingFor.current === week) setEntries(groupByDate(rows));
+      const [rows, requests, unpaid, open] = await Promise.all([
+        getTrainerCalendar(week, addDays(week, 4)),
+        countPendingRequests().catch(() => 0),
+        countUnpaid().catch(() => 0),
+        listRequests({ open: true, withOwners: true }).catch(() => [] as SessionRequest[]),
+      ]);
+      if (loadingFor.current !== week) return;
+      setEntries(groupByDate(rows));
+      setWaiting({ requests, unpaid });
+      setOpenRequests(open);
     } catch (err) {
       if (loadingFor.current === week) setError(err instanceof Error ? err.message : "Couldn't load this week.");
     }
@@ -149,6 +161,37 @@ export default function RegistersScreen() {
           <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600" }}>See full calendar</Text>
         </Pressable>
 
+        {/* Requests: always the first thing a trainer sees (Kanvas's staff request cards). */}
+        <Pressable
+          onPress={() => router.push("/requests")}
+          accessibilityRole="button"
+          accessibilityLabel={`Requests, ${waiting.requests} waiting`}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderWidth: 1,
+            ...GLASS_BORDER,
+            ...(waiting.requests ? { borderColor: "rgba(245,158,11,0.45)" } : null),
+            backgroundColor: waiting.requests ? "rgba(245,158,11,0.06)" : colors.surface,
+            borderRadius: 20,
+            padding: 16,
+            marginBottom: 20,
+          }}
+        >
+          <View style={{ width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: waiting.requests ? "rgba(245,158,11,0.18)" : "rgba(245,245,242,0.08)" }}>
+            <Text style={{ color: waiting.requests ? colors.warning : colors.foreground, fontSize: 19, fontWeight: "800" }}>{waiting.requests}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700" }}>Requests</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+              {waiting.requests ? `${waiting.requests} waiting for you` : "Nothing waiting"}
+              {waiting.unpaid ? ` · ${waiting.unpaid} unpaid session${waiting.unpaid === 1 ? "" : "s"}` : ""}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+        </Pressable>
+
         {/* The week, and the arrows either side of it. */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <GlassButton onPress={() => moveWeek(-1)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Previous week">
@@ -202,7 +245,9 @@ export default function RegistersScreen() {
                       }}
                     >
                       {entries ? (
-                        <Text style={{ color: isToday ? colors.success : colors.foreground, fontSize: 19, fontWeight: "800" }}>{dogs.length}</Text>
+                        <Text style={{ color: dogs.length >= DAY_CAPACITY ? colors.danger : isToday ? colors.success : colors.foreground, fontSize: 16, fontWeight: "800" }}>
+                          {dogs.length}/{DAY_CAPACITY}
+                        </Text>
                       ) : (
                         <ActivityIndicator color={colors.muted} size="small" />
                       )}
@@ -229,6 +274,19 @@ export default function RegistersScreen() {
                           first={j === 0}
                           onPress={e.dogId ? () => router.push({ pathname: "/dog/[id]", params: { id: e.dogId! } }) : undefined}
                         />
+                      ))}
+                      {requestsForDate(openRequests, date).map((r) => (
+                        <Pressable
+                          key={r.id}
+                          onPress={() => router.push({ pathname: "/requests/[id]", params: { id: r.id } })}
+                          style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border, opacity: 0.6 }}
+                        >
+                          <Ionicons name="time-outline" size={18} color={colors.warning} />
+                          <Text style={{ color: colors.foreground, fontSize: 14, flex: 1 }} numberOfLines={1}>
+                            {r.dogName} · {r.status === "offered" ? "offered" : "asked for"} {r.fromDate === date && r.requestedDate !== date ? "a move from here" : "this day"}
+                          </Text>
+                          <Tag label={r.status === "offered" ? "Offered" : "Pending"} tone={colors.warning} />
+                        </Pressable>
                       ))}
                       {list
                         .filter((e) => !isFullDay(e))

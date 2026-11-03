@@ -25,6 +25,11 @@ export type Conversation = {
   /** The last message was sent by the team ("You: …" in the inbox). */
   lastMessageFromStaff?: boolean;
   phone?: string | null;
+  email?: string | null;
+  /** The owner's dogs, for the inbox row's second line. */
+  dogNames?: string | null;
+  /** The owner's chat was last open (its heartbeat), for "In the chat now". */
+  memberLastActiveAt?: string | null;
 };
 
 export type Attachment = {

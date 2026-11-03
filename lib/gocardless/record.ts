@@ -1,5 +1,5 @@
 import { createClient as createSupabase } from "@supabase/supabase-js";
-import { getBillingRequest, getMandateStatus } from "./client";
+import { getBillingRequest, getMandateStatus, getPaymentMandate } from "./client";
 
 /**
  * Writing GoCardless progress back to payment_mandates without a signed-in
@@ -64,4 +64,38 @@ export async function refreshFromBillingRequest(billingRequestId: string): Promi
     console.error("refreshFromBillingRequest failed", err);
     return null;
   }
+}
+
+/**
+ * A payment event (resource_type "payments"). nn_gc_payment_event marks a
+ * session's payment paid or failed when its id is saved on a booking; a
+ * failed payment on a mandate we hold that isn't a session (a membership)
+ * is recorded in payment_failures and the trainers are told. Anything
+ * else is ignored. Payment events don't always carry the mandate, so for
+ * a failure that isn't a session it's looked up (read only). Returns the
+ * notification ids made, to push.
+ */
+export async function recordPaymentEvent(opts: { paymentId: string; mandateId?: string | null; action: string }): Promise<string[]> {
+  const secret = process.env.GOCARDLESS_RELAY_SECRET;
+  if (!secret) {
+    console.error("recordPaymentEvent: GOCARDLESS_RELAY_SECRET isn't set");
+    return [];
+  }
+  const call = async (mandateId: string | null) => {
+    const { data, error } = await anonClient().rpc("nn_gc_payment_event", {
+      p_secret: secret,
+      p_payment_id: opts.paymentId,
+      p_mandate_id: mandateId,
+      p_action: opts.action,
+    });
+    if (error) console.error("recordPaymentEvent failed", error.message);
+    return (data ?? null) as { kind?: string; notices?: unknown } | null;
+  };
+  let result = await call(opts.mandateId ?? null);
+  if (result?.kind === "ignored" && !opts.mandateId && (opts.action === "failed" || opts.action === "charged_back")) {
+    const mandateId = await getPaymentMandate(opts.paymentId).catch(() => null);
+    if (mandateId) result = await call(mandateId);
+  }
+  const notices = result?.notices;
+  return Array.isArray(notices) ? notices.filter((x): x is string => typeof x === "string") : [];
 }

@@ -124,3 +124,45 @@ export async function cancelMandate(id: string): Promise<void> {
     throw err;
   }
 }
+
+export type Payment = { id: string; status: string; amount: number; charge_date?: string };
+
+/**
+ * Take one session's payment on a Direct Debit the site set up. Only ever
+ * called from app/api/sessions/charge, when a trainer taps Charge — never
+ * automatically. The idempotency key ties it to the booking, so a double
+ * tap or a retry can't charge twice (`attempt` makes a fresh one after a
+ * failed payment).
+ */
+export async function createPayment(opts: {
+  mandateId: string;
+  amountPence: number;
+  description: string;
+  bookingId: string;
+  attempt?: string;
+}): Promise<Payment> {
+  if (!Number.isInteger(opts.amountPence) || opts.amountPence < 100 || opts.amountPence > 100000) {
+    throw new GoCardlessError("That amount doesn't look right.", 400);
+  }
+  const json = await gc<{ payments: Payment }>(
+    "POST",
+    "/payments",
+    {
+      payments: {
+        amount: opts.amountPence,
+        currency: "GBP",
+        description: opts.description.slice(0, 100),
+        links: { mandate: opts.mandateId },
+        metadata: { ...SOURCE, booking_id: opts.bookingId },
+      },
+    },
+    `nn-pay-${opts.bookingId}${opts.attempt ? `-${opts.attempt}` : ""}`
+  );
+  return json.payments;
+}
+
+/** The mandate a payment was taken on (read only). */
+export async function getPaymentMandate(paymentId: string): Promise<string | null> {
+  const json = await gc<{ payments: { links?: { mandate?: string } } }>("GET", `/payments/${encodeURIComponent(paymentId)}`);
+  return json.payments.links?.mandate ?? null;
+}

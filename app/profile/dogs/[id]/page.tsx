@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { DogRecordView } from "@/components/dogs/DogRecordView";
+import { DogProgress } from "@/components/reports/DogProgress";
 
 export const metadata: Metadata = {
   title: "Your dog",
@@ -22,6 +23,7 @@ export default async function DogPage({ params }: { params: Promise<{ id: string
             </Link>
             <div className="mt-6">
               <DogRecordView dogId={id} mode="owner" />
+              <DogProgress dogId={id} mode="owner" />
             </div>
           </div>
         </section>

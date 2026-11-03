@@ -10,6 +10,16 @@ import { media } from "./media";
 export const BOOKING_HREF = "/book";
 export const CONTACT_HREF = "/contact";
 
+/**
+ * What a one-off session costs, in pence: the default amount on a trainer's
+ * "Charge" button (app/api/sessions/charge) and the price an owner sees when
+ * asking for one. A Full Day is £60 for someone with a Full Day membership
+ * (a current regular place and a Direct Debit), £80 otherwise; a 1-1 is £90
+ * for everyone. Mirrored in mobile/src/lib/config.ts. Worked out by
+ * defaultSessionPrice() in lib/sessions/prices.ts.
+ */
+export const sessionPrices = { fullDay: 8000, fullDayMember: 6000, oneToOne: 9000 } as const;
+
 /** "We understand" pain points. `icon` maps to painIcons in components/ui/Icons.tsx. */
 export type PainPoint = {
   icon: "paw" | "help" | "cross";

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { PracticeView } from "@/components/profile/PracticeLibrary";
+import { BACK } from "@/components/reports/styles";
 
 export const metadata: Metadata = {
   title: "Practice",
@@ -16,13 +17,10 @@ export default function PracticePage() {
       <main id="main" className="flex-1">
         <section className="bg-ink pb-24 pt-28 sm:pt-32">
           <div className="mx-auto max-w-md px-4 sm:px-6">
-            <Link
-              href="/profile"
-              className="text-sm text-paper-dim underline underline-offset-2 hover:text-accent"
-            >
+            <Link href="/profile" className={BACK}>
               ← Back to profile
             </Link>
-            <div className="mt-4">
+            <div className="mt-6">
               <PracticeView />
             </div>
           </div>

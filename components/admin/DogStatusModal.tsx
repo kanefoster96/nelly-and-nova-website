@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { CheckIcon, ChevronDownIcon, PlusIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import {
-  SKILL_PILLARS,
   pillarProgress,
   pillarLevel,
   pillarLevels,
@@ -40,7 +39,7 @@ export function DogStatusView({
   const skills = useSkills();
   const learnt = learntSet(skills, dogId);
   const drillPages = useSkillDrills();
-  const [openPillar, setOpenPillar] = useState<string | null>(SKILL_PILLARS[0]?.id ?? null);
+  const [openPillar, setOpenPillar] = useState<string | null>("engagement");
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<SkillItem | null>(null);
 
@@ -86,7 +85,7 @@ export function DogStatusView({
       </p>
 
       <div className="mt-5 space-y-2.5">
-          {SKILL_PILLARS.map((pillar) => {
+          {skills.pillars.map((pillar) => {
             const { learnt: done, total } = pillarProgress(pillar, learnt);
             const pct = total ? Math.round((done / total) * 100) : 0;
             const lvl = pillarLevel(pillar, learnt);

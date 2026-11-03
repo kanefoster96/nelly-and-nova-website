@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckIcon, ChevronDownIcon } from "@/components/ui/Icons";
-import { SKILL_PILLARS, TOTAL_SKILLS, pillarProgress } from "@/config/skills";
+import { pillarProgress } from "@/config/skills";
 import { useSkills, learntSet, toggleSkill } from "@/lib/skills/store";
 
 /**
@@ -14,7 +14,7 @@ export function SkillsTracker({ dogId, dogName }: { dogId: string; dogName: stri
   const skills = useSkills();
   const learnt = learntSet(skills, dogId);
   const [open, setOpen] = useState(false);
-  const doneTotal = SKILL_PILLARS.reduce(
+  const doneTotal = skills.pillars.reduce(
     (n, p) => n + pillarProgress(p, learnt).learnt,
     0
   );
@@ -28,7 +28,7 @@ export function SkillsTracker({ dogId, dogName }: { dogId: string; dogName: stri
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <span className="text-xs font-semibold uppercase tracking-wide text-paper-dim">
-          Training skills · {doneTotal}/{TOTAL_SKILLS} learnt
+          Training skills · {doneTotal}/{skills.pillars.reduce((n, p) => n + p.drills.length, 0)} learnt
         </span>
         <ChevronDownIcon
           width={16}
@@ -43,7 +43,7 @@ export function SkillsTracker({ dogId, dogName }: { dogId: string; dogName: stri
             Tap a skill to mark {dogName} as having learnt it. Only you can see
             and change these.
           </p>
-          {SKILL_PILLARS.map((pillar) => {
+          {skills.pillars.map((pillar) => {
             const { learnt: done, total } = pillarProgress(pillar, learnt);
             return (
               <div key={pillar.id}>

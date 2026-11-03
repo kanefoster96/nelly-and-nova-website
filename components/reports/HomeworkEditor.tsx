@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CloseIcon, CheckIcon, PlusIcon } from "@/components/ui/Icons";
 import type { HomeworkCategory, HomeworkDrill } from "@/lib/reports/types";
-import { DRILL_LIBRARY, drillsForCategory } from "@/config/drills";
+import { useLibrary, libraryCategories, drillsForCategoryName } from "@/lib/homework-library/store";
 
 const newDrill = (): HomeworkDrill => ({ id: crypto.randomUUID(), name: "" });
 const newCat = (): HomeworkCategory => ({ id: crypto.randomUUID(), name: "", drills: [newDrill()] });
@@ -16,7 +16,9 @@ const inputCls =
  * Edit a report card's homework — categories and their drills. Preserves each
  * drill's id so ids stay stable across an edit; new drills get a fresh id and
  * blank names save as "Drill N". The card is titled from the category names,
- * previewed live. A category can be picked from the drill library, or typed.
+ * previewed live. A category and its drills can be picked from the drill
+ * library (lib/homework-library/store.ts), or typed; a picked drill keeps a
+ * link to its library page so the owner can open the how-to.
  */
 export function HomeworkEditModal({
   title,
@@ -26,23 +28,47 @@ export function HomeworkEditModal({
 }: {
   title: string;
   initial: HomeworkCategory[];
-  onSave: (categories: HomeworkCategory[]) => void;
+  onSave: (categories: HomeworkCategory[]) => void | Promise<void>;
   onClose: () => void;
 }) {
+  const library = useLibrary();
   const [cats, setCats] = useState<HomeworkCategory[]>(
     initial.length ? initial : [newCat()]
   );
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setProblem(null);
+    try {
+      await onSave(cats);
+      onClose();
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : "Couldn't save the homework.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const titlePreview = cats.map((c) => c.name.trim()).filter(Boolean).join(" · ");
   const canSave = cats.some((c) => c.name.trim());
 
   const patchCat = (ci: number, patch: Partial<HomeworkCategory>) =>
     setCats((cs) => cs.map((c, i) => (i === ci ? { ...c, ...patch } : c)));
+  // A name that matches a library drill in this category links to its page.
   const setDrillName = (ci: number, di: number, name: string) =>
     setCats((cs) =>
-      cs.map((c, i) =>
-        i === ci ? { ...c, drills: c.drills.map((d, j) => (j === di ? { ...d, name } : d)) } : c
-      )
+      cs.map((c, i) => {
+        if (i !== ci) return c;
+        const hit = drillsForCategoryName(library, c.name).find((d) => d.name.toLowerCase() === name.trim().toLowerCase());
+        return {
+          ...c,
+          drills: c.drills.map((d, j) =>
+            j === di ? { ...d, name, ref: hit?.id ?? null, pillar: hit?.pillarId ?? d.pillar ?? null } : d
+          ),
+        };
+      })
     );
   const addDrill = (ci: number) =>
     setCats((cs) => cs.map((c, i) => (i === ci ? { ...c, drills: [...c.drills, newDrill()] } : c)));
@@ -73,8 +99,8 @@ export function HomeworkEditModal({
 
         {/* Library options — pick a category / drill, or type a custom one. */}
         <datalist id="hw-lib-categories">
-          {DRILL_LIBRARY.map((c) => (
-            <option key={c.name} value={c.name} />
+          {libraryCategories(library).map((c) => (
+            <option key={c.dbId} value={c.name} />
           ))}
         </datalist>
 
@@ -113,8 +139,8 @@ export function HomeworkEditModal({
                   )}
                 </div>
                 <datalist id={`hw-lib-drills-${cat.id}`}>
-                  {drillsForCategory(cat.name).map((d, k) => (
-                    <option key={k} value={d} />
+                  {drillsForCategoryName(library, cat.name).map((d) => (
+                    <option key={d.id} value={d.name} />
                   ))}
                 </datalist>
                 <div className="mt-2 grid gap-2 border-l border-white/10 pl-3">
@@ -162,15 +188,13 @@ export function HomeworkEditModal({
         <div className="sticky bottom-0 flex items-center gap-2 border-t border-white/10 bg-ink px-5 py-4">
           <Button
             radius="xl"
-            onClick={() => {
-              onSave(cats);
-              onClose();
-            }}
-            disabled={!canSave}
+            onClick={save}
+            disabled={!canSave || saving}
             className="disabled:opacity-50"
           >
-            <CheckIcon width={16} height={16} /> Save homework
+            <CheckIcon width={16} height={16} /> {saving ? "Saving…" : "Save homework"}
           </Button>
+          {problem && <span className="text-xs text-red-300">{problem}</span>}
           <button
             type="button"
             onClick={onClose}

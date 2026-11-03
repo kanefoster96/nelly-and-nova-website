@@ -4,7 +4,8 @@
  * ------------------------------------------------------------------
  * This is the ONE place to swap the scaffold's sample data for a real backend.
  * Per the reference architecture, the intended backend is Supabase:
- *   - getNotifications()  → select from `notifications`
+ *   - getNotifications()  → real: your own rows in `notifications`
+ *     (supabase/migrations/20261104030000_notifications.sql)
  *   - getRequests()       → select from `requests` where status = 'pending'
  *   - getUnreadCounts()   → three count() queries
  * Add anonymous sign-in for guests, RLS (`auth.uid() = user_id or is_staff()`),
@@ -21,15 +22,29 @@ import type {
 } from "./types";
 import type { OnboardingEntry, OnboardingStage } from "./onboarding";
 import { nextStage } from "./onboarding";
-import {
-  sampleNotifications,
-  sampleRequests,
-  sampleOnboarding,
-} from "./sample";
+import { sampleRequests, sampleOnboarding } from "./sample";
+import { createClient } from "@/lib/supabase/server";
+import { NOTIFICATION_COLUMNS, toNotification, type NotificationRow } from "@/lib/notifications/links";
 
+/** The signed-in person's own notifications, newest first (empty signed out). */
 export async function getNotifications(): Promise<Notification[]> {
-  // TODO(backend): select * from notifications where recipient_id is null or = me
-  return sampleNotifications;
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from("notifications")
+      .select(NOTIFICATION_COLUMNS)
+      .eq("recipient_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    return ((data ?? []) as NotificationRow[]).map(toNotification);
+  } catch {
+    return [];
+  }
 }
 
 export async function getRequests(): Promise<InboxRequest[]> {
@@ -80,11 +95,12 @@ export async function advanceOnboarding(
   return next;
 }
 
-export async function getUnreadCounts(): Promise<UnreadCounts> {
+export async function getUnreadCounts(notifications?: Notification[]): Promise<UnreadCounts> {
+  const list = notifications ?? (await getNotifications());
   return {
     // Live chat unread counts come from Supabase (lib/chat/client.ts).
     chat: 0,
-    notifications: sampleNotifications.filter((n) => !n.readAt).length,
+    notifications: list.filter((n) => !n.readAt).length,
     requests: sampleRequests.filter((r) => r.status === "pending").length,
   };
 }

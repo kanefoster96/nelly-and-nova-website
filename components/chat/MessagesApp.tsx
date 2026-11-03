@@ -13,7 +13,7 @@ import { WhatsAppIcon } from "@/components/ui/Icons";
 import { contact, site } from "@/config/site";
 import { useAuthStatus, useSession } from "@/lib/auth/session";
 import { chatSupabase, getMyConversationId, getUnreadChatCount } from "@/lib/chat/client";
-import { useReschedules } from "@/lib/reschedule/store";
+import { listRequests } from "@/lib/sessions/client";
 import type { Notification } from "@/lib/inbox/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
 import type { DaySchedule } from "@/lib/schedule/types";
@@ -148,7 +148,13 @@ function TrainerMessages({
   onboarding: OnboardingEntry[];
   week: DaySchedule[];
 }) {
-  const pendingReschedules = useReschedules().filter((r) => r.status === "pending").length;
+  // Waiting on the team: new requests (an owner's reply to a suggestion comes back as pending too).
+  const [pendingReschedules, setPendingReschedules] = useState(0);
+  useEffect(() => {
+    listRequests()
+      .then((rs) => setPendingReschedules(rs.filter((r) => r.status === "pending").length))
+      .catch(() => setPendingReschedules(0));
+  }, []);
 
   return (
     <MessagesScreen title={site.name} subtitle="Team inbox">
