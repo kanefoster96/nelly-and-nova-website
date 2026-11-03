@@ -9,7 +9,9 @@ import { RefreshControl } from "@/components/refresh-control";
 import { ScreenHeader } from "@/components/screen-header";
 import { BigButton, GroupHeading } from "@/components/trainer/cards";
 import { EntryRow } from "@/components/trainer/entry-row";
+import { RequestCard } from "@/components/sessions/request-card";
 import { LoadingState } from "@/components/ui";
+import { DAY_CAPACITY, getDayCancellations, listRequests, requestsForDate, type DayCancellation, type SessionRequest } from "@/data/sessions";
 import {
   cancelBooking,
   endRegularPlace,
@@ -48,11 +50,21 @@ export default function DayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  // That day's requests (asked for, offered, or a session moving from it) and cancellations.
+  const [requests, setRequests] = useState<SessionRequest[]>([]);
+  const [cancellations, setCancellations] = useState<DayCancellation[]>([]);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setEntries(await getTrainerCalendar(date, date));
+      const [rows, open, cancelled] = await Promise.all([
+        getTrainerCalendar(date, date),
+        listRequests({ open: true, withOwners: true }).catch(() => [] as SessionRequest[]),
+        getDayCancellations(date).catch(() => [] as DayCancellation[]),
+      ]);
+      setEntries(rows);
+      setRequests(requestsForDate(open, date));
+      setCancellations(cancelled);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load this day.");
     }
@@ -127,7 +139,7 @@ export default function DayScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHeader
         title={formatDay(date)}
-        subtitle={entries ? (weekday ? `${dogs.length} dog${dogs.length === 1 ? "" : "s"} at Full Day Training` : "No Full Day Training at the weekend") : null}
+        subtitle={entries ? (weekday ? `${dogs.length}/${DAY_CAPACITY} dogs at Full Day Training` : "No Full Day Training at the weekend") : null}
       />
       {!entries ? (
         <LoadingState error={error} />
@@ -165,6 +177,38 @@ export default function DayScreen() {
                   dogs.map((e, i) => <EntryRow key={`${e.kind}-${e.refId}`} entry={e} first={i === 0} onPress={openDog(e)} trailing={removeButton(e)} />)
                 )}
               </Section>
+            </Appear>
+          )}
+
+          {requests.length > 0 && (
+            <Appear index={2}>
+              <GroupHeading>Requests for this day</GroupHeading>
+              <View style={{ gap: 10 }}>
+                {requests.map((r) => (
+                  <RequestCard key={r.id} request={r} role="trainer" onChanged={() => load()} />
+                ))}
+              </View>
+            </Appear>
+          )}
+
+          {cancellations.length > 0 && (
+            <Appear index={2}>
+              <GroupHeading>Cancelled</GroupHeading>
+              <Section>
+                {cancellations.map((c, i) => (
+                  <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: colors.border, opacity: 0.7 }}>
+                    <Ionicons name="close-circle-outline" size={18} color={colors.muted} />
+                    <Text style={{ color: colors.foreground, fontSize: 14, flex: 1 }}>
+                      {c.dogName}
+                      <Text style={{ color: colors.muted }}>
+                        {c.kind === "one_off" ? " · one-off" : ""}
+                        {c.reason ? ` · ${c.reason}` : ""}
+                      </Text>
+                    </Text>
+                  </View>
+                ))}
+              </Section>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 8 }}>Owners cancel up to the day before; it isn&apos;t refunded. Don&apos;t collect these dogs.</Text>
             </Appear>
           )}
 

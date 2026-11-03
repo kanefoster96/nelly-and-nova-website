@@ -25,6 +25,8 @@ export default function AppLayout() {
       <Stack.Screen name="dog/[id]" />
       <Stack.Screen name="library" />
       <Stack.Screen name="trainer-schedule" />
+      <Stack.Screen name="send-notification" />
+      <Stack.Screen name="delete-account" />
     </Stack>
   );
 }

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const line = (k: string, v?: string) => `${k}: ${v && v.trim() ? v.trim() : "—"}`;
   const text = [
-    `New free meet & greet request from the ${site.name} website`,
+    `New request from the ${site.name} website`,
     "",
     "— OWNER —",
     line("Name", `${firstName} ${lastName}`),
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     sendEmail(
       bookingOwnerNotification({ firstName, lastName, email, serviceLabel, detailsText: text, to: ownerAddress() })
     ),
-    sendEmail(bookingConfirmation({ firstName, email, dogName: dogNames.replace(/, ([^,]*)$/, " & $1"), serviceLabel })),
+    sendEmail(bookingConfirmation({ firstName, email, dogName: dogNames.replace(/, ([^,]*)$/, " & $1"), service, serviceLabel })),
   ]);
 
   if (!stored && !ownerEmailed) {

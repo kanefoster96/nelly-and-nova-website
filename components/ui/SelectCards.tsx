@@ -45,10 +45,10 @@ export function SelectCards({
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(opt.value)}
-            className={`relative rounded-xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`relative rounded-2xl p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               selected
-                ? "border-accent bg-accent/10"
-                : "border-white/10 bg-ink hover:border-white/30 active:bg-white/10"
+                ? "bg-accent/15 ring-2 ring-accent"
+                : "bg-white/[0.05] hover:bg-white/[0.09] active:bg-white/10"
             }`}
           >
             {selected && (

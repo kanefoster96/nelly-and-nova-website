@@ -6,8 +6,8 @@ import { CookieSettingsButton } from "./CookieSettingsButton";
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-ink-soft">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <footer className="bg-ink-soft">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Wordmark href="/" height={36} />
@@ -24,7 +24,7 @@ export function Footer() {
                   key={s.label}
                   href={s.href}
                   aria-label={s.label}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full ring-1 ring-white/15 text-paper transition-colors hover:text-accent hover:ring-accent/60"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/[0.06] text-paper transition-colors hover:bg-white/10 hover:text-accent"
                 >
                   <Icon width={20} height={20} />
                 </a>
@@ -33,7 +33,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-paper-dim sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-14 flex flex-col gap-3 text-xs text-paper-dim sm:flex-row sm:items-center sm:justify-between">
           <p>
             © {site.year} {site.name}.
           </p>
@@ -46,6 +46,9 @@ export function Footer() {
             </Link>
             <Link href="/cookies" className="transition-colors hover:text-accent">
               Cookie Policy
+            </Link>
+            <Link href="/community-guidelines" className="transition-colors hover:text-accent">
+              Community Guidelines
             </Link>
             <CookieSettingsButton />
             <Link href="/holidays" className="transition-colors hover:text-accent">

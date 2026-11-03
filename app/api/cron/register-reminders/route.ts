@@ -1,7 +1,7 @@
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/resend";
 import { registerReminder } from "@/lib/email/templates";
-import { pushToAccount } from "@/lib/push/send";
+import { notifyAccount } from "@/lib/notifications/send";
 
 /**
  * Daily (vercel.json): owners in onboarding whose first session is coming up
@@ -57,7 +57,8 @@ export async function GET(request: Request) {
     const firstSessionLabel = new Date(`${e.first_session_on}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" });
     const emailed = await sendEmail(registerReminder({ name: e.name, email: e.email, dogNames, firstSessionLabel, daysToGo, joinUrl }));
     if (e.account_id) {
-      await pushToAccount(admin, e.account_id as string, {
+      await notifyAccount(admin, e.account_id as string, {
+        kind: "register_reminder",
         title: `📝 Register ${dogNames || "your dog"}`,
         body: daysToGo <= 1 ? "Their first session is tomorrow — register them so we can collect them." : `Their first session is ${firstSessionLabel}. It only takes a few minutes.`,
         path: "/schedule",

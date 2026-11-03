@@ -86,7 +86,7 @@ export function OverlayCard({
     </>
   );
 
-  const classes = `group relative isolate flex min-h-[24rem] flex-col overflow-hidden rounded-3xl bg-ink-raised ring-1 ring-white/10 sm:min-h-[26rem] ${className}`;
+  const classes = `group relative isolate flex min-h-[24rem] flex-col overflow-hidden rounded-3xl bg-ink-raised sm:min-h-[26rem] ${className}`;
 
   return href ? (
     <Link href={href} className={`${classes} focus-visible:outline-2 focus-visible:outline-offset-4`}>

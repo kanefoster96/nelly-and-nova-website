@@ -11,6 +11,7 @@ import { RefreshControl } from "@/components/refresh-control";
 import { ScreenHeader } from "@/components/screen-header";
 import { EntryTags, KIND_COLOR } from "@/components/trainer/entry-row";
 import { LoadingState, Tag } from "@/components/ui";
+import { DAY_CAPACITY } from "@/data/sessions";
 import {
   addDays,
   entryTitle,
@@ -93,7 +94,7 @@ function DayCard({ date, entries, onOpen }: { date: string; entries: CalendarEnt
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Ionicons name="paw-outline" size={15} color={dogs.length ? KIND_COLOR.full_day : colors.muted} />
             <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "600", flex: 1 }}>Full Day Training</Text>
-            <Text style={{ color: colors.muted, fontSize: 12 }}>{dogs.length === 0 ? "Tap to add a dog" : `${dogs.length} dog${dogs.length === 1 ? "" : "s"}`}</Text>
+            <Text style={{ color: colors.muted, fontSize: 12 }}>{dogs.length === 0 ? "Tap to add a dog" : `${dogs.length}/${DAY_CAPACITY} dogs`}</Text>
             <Ionicons name="chevron-forward" size={15} color={colors.muted} />
           </View>
           {dogs.length > 0 && (

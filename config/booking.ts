@@ -51,6 +51,15 @@ export const booking = {
         { value: "session", label: "1-1 Session", desc: "One hour with you and your dog", base: 90, unit: "session" },
       ],
     },
+    {
+      value: "online-training",
+      label: "Online Training",
+      desc: "Videos, feedback and 24/7 help",
+      icon: "handshake",
+      bookingTypes: [
+        { value: "weekly", label: "Weekly", desc: "Cancel any time", base: 25, unit: "week" },
+      ],
+    },
   ] as ServiceOption[],
 
   findUs: [
@@ -127,9 +136,10 @@ export type MeetGreetChoice = { value: string; label: string; desc: string; icon
 export const meetGreet = {
   /** Step 2 — what they're interested in. */
   services: [
-    { value: "full-day-training", label: "Full Day Training", desc: "We collect, train all day and drop off", icon: "paw" },
+    { value: "full-day-training", label: "Full Day Training", desc: "We collect, train all day and drop off — starts with a free meet & greet", icon: "paw" },
     { value: "one-to-one", label: "1-1 Training", desc: "An hour with you and your dog", icon: "handshake" },
-    { value: "not-sure", label: "Not sure yet", desc: "We'll help you choose at the meet & greet" },
+    { value: "online-training", label: "Online Training", desc: "We teach you the skills, you message us any time — £25 a week" },
+    { value: "not-sure", label: "Not sure yet", desc: "We'll chat and help you choose" },
   ] as MeetGreetChoice[],
 
   /** Step 3 — what they'd like help with (pick any). "other" asks for a note. */
@@ -137,6 +147,14 @@ export const meetGreet = {
     { value: "lead-pulling", label: "Lead pulling" },
     { value: "lunging-at-dogs", label: "Lunging at dogs" },
     { value: "basic-obedience", label: "Basic obedience" },
+    { value: "recall", label: "Recall" },
+    { value: "jumping-up", label: "Jumping up" },
+    { value: "barking", label: "Barking" },
+    { value: "reactive-to-people", label: "Reactive to people" },
+    { value: "nervous-anxious", label: "Nervous or anxious" },
+    { value: "chasing", label: "Chasing (bikes, cars, wildlife)" },
+    { value: "separation", label: "Being left alone" },
+    { value: "puppy-training", label: "Puppy training" },
     { value: "other", label: "Other" },
   ],
 
@@ -182,4 +200,35 @@ export function meetGreetServiceLabel(value: string): string {
 
 export function meetGreetHelpLabels(values: string[], other?: string): string[] {
   return values.map((v) => (v === "other" && other?.trim() ? `Other: ${other.trim()}` : meetGreet.help.find((h) => h.value === v)?.label ?? v));
+}
+
+/**
+ * What happens next, by service. Only Full Day Training starts with a free
+ * meet & greet (our main offer); 1-1 and Online Training go straight to a
+ * chat to get them booked in. Used by the request form's thank-you screen
+ * and the confirmation email, so they always agree.
+ */
+export function requestNextSteps(service: string, dog: string): { kicker: string; body: string } {
+  switch (service) {
+    case "full-day-training":
+      return {
+        kicker: "Free meet & greet",
+        body: `We'll read through everything you've told us about ${dog}, give you a call or message with a few questions, and book a day that suits you to meet ${dog} — completely free.`,
+      };
+    case "one-to-one":
+      return {
+        kicker: "1-1 Training",
+        body: `We'll read through everything you've told us about ${dog} and get in touch to chat about what you'd like to work on and book your 1-1 session.`,
+      };
+    case "online-training":
+      return {
+        kicker: "Online Training",
+        body: `We'll read through everything you've told us about ${dog} and get in touch for a quick, free chat to get you started with Online Training.`,
+      };
+    default:
+      return {
+        kicker: "Getting started",
+        body: `We'll read through everything you've told us about ${dog} and get in touch to chat about what would suit you both best.`,
+      };
+  }
 }

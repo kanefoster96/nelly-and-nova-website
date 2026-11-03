@@ -22,12 +22,12 @@ const variants: Record<Variant, string> = {
     "bg-accent text-accent-ink hover:bg-accent-strong shadow-[0_6px_24px_-8px_rgba(255,255,255,0.35)]",
   // Outlined on dark.
   secondary:
-    "border border-paper/30 text-paper hover:border-accent hover:text-accent bg-transparent",
+    "glass text-paper hover:bg-white/15",
   // Minimal text button.
   ghost: "text-paper/90 hover:text-accent bg-transparent",
   // Frosted glass pill over imagery.
   frosted:
-    "bg-white/20 text-paper backdrop-blur-md border border-white/25 hover:bg-white/30",
+    "bg-white/20 text-paper backdrop-blur-md hover:bg-white/30",
 };
 
 // min-h/min-w 44px keeps every button a comfortable touch target.

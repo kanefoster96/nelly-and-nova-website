@@ -7,11 +7,11 @@ import { SelectCards } from "./ui/SelectCards";
 import { CheckCircleIcon, CheckIcon, MapPinIcon, PlusIcon } from "./ui/Icons";
 import { DraftRestored, StepCard, WizardHeading, WizardNav, WizardProgress } from "./ui/WizardProgress";
 import { clearFormDraft, loadFormDraft, saveFormDraft } from "@/lib/forms/draft";
-import { checkPostcode, meetGreet } from "@/config/booking";
+import { checkPostcode, meetGreet, requestNextSteps } from "@/config/booking";
 import { EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 
 /**
- * Free meet & greet request — four short steps, laid out like Kanvas
+ * The "get started" request for every service — four short steps, laid out like Kanvas
  * Academy's free trial form:
  *   1. Your dog (name, breed, age — and any more dogs)
  *   2. What you're interested in (Full Day / 1-1 / Not sure yet)
@@ -73,11 +73,16 @@ export function BookingForm() {
   const topRef = useRef<HTMLDivElement>(null);
   const savedTimer = useRef<number | undefined>(undefined);
 
-  // Pick up a saved draft on first load.
+  // Pick up a saved draft on first load; otherwise a service chosen by the
+  // page they came from (/book?service=online-training).
   useEffect(() => {
-    const draft = loadFormDraft<Draft>(DRAFT_KEY);
-    if (!draft?.data) return;
     /* eslint-disable react-hooks/set-state-in-effect */
+    const draft = loadFormDraft<Draft>(DRAFT_KEY);
+    if (!draft?.data) {
+      const fromLink = new URLSearchParams(window.location.search).get("service") ?? "";
+      if (meetGreet.services.some((x) => x.value === fromLink)) setData((d) => ({ ...d, service: fromLink }));
+      return;
+    }
     setData({ ...INITIAL, ...draft.data, dogs: draft.data.dogs?.length ? draft.data.dogs : [blankDog()], company: "" });
     setStep(Math.min(Math.max(0, draft.step ?? 0), STEPS.length - 1));
     setRestored(true);
@@ -220,26 +225,26 @@ export function BookingForm() {
     }
   }
 
+  const nextSteps = requestNextSteps(data.service, names);
+
   if (status === "success") {
     return (
-      <div ref={topRef} className="rounded-3xl border border-white/10 bg-ink-soft px-6 py-12 text-center animate-fade-up sm:px-10">
+      <div ref={topRef} className="rounded-3xl bg-ink-soft px-6 py-14 text-center animate-fade-up sm:px-10">
         <CheckCircleIcon width={56} height={56} className="mx-auto text-paper" />
-        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-paper-dim">Free meet &amp; greet</p>
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-paper-dim">{nextSteps.kicker}</p>
         <h2 className="display-heading mt-3 text-3xl uppercase text-paper sm:text-4xl">We&apos;ll be in touch</h2>
         <p className="mx-auto mt-4 max-w-md text-paper/75">
-          Thanks {data.firstName.trim() || "for getting in touch"}! We&apos;ll read through everything you&apos;ve told us
-          about {names}, give you a call or message with a few questions, and book a day that suits you to meet{" "}
-          {data.dogs.length > 1 ? "them" : names} — completely free.
+          Thanks {data.firstName.trim() || "for getting in touch"}! {nextSteps.body}
         </p>
         <p className="mx-auto mt-3 max-w-md text-sm text-paper-dim">
           We&apos;ve emailed you a copy. Usually we&apos;re back in touch within a day or two.
         </p>
         {/* Like Kanvas's trial bookings: an account now means they can chat
             with us and follow their request in the app straight away. */}
-        <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-white/10 bg-ink p-5 text-left">
+        <div className="mx-auto mt-8 max-w-sm rounded-2xl bg-white/[0.05] p-5 text-left">
           <p className="font-semibold text-paper">Create your account</p>
           <p className="mt-1 text-sm text-paper/70">
-            Message us in the app, see when your meet &amp; greet is booked, and get updates — just add a password.
+            Message us in the app, follow your request and get updates — just add a password.
           </p>
           <Link
             href={createAccountHref}
@@ -266,7 +271,7 @@ export function BookingForm() {
       {restored && <DraftRestored onStartOver={startOver} />}
 
       <StepCard key={step}>
-        <WizardHeading kicker="Free meet & greet" title={STEPS[step]} step={step} total={STEPS.length} saved={saved} />
+        <WizardHeading kicker="Get started" title={STEPS[step]} step={step} total={STEPS.length} saved={saved} />
 
         {/* Honeypot: hidden from people, filled in by bots. */}
         <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
@@ -277,7 +282,7 @@ export function BookingForm() {
         {step === 0 && (
           <div className="mt-6 grid gap-6">
             {data.dogs.map((dog, i) => (
-              <div key={i} className={i > 0 ? "grid gap-5 border-t border-white/10 pt-6" : "grid gap-5"}>
+              <div key={i} className={i > 0 ? "grid gap-5 pt-8" : "grid gap-5"}>
                 {data.dogs.length > 1 && (
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-paper">Dog {i + 1}</p>
@@ -338,8 +343,8 @@ export function BookingForm() {
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggleHelp(h.value)}
-                    className={`relative flex min-h-[72px] items-center justify-center rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-colors ${
-                      on ? "border-accent bg-accent text-accent-ink" : "border-white/10 bg-ink text-paper hover:border-white/30"
+                    className={`relative flex min-h-[72px] items-center justify-center rounded-2xl px-4 py-4 text-center text-sm font-semibold transition-colors ${
+                      on ? "bg-accent text-accent-ink" : "bg-white/[0.05] text-paper hover:bg-white/[0.09]"
                     }`}
                   >
                     {on && <CheckIcon width={16} height={16} className="absolute right-3 top-3" />}
@@ -384,7 +389,13 @@ export function BookingForm() {
                   Great — we cover {pc.area}.
                 </p>
               )}
-              {pc.status === "outside" && (
+              {pc.status === "outside" && data.service === "online-training" && (
+                <p className="mt-2 flex items-center gap-2 text-sm text-emerald-300">
+                  <MapPinIcon width={16} height={16} />
+                  Online Training works wherever you are.
+                </p>
+              )}
+              {pc.status === "outside" && data.service !== "online-training" && (
                 <p className="mt-2 flex items-start gap-2 text-sm text-amber-300">
                   <MapPinIcon width={16} height={16} className="mt-0.5 shrink-0" />
                   We don&apos;t usually travel to {pc.outward}, but send your request and we&apos;ll let you know if we can.
@@ -392,7 +403,7 @@ export function BookingForm() {
               )}
             </div>
             <p className="text-xs text-paper-dim">
-              We&apos;ll only use these to arrange your meet &amp; greet. See our{" "}
+              We&apos;ll only use these to get in touch about your request. See our{" "}
               <Link href="/privacy" className="underline underline-offset-2 hover:text-paper">
                 Privacy Policy
               </Link>

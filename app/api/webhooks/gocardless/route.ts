@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { firstTimeEvent, recordMandate } from "@/lib/gocardless/record";
+import { firstTimeEvent, recordMandate, recordPaymentEvent } from "@/lib/gocardless/record";
+import { adminConfigured, createAdminClient } from "@/lib/supabase/admin";
+import { pushNotices } from "@/lib/sessions/push";
 
 /**
  * GoCardless webhook — the one address GoCardless sends every event to:
@@ -10,16 +12,19 @@ import { firstTimeEvent, recordMandate } from "@/lib/gocardless/record";
  * (nn_gc_record ignores everything else) — so events about your existing
  * GoCardless customers pass straight through untouched.
  *
- * Handled now: Direct Debit set-up finished, and mandate status changes.
- * Payment events (taken, failed, recovered…) are acknowledged and will be
- * tracked in the next step.
+ * Handled: Direct Debit set-up finished, mandate status changes, and
+ * payments: a session a trainer charged (app/api/sessions/charge) goes paid
+ * (confirmed, paid_out) or failed (failed, cancelled, charged_back); a
+ * failed payment on one of our mandates that isn't a session (a
+ * membership) is flagged and the trainers are told. Everything else is
+ * acknowledged and left alone.
  */
 
 type GcEvent = {
   id: string;
   resource_type: string;
   action: string;
-  links?: { mandate?: string; billing_request?: string; customer?: string; mandate_request_mandate?: string };
+  links?: { mandate?: string; billing_request?: string; customer?: string; mandate_request_mandate?: string; payment?: string };
 };
 
 // Mandate event → the status we keep (GoCardless's own status names).
@@ -37,6 +42,9 @@ const MANDATE_STATUS: Record<string, string> = {
   blocked: "blocked",
   suspended_by_payer: "suspended_by_payer",
 };
+
+// Payment events that change what we show: paid, or failed.
+const PAYMENT_ACTIONS = new Set(["confirmed", "paid_out", "failed", "cancelled", "charged_back"]);
 
 function validSignature(body: string, signature: string | null): boolean {
   const secret = process.env.GOCARDLESS_WEBHOOK_SECRET;
@@ -74,9 +82,11 @@ export async function POST(request: Request) {
         });
       } else if (ev.resource_type === "mandates" && ev.links?.mandate && MANDATE_STATUS[ev.action]) {
         await recordMandate({ mandateId: ev.links.mandate, status: MANDATE_STATUS[ev.action] });
+      } else if (ev.resource_type === "payments" && ev.links?.payment && PAYMENT_ACTIONS.has(ev.action)) {
+        const notices = await recordPaymentEvent({ paymentId: ev.links.payment, mandateId: ev.links.mandate ?? null, action: ev.action });
+        if (notices.length && adminConfigured()) await pushNotices(createAdminClient(), notices, null);
       }
-      // Everything else (payments, subscriptions, refunds, payouts…) is
-      // acknowledged for now.
+      // Everything else (subscriptions, refunds, payouts…) is acknowledged.
     } catch (err) {
       // Never fail the whole batch for one event — GoCardless would resend
       // all of them. Log it and carry on.

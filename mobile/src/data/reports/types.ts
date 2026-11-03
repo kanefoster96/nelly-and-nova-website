@@ -4,6 +4,7 @@
  * The account is centred on the dog. After each Full Day Training session the dog
  * gets a report card with homework the owner marks complete; owners can ask
  * questions about homework in a thread only they and staff can see.
+ * Live in Supabase (same tables as the website's lib/reports/client.ts).
  */
 
 /**
@@ -12,8 +13,11 @@
  * (lib/reports/progress.ts), not per drill.
  */
 export type HomeworkDrill = {
-  id: string;
+  id: string; // report_card_items.id
   name: string;
+  /** The library drill it was picked from (opens /drill/[id]). */
+  ref?: string | null;
+  pillar?: string | null;
 };
 
 /**
@@ -39,6 +43,8 @@ export type ReportCard = {
   id: string;
   /** Which dog this card belongs to — lets a multi-dog account filter per dog. */
   dogId?: string;
+  dogName?: string;
+  dogPhoto?: string | null;
   date: string; // ISO — the session date
   focus: string; // title — derived from the homework categories
   summary: string; // what they worked on
@@ -74,3 +80,11 @@ export type DogProfile = {
   plan: TrainingPlan | null;
   skills: Skill[];
 };
+
+/** A member's published cards, plus the days each card's homework was practised. */
+export type ReportBundle = { cards: ReportCard[]; progress: Record<string, string[]> };
+
+/** One skill pillar with its skills, for a dog's Skills & levels. */
+export type SkillItem = { id: string; name: string; level: number };
+export type SkillPillar = { id: string; name: string; blurb: string; skills: SkillItem[] };
+export type DogProgress = { dogId: string; pillars: SkillPillar[]; learnt: Record<string, string> };

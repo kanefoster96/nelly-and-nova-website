@@ -5,6 +5,10 @@
  * and Mindset. A trainer marks each one "learnt" or "to learn" on a dog's
  * profile; the owner only ever sees the level out of the total per pillar.
  * Drills/categories from the homework library get mapped onto these pillars.
+ *
+ * The skills live in the `skills` table (seeded from this list) and each
+ * dog's ticks in `dog_skills` — see lib/skills/store.ts. This file keeps the
+ * pillars' names and blurbs, the level maths, and the list as a fallback.
  */
 export type SkillItem = { id: string; name: string; level: number };
 export type SkillPillar = { id: string; name: string; blurb: string; drills: SkillItem[] };
@@ -57,13 +61,6 @@ export function pillarLevels(pillar: SkillPillar): number[] {
 /** Total trackable skills across all pillars. */
 export const TOTAL_SKILLS = SKILL_PILLARS.reduce((n, p) => n + p.drills.length, 0);
 
-/**
- * Every dog starts with no skills ticked — the trainer marks them off as the
- * dog learns each one (from the Status panel on the dashboard), which is what
- * drives the level shown on the profile. Empty by design.
- */
-export const SAMPLE_LEARNT: Record<string, string[]> = {};
-
 /** Learnt / total for one pillar, given the dog's learnt set. */
 export function pillarProgress(pillar: SkillPillar, learnt: Set<string>): {
   learnt: number;
@@ -98,7 +95,7 @@ export function pillarLevel(pillar: SkillPillar, learnt: Set<string>): number {
  * and Engagement still gets the higher level even if Mindset (which takes
  * longer) lags behind.
  */
-export function accountLevel(learnt: Set<string>): number {
-  const levels = SKILL_PILLARS.map((p) => pillarLevel(p, learnt));
+export function accountLevel(learnt: Set<string>, pillars: SkillPillar[] = SKILL_PILLARS): number {
+  const levels = pillars.map((p) => pillarLevel(p, learnt));
   return Math.ceil(levels.reduce((a, b) => a + b, 0) / levels.length);
 }

@@ -9,22 +9,19 @@ import {
   CalendarIcon,
   PawIcon,
   UserIcon,
-  CloseIcon,
   CheckIcon,
-  PlusIcon,
   CardIcon,
 } from "@/components/ui/Icons";
 import { useSession, useAuthStatus, signOut } from "@/lib/auth/session";
 import { formatDate } from "@/lib/inbox/format";
 import {
-  entryToReportCard,
   isComplete,
   saveReportEntry,
   type ReportEntryStatus,
   type EntryCategory,
 } from "@/lib/reports/entry";
-import { sendReportCards } from "@/lib/reports/data";
-import { sendToOutbox } from "@/lib/reports/outbox";
+import { publishCards } from "@/lib/reports/client";
+import { ReportEntryModal } from "@/components/reports/ReportEntryModal";
 import { usePayments, getStatus, retryPayment } from "@/lib/payments/store";
 import { PAYMENT_LABEL, type PaymentStatus } from "@/lib/payments/types";
 import { money, recurringPrice } from "@/lib/payments/pricing";
@@ -37,13 +34,16 @@ import { HeatDayManager } from "./HeatDayManager";
 import { DogStatusView } from "./DogStatusModal";
 import type { DaySchedule, ScheduledDog } from "@/lib/schedule/types";
 import type { OnboardingEntry } from "@/lib/inbox/onboarding";
-import { DRILL_LIBRARY, drillsForCategory } from "@/config/drills";
 
 type Form = {
   summary: string;
   wins: string[];
+  strength?: string;
+  toImprove?: string;
   homework: EntryCategory[];
   status: ReportEntryStatus;
+  /** The draft report_cards row, once saved. */
+  cardId?: string;
 };
 
 const blankForm = (): Form => ({
@@ -96,6 +96,8 @@ export function AdminDashboard({
   const [statusId, setStatusId] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [payToast, setPayToast] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const payments = usePayments();
   const todayDate = todayISO.slice(0, 10);
   const { confirm, dialog } = useConfirm();
@@ -191,40 +193,56 @@ export function AdminDashboard({
     });
   }
 
-  function saveDraft(id: string) {
+  /** Save the dog's card as a draft in Supabase (owners can't see drafts). */
+  async function persist(id: string, status: ReportEntryStatus): Promise<boolean> {
     const form = forms[id];
-    const status: ReportEntryStatus = isComplete({
-      dogId: id, coach, date: todayISO, ...form,
-    })
+    setBusy(true);
+    setProblem(null);
+    try {
+      const cardId = await saveReportEntry({ dogId: id, coach, date: todayISO, ...form, status }, form.cardId);
+      patch(id, { status, cardId });
+      return true;
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : "Couldn't save the report card.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveDraft(id: string) {
+    const form = forms[id];
+    const status: ReportEntryStatus = isComplete({ dogId: id, coach, date: todayISO, ...form })
       ? form.status === "ready" ? "ready" : "draft"
       : "draft";
-    patch(id, { status });
-    void saveReportEntry({ dogId: id, coach, date: todayISO, ...form, status });
-    setOpenId(null);
+    if (await persist(id, status)) setOpenId(null);
   }
 
-  function markReady(id: string) {
+  async function markReady(id: string) {
     const form = forms[id];
     if (!isComplete({ dogId: id, coach, date: todayISO, ...form })) return;
-    patch(id, { status: "ready" });
-    void saveReportEntry({ dogId: id, coach, date: todayISO, ...form, status: "ready" });
-    setOpenId(null);
+    if (await persist(id, "ready")) setOpenId(null);
   }
 
-  function sendAll() {
-    // Turn every ready entry into an owner-facing report card and send it.
-    const cards = dogs
-      .filter((d) => forms[d.id]?.status === "ready" || forms[d.id]?.status === "sent")
-      .map((d) => entryToReportCard({ dogId: d.id, coach, date: todayISO, ...forms[d.id] }));
-    void sendReportCards(cards); // backend seam (insert + notify) — TODO
-    sendToOutbox(cards); // scaffold: surface to owners + light their badge now
-    setForms((f) =>
-      Object.fromEntries(
-        Object.entries(f).map(([k, v]) => [k, { ...v, status: "sent" as const }])
-      )
-    );
-    setSent(true);
-    window.setTimeout(() => setSent(false), 2500);
+  /** Send every ready card: published, and each owner emailed and notified. */
+  async function sendAll() {
+    const ids = dogs.map((d) => forms[d.id]).filter((f) => f?.status === "ready" && f.cardId).map((f) => f.cardId!);
+    setBusy(true);
+    setProblem(null);
+    try {
+      await publishCards(ids);
+      setForms((f) =>
+        Object.fromEntries(
+          Object.entries(f).map(([k, v]) => [k, v.status === "ready" ? { ...v, status: "sent" as const } : v])
+        )
+      );
+      setSent(true);
+      window.setTimeout(() => setSent(false), 2500);
+    } catch (err) {
+      setProblem(err instanceof Error ? err.message : "Couldn't send the report cards.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   // Skills status opens as a full page (not a pop-up); back returns here.
@@ -317,8 +335,8 @@ export function AdminDashboard({
 
         {dogs.length > 0 && (
           <div className="mt-4 flex items-center gap-3">
-            <Button radius="xl" onClick={sendAll} disabled={!allReady} className="disabled:opacity-50">
-              Send all report cards
+            <Button radius="xl" onClick={sendAll} disabled={!allReady || busy} className="disabled:opacity-50">
+              {busy ? "Sending…" : "Send all report cards"}
             </Button>
             {!allReady && (
               <span className="text-xs text-paper-dim">
@@ -328,6 +346,7 @@ export function AdminDashboard({
             {sent && <span className="text-sm font-medium text-emerald-300">Sent to owners ✓</span>}
           </div>
         )}
+        {problem && !openId && <p className="mt-2 text-sm text-red-300">{problem}</p>}
         {payToast && (
           <p className="mt-2 text-sm font-medium text-emerald-300">{payToast}</p>
         )}
@@ -354,6 +373,12 @@ export function AdminDashboard({
       {/* Navigation cards */}
       <section className="mt-10 grid gap-3 sm:grid-cols-2">
         <NavCard
+          href="/admin/requests"
+          icon={<CalendarIcon width={22} height={22} />}
+          title="Session requests"
+          body="Replacement days, extra sessions and switches to accept, plus sessions to charge."
+        />
+        <NavCard
           href="/admin/onboarding"
           icon={<UserIcon width={22} height={22} />}
           title="Onboarding"
@@ -374,20 +399,26 @@ export function AdminDashboard({
         <NavCard
           href="/admin/reports"
           icon={<ReportIcon width={22} height={22} />}
-          title="Recent report cards"
-          body="The latest cards across all dogs."
+          title="Report cards"
+          body="Write, send and look back at every dog's cards."
         />
         <NavCard
           href="/admin/homework"
           icon={<CheckIcon width={22} height={22} />}
-          title="Homework"
-          body="Edit drills by category for each dog."
+          title="Drill library"
+          body="The drills homework is picked from, with their how-to pages."
         />
         <NavCard
           href="/admin/members"
           icon={<UserIcon width={22} height={22} />}
           title="Members"
           body="Contacts, plans, payments & more."
+        />
+        <NavCard
+          href="/admin/team"
+          icon={<UserIcon width={22} height={22} />}
+          title="Team"
+          body="Trainers' display names, photos and access."
         />
         <NavCard
           href="/admin/payments"
@@ -414,7 +445,12 @@ export function AdminDashboard({
           onChange={(p) => patch(openDog.id, p)}
           onSaveDraft={() => saveDraft(openDog.id)}
           onMarkReady={() => markReady(openDog.id)}
-          onClose={() => setOpenId(null)}
+          onClose={() => {
+            setProblem(null);
+            setOpenId(null);
+          }}
+          busy={busy}
+          problem={problem}
         />
       )}
       {dialog}
@@ -473,234 +509,5 @@ function NavCard({
         <span className="mt-0.5 block text-sm text-paper/70">{body}</span>
       </span>
     </Link>
-  );
-}
-
-function ReportEntryModal({
-  dog,
-  coach,
-  dateLabel,
-  form,
-  onChange,
-  onSaveDraft,
-  onMarkReady,
-  onClose,
-}: {
-  dog: ScheduledDog;
-  coach: string;
-  dateLabel: string;
-  form: Form;
-  onChange: (p: Partial<Form>) => void;
-  onSaveDraft: () => void;
-  onMarkReady: () => void;
-  onClose: () => void;
-}) {
-  const complete = isComplete({ dogId: dog.id, coach, date: "", ...form });
-  const inputCls =
-    "w-full rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
-
-  // The card's title is the names of its homework categories.
-  const titlePreview = form.homework.map((c) => c.name.trim()).filter(Boolean).join(" · ");
-  const updateCat = (ci: number, patch: Partial<EntryCategory>) =>
-    onChange({ homework: form.homework.map((c, i) => (i === ci ? { ...c, ...patch } : c)) });
-  const setDrill = (ci: number, di: number, name: string) =>
-    onChange({
-      homework: form.homework.map((c, i) =>
-        i === ci ? { ...c, drills: c.drills.map((d, j) => (j === di ? { name } : d)) } : c
-      ),
-    });
-  const addDrill = (ci: number) =>
-    onChange({
-      homework: form.homework.map((c, i) =>
-        i === ci ? { ...c, drills: [...c.drills, { name: "" }] } : c
-      ),
-    });
-  const removeDrill = (ci: number, di: number) =>
-    onChange({
-      homework: form.homework.map((c, i) =>
-        i === ci ? { ...c, drills: c.drills.filter((_, j) => j !== di) } : c
-      ),
-    });
-  const removeCat = (ci: number) =>
-    onChange({ homework: form.homework.filter((_, j) => j !== ci) });
-  const addCat = () =>
-    onChange({ homework: [...form.homework, { name: "", drills: [{ name: "" }] }] });
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-ink ring-1 ring-white/15 sm:rounded-3xl">
-        {/* Header */}
-        <div className="sticky top-0 flex items-center gap-3 border-b border-white/10 bg-ink px-5 py-4">
-          <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={dog.photo} alt="" className="h-full w-full object-cover" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-paper">{dog.name}&apos;s report card</p>
-            <p className="text-xs text-paper-dim">
-              {coach} · {dateLabel}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-paper-dim hover:text-paper"
-          >
-            <CloseIcon width={20} height={20} />
-          </button>
-        </div>
-
-        <div className="grid gap-5 px-5 py-5">
-          {/* Title — set automatically from the homework categories below. */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-paper/90">
-              Title
-            </label>
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-sm">
-              {titlePreview ? (
-                <span className="text-paper">{titlePreview}</span>
-              ) : (
-                <span className="text-paper-dim">Set from your homework categories below</span>
-              )}
-            </div>
-          </div>
-
-          {/* 1. Summary */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-paper/90">
-              1 · Summary of the day
-            </label>
-            <textarea
-              rows={3}
-              value={form.summary}
-              onChange={(e) => onChange({ summary: e.target.value })}
-              placeholder="How the day went…"
-              className={`${inputCls} resize-y`}
-            />
-          </div>
-
-          {/* 2. Three things they did well */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-paper/90">
-              2 · Three things they did well
-            </label>
-            <div className="grid gap-2">
-              {form.wins.map((w, i) => (
-                <input
-                  key={i}
-                  value={w}
-                  onChange={(e) => {
-                    const wins = [...form.wins];
-                    wins[i] = e.target.value;
-                    onChange({ wins });
-                  }}
-                  placeholder={`Win ${i + 1}`}
-                  className={inputCls}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* 3. Homework — categories, each with drills. The card is titled
-              from the category names; unnamed drills save as "Drill 1", "Drill 2". */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-paper/90">
-              3 · Homework
-            </label>
-            <p className="mb-2 text-xs text-paper-dim">
-              Add a category (e.g. Luring, Marker words, Recall), then drills under it.
-            </p>
-            <datalist id="entry-lib-categories">
-              {DRILL_LIBRARY.map((c) => (
-                <option key={c.name} value={c.name} />
-              ))}
-            </datalist>
-            <div className="grid gap-3">
-              {form.homework.map((cat, ci) => (
-                <div key={ci} className="rounded-xl bg-white/[0.03] p-3 ring-1 ring-white/10">
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={cat.name}
-                      onChange={(e) => updateCat(ci, { name: e.target.value })}
-                      placeholder={`Category ${ci + 1} · e.g. Recall`}
-                      list="entry-lib-categories"
-                      className={`${inputCls} font-medium`}
-                    />
-                    {form.homework.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeCat(ci)}
-                        aria-label="Remove category"
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
-                      >
-                        <CloseIcon width={16} height={16} />
-                      </button>
-                    )}
-                  </div>
-                  <datalist id={`entry-lib-drills-${ci}`}>
-                    {drillsForCategory(cat.name).map((d, k) => (
-                      <option key={k} value={d} />
-                    ))}
-                  </datalist>
-                  <div className="mt-2 grid gap-2 border-l border-white/10 pl-3">
-                    {cat.drills.map((d, di) => (
-                      <div key={di} className="flex items-center gap-2">
-                        <input
-                          value={d.name}
-                          onChange={(e) => setDrill(ci, di, e.target.value)}
-                          placeholder={`Drill ${di + 1} · how to practise`}
-                          list={`entry-lib-drills-${ci}`}
-                          className={inputCls}
-                        />
-                        {cat.drills.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeDrill(ci, di)}
-                            aria-label="Remove drill"
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-paper-dim hover:text-paper"
-                          >
-                            <CloseIcon width={14} height={14} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => addDrill(ci)}
-                      className="inline-flex items-center gap-1.5 self-start text-xs font-medium text-accent"
-                    >
-                      <PlusIcon width={14} height={14} /> Add drill
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={addCat}
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent"
-            >
-              <PlusIcon width={16} height={16} /> Add category
-            </button>
-          </div>
-        </div>
-
-        {/* Footer actions */}
-        <div className="sticky bottom-0 flex items-center gap-2 border-t border-white/10 bg-ink px-5 py-4">
-          <Button variant="secondary" radius="xl" onClick={onSaveDraft}>
-            Save draft
-          </Button>
-          <Button
-            radius="xl"
-            onClick={onMarkReady}
-            disabled={!complete}
-            className="disabled:opacity-50"
-          >
-            <CheckIcon width={16} height={16} /> Mark ready
-          </Button>
-        </div>
-      </div>
-    </div>
   );
 }

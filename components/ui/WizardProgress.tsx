@@ -34,10 +34,10 @@ export function WizardProgress({
           const canJump = !!onJump && !active && reachable(i);
           const circle = (
             <span
-              className={`flex ${size} shrink-0 items-center justify-center rounded-full border font-medium transition-colors duration-300 ${
+              className={`flex ${size} shrink-0 items-center justify-center rounded-full font-medium transition-colors duration-300 ${
                 done || active
-                  ? "border-accent bg-accent text-accent-ink"
-                  : "border-white/15 bg-ink text-paper-dim"
+                  ? "bg-accent text-accent-ink"
+                  : "bg-white/[0.07] text-paper-dim"
               } ${active ? "ring-2 ring-accent/30 ring-offset-2 ring-offset-ink" : ""}`}
             >
               {i + 1}
@@ -107,7 +107,7 @@ export function WizardHeading({
 const primary =
   "rounded-full bg-accent px-8 py-2.5 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90 active:opacity-75 disabled:cursor-not-allowed disabled:opacity-40";
 const secondary =
-  "rounded-full border border-white/15 px-6 py-2.5 text-sm font-medium text-paper transition-colors hover:border-white/40 active:bg-white/10 disabled:opacity-40";
+  "glass rounded-full px-6 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-white/15 active:bg-white/10 disabled:opacity-40";
 
 /** Back / Next (or the final submit) along the bottom of a step card. */
 export function WizardNav({
@@ -142,7 +142,7 @@ export function WizardNav({
 /** "We saved your progress" banner with a Start over link. */
 export function DraftRestored({ onStartOver }: { onStartOver: () => void }) {
   return (
-    <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-ink-soft px-4 py-3 text-sm">
+    <div className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-ink-soft px-4 py-3 text-sm">
       <p className="text-paper/80">We saved your progress — carry on where you left off.</p>
       <button type="button" onClick={onStartOver} className="font-medium text-paper underline underline-offset-2">
         Start over
@@ -153,5 +153,5 @@ export function DraftRestored({ onStartOver }: { onStartOver: () => void }) {
 
 /** Wraps one step's fields in the Kanvas-style card. Keyed by step so it re-animates. */
 export function StepCard({ children }: { children: React.ReactNode }) {
-  return <div className="mt-6 rounded-2xl border border-white/10 bg-ink-soft p-5 animate-fade-up sm:p-8">{children}</div>;
+  return <div className="mt-8 rounded-3xl bg-ink-soft p-6 animate-fade-up sm:p-10">{children}</div>;
 }

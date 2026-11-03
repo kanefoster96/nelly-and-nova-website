@@ -2,7 +2,6 @@
 
 import { useSession } from "@/lib/auth/session";
 import { CommunityHome } from "./community/CommunityHome";
-import type { Post } from "@/lib/community/types";
 
 /**
  * The homepage is the marketing site by default (server-rendered — `children`).
@@ -12,11 +11,9 @@ import type { Post } from "@/lib/community/types";
  */
 export function HomeGate({
   scheduledDogIds,
-  posts,
   children,
 }: {
   scheduledDogIds: string[];
-  posts: Post[];
   children: React.ReactNode;
 }) {
   const session = useSession();
@@ -26,5 +23,5 @@ export function HomeGate({
     scheduledDogIds.includes(session.dogId);
 
   if (!isScheduledMember) return <>{children}</>;
-  return <CommunityHome posts={posts} />;
+  return <CommunityHome />;
 }

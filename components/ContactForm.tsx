@@ -25,9 +25,9 @@ import { areas, contact, socials } from "@/config/site";
  * Onboarding list and emails it to the team.
  */
 
-const cardClass = "rounded-3xl bg-white/[0.04] p-6 ring-1 ring-white/10";
+const cardClass = "rounded-3xl bg-white/[0.04] p-7";
 const fieldClass =
-  "w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+  "w-full rounded-xl border border-transparent bg-white/[0.05] px-4 py-3 text-paper placeholder:text-paper-dim focus:border-white/30 focus:bg-white/[0.07] focus:outline-none";
 const labelClass = "mb-2 block text-sm text-paper-dim";
 const eyebrowClass = "text-xs font-semibold uppercase tracking-[0.3em] text-paper-dim";
 
@@ -107,7 +107,7 @@ export function ContactForm() {
         </div>
         <ul className="mt-4 flex flex-wrap gap-2">
           {areas.map((area) => (
-            <li key={area} className="rounded-full bg-white/[0.06] px-3 py-1.5 text-sm text-paper ring-1 ring-white/10">
+            <li key={area} className="rounded-full bg-white/[0.06] px-3 py-1.5 text-sm text-paper">
               {area}
             </li>
           ))}
@@ -128,7 +128,7 @@ export function ContactForm() {
             key={label}
             href={href}
             {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-            className={`group block transition-colors hover:ring-white/30 ${cardClass}`}
+            className={`group block transition-colors hover:bg-white/[0.07] ${cardClass}`}
           >
             <div className="flex items-center gap-2">
               <Icon width={16} height={16} className="text-paper-dim" />

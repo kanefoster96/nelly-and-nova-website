@@ -106,6 +106,7 @@ type InboxRow = {
   last_from_staff: boolean | null;
   unread: boolean;
   completed_at: string | null;
+  member_last_active_at: string | null;
 };
 
 /** Trainer inbox: every conversation, most recent first. */
@@ -116,8 +117,10 @@ export async function getConversations(): Promise<Conversation[]> {
     const owner = r.owner_name || r.email || "Owner";
     return {
       id: r.id,
-      // Trainers see the owner and their dog(s), so they know who they're talking to.
-      user: { id: r.account_id, name: r.dog_names ? `${owner} · ${r.dog_names}` : owner },
+      user: { id: r.account_id, name: owner },
+      dogNames: r.dog_names,
+      email: r.email,
+      memberLastActiveAt: r.member_last_active_at,
       lastMessageAt: r.last_message_at,
       lastMessagePreview: previewFor(r.last_body, r.last_attachment_type),
       unread: r.unread,
@@ -249,4 +252,65 @@ export async function markChatRead(conversationId: string, _asStaff?: boolean): 
 /** "I'm in the chat right now" — every ~30s while an owner's chat is on screen. */
 export async function chatHeartbeat(): Promise<void> {
   await supabase.rpc("nn_chat_heartbeat");
+}
+
+/**
+ * Trainer: how far the owner has got in their chat — when they last read it
+ * ("Seen" under our latest message) and last had it open ("In the chat now").
+ */
+export async function getConversationStatus(
+  conversationId: string
+): Promise<{ memberLastReadAt: string | null; memberLastActiveAt: string | null } | null> {
+  const { data } = await supabase
+    .from("conversations")
+    .select("member_last_read_at, member_last_active_at")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!data) return null;
+  return { memberLastReadAt: data.member_last_read_at as string | null, memberLastActiveAt: data.member_last_active_at as string | null };
+}
+
+/**
+ * Trainer: the owner's open enquiry (a meet & greet request not yet closed),
+ * by their account or email — what "Send onboarding link" sends from.
+ */
+export async function findOpenEnquiry(accountId: string, email: string | null | undefined): Promise<string | null> {
+  const open = ["new", "meet_greet_booked", "onboarding"];
+  const byAccount = await supabase
+    .from("enquiries")
+    .select("id")
+    .eq("account_id", accountId)
+    .in("status", open)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (byAccount.data?.id) return byAccount.data.id as string;
+  if (!email) return null;
+  const byEmail = await supabase
+    .from("enquiries")
+    .select("id")
+    .ilike("email", email.replace(/[%_\\]/g, (c) => `\\${c}`))
+    .in("status", open)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (byEmail.data?.id as string | undefined) ?? null;
+}
+
+/**
+ * Trainer: "Send onboarding link" — the website's Start onboarding: the join
+ * link and Direct Debit set-up, by email and in this chat (it arrives over
+ * Realtime like any message), plus a notification.
+ */
+export async function sendOnboardingLink(enquiryId: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Please sign in again.");
+  const res = await fetch(new URL("/api/onboarding/start", config.siteUrl).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ enquiryId }),
+  });
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) throw new Error(json.error || "Couldn't send the onboarding link.");
 }

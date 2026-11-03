@@ -5,6 +5,7 @@ import { Avatar } from "@/components/community/Avatar";
 import { parseChatBody } from "@/lib/chat/links";
 import {
   chatSupabase,
+  findOpenEnquiry,
   getAttachmentUrl,
   getMessages,
   getMessagesSince,
@@ -12,6 +13,7 @@ import {
   heartbeat,
   markChatRead,
   sendChatMessage,
+  sendOnboardingLink,
   toChatMessage,
   uploadAttachment,
 } from "@/lib/chat/client";
@@ -31,7 +33,12 @@ import type {
  *
  * `viewerRole` picks the side. A member's chat beats a heartbeat while it's
  * on screen. Trainers see who else is in the chat ("Charlotte is typing…")
- * so two of them don't answer the same person; members never see that.
+ * so two of them don't answer the same person, and "Seen" under their latest
+ * message once the owner has read it; members never see either.
+ *
+ * Trainers' + menu (`owner`) also carries Nelly & Nova's versions of
+ * Kanvas's share items: Send onboarding link (when the owner has an open
+ * enquiry), and Book a meet & greet / Leave a review links into the box.
  */
 
 type Team = Record<string, { name: string; avatarUrl: string | null }>;
@@ -131,6 +138,9 @@ function Glyph({ d, children }: { d?: string; children?: React.ReactNode }) {
     </svg>
   );
 }
+const LinkGlyph = () => <Glyph d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />;
+const CalendarGlyph = () => <Glyph d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" />;
+const StarGlyph = () => <Glyph d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />;
 const PhotoGlyph = () => (
   <Glyph>
     <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -201,6 +211,8 @@ export function ChatThread({
   emptyLabel = "No messages yet — say hello!",
   locked = false,
   lockedMessage,
+  owner,
+  memberLastReadAt,
 }: {
   conversationId: string;
   viewerId: string;
@@ -211,6 +223,10 @@ export function ChatThread({
   /** Hides the composer — a completed conversation on the trainer side. */
   locked?: boolean;
   lockedMessage?: string;
+  /** Trainer, an owner's chat: whose it is, for the + menu's onboarding link. */
+  owner?: { accountId: string; email: string | null };
+  /** Trainer only: when the owner last read their chat (undefined hides "Seen"). */
+  memberLastReadAt?: string | null;
 }) {
   const isStaff = viewerRole === "staff";
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
@@ -220,6 +236,8 @@ export function ChatThread({
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [others, setOthers] = useState<ChatPresence[]>([]);
+  const [enquiryId, setEnquiryId] = useState<string | null>(null);
+  const [sendingOnboarding, setSendingOnboarding] = useState(false);
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const pendingRef = useRef<string[]>([]);
@@ -236,6 +254,22 @@ export function ChatThread({
   useEffect(() => {
     messagesRef.current = messages ?? [];
   }, [messages]);
+
+  // Trainer: is there an open enquiry to send an onboarding link from?
+  const ownerAccountId = owner?.accountId;
+  const ownerEmail = owner?.email ?? null;
+  useEffect(() => {
+    if (!isStaff || !ownerAccountId) return;
+    let cancelled = false;
+    findOpenEnquiry(ownerAccountId, ownerEmail)
+      .then((id) => {
+        if (!cancelled) setEnquiryId(id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isStaff, ownerAccountId, ownerEmail]);
 
   // First load: the messages and the team's photos, then mark it read.
   useEffect(() => {
@@ -275,10 +309,10 @@ export function ChatThread({
     let channel: ReturnType<typeof supabase.channel> | undefined;
     try {
       channel = supabase
-        .channel(`chat_messages:${conversationId}`)
+        .channel(`messages:${conversationId}`)
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "chat_messages", filter: `conversation_id=eq.${conversationId}` },
+          { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
           (payload) => fold([toChatMessage(payload.new as ChatMessageRow)])
         )
         .subscribe();
@@ -469,8 +503,64 @@ export function ChatThread({
     }
   }
 
+  /** A link from the + menu, after whatever's already typed, ready to add to before sending. */
+  function addToDraft(text: string) {
+    setAttachMenuOpen(false);
+    setDraft((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text));
+    draftRef.current?.focus();
+  }
+
+  async function handleSendOnboarding() {
+    setAttachMenuOpen(false);
+    if (!enquiryId || sendingOnboarding) return;
+    if (!window.confirm("Send their onboarding link? It goes in this chat and by email, with their Direct Debit set-up.")) return;
+    setSendingOnboarding(true);
+    setError(null);
+    const result = await sendOnboardingLink(enquiryId);
+    setSendingOnboarding(false);
+    // The message itself arrives over Realtime like any other.
+    if (!result.ok) setError(result.error);
+  }
+
   const presenceLine = presenceSummary(others, viewerRole);
   const list = messages ?? [];
+
+  // "Seen" goes under our latest message, unless they've written since (a
+  // reply says they've seen it). One way: only a trainer gets this.
+  let seen: { id: string; label: string } | null = null;
+  if (isStaff && memberLastReadAt !== undefined) {
+    const lastOurs = [...list].reverse().find((m) => m.senderIsStaff && !m.id.startsWith("temp-"));
+    const theyWroteSince = lastOurs && list.some((m) => !m.senderIsStaff && m.createdAt > lastOurs.createdAt);
+    if (lastOurs && !theyWroteSince) {
+      const read = !!memberLastReadAt && memberLastReadAt >= lastOurs.createdAt;
+      seen = { id: lastOurs.id, label: read ? `Seen ${formatMessageTime(memberLastReadAt!)}` : "Not opened yet" };
+    }
+  }
+  type MenuKey = "photo" | "video" | "file" | "onboarding" | "book" | "review";
+  const menuItems: { key: MenuKey; label: string; glyph: React.ReactNode }[] = [
+    { key: "photo", label: "Photo", glyph: <PhotoGlyph /> },
+    { key: "video", label: "Video", glyph: <VideoGlyph /> },
+    { key: "file", label: "File", glyph: <FileGlyph /> },
+    ...(isStaff && owner && enquiryId
+      ? [{ key: "onboarding" as const, label: sendingOnboarding ? "Sending…" : "Send onboarding link", glyph: <LinkGlyph /> }]
+      : []),
+    ...(isStaff && owner
+      ? [
+          { key: "book" as const, label: "Book a meet & greet link", glyph: <CalendarGlyph /> },
+          { key: "review" as const, label: "Leave a review link", glyph: <StarGlyph /> },
+        ]
+      : []),
+  ];
+
+  function pickMenu(key: MenuKey) {
+    const origin = window.location.origin;
+    if (key === "photo") photoInputRef.current?.click();
+    else if (key === "video") videoInputRef.current?.click();
+    else if (key === "file") fileInputRef.current?.click();
+    else if (key === "onboarding") void handleSendOnboarding();
+    else if (key === "book") addToDraft(`[Book a meet & greet](${origin}/book)`);
+    else addToDraft(`[Leave us a review](${origin}/review)`);
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -523,6 +613,9 @@ export function ChatThread({
                       </div>
                     </div>
                   </div>
+                  {seen?.id === message.id && (
+                    <p className="mt-1 px-1 text-right text-[11px] text-paper-dim">{seen.label}</p>
+                  )}
                 </div>
               );
             })}
@@ -564,23 +657,24 @@ export function ChatThread({
                     onClick={() => setAttachMenuOpen(false)}
                     className="fixed inset-0 z-10 cursor-default"
                   />
-                  <div className="glass absolute bottom-14 left-0 z-20 flex w-40 flex-col gap-1 rounded-2xl p-2 shadow-lg hover:bg-white/[0.08]">
-                    {(
-                      [
-                        ["Photo", <PhotoGlyph key="g" />, photoInputRef],
-                        ["Video", <VideoGlyph key="g" />, videoInputRef],
-                        ["File", <FileGlyph key="g" />, fileInputRef],
-                      ] as const
-                    ).map(([label, glyph, ref]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => ref.current?.click()}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-paper transition-colors hover:bg-white/5"
-                      >
-                        {glyph}
-                        {label}
-                      </button>
+                  <div
+                    className={`absolute bottom-14 left-0 z-20 flex flex-col gap-1 rounded-2xl border border-white/10 bg-[#121212] p-2 shadow-lg ${
+                      menuItems.length > 3 ? "w-60" : "w-40"
+                    }`}
+                  >
+                    {menuItems.map((item, i) => (
+                      <div key={item.key}>
+                        {i === 3 && <div className="mx-2 my-1 h-px bg-white/10" />}
+                        <button
+                          type="button"
+                          onClick={() => pickMenu(item.key)}
+                          disabled={item.key === "onboarding" && sendingOnboarding}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-paper transition-colors hover:bg-white/5 disabled:opacity-60"
+                        >
+                          {item.glyph}
+                          {item.label}
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </>

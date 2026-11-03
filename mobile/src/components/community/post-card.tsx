@@ -1,48 +1,81 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Text, TextInput, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { MediaGrid } from "@/components/community/media-grid";
+import { VerifiedTick } from "@/components/community/verified-tick";
 import { Pressable } from "@/components/pressable";
-import { Tag } from "@/components/ui";
 import {
   REPORT_REASONS,
   addComment,
+  acceptGuidelines,
   blockUser,
   deleteComment,
   deletePost,
-  postTimeLabel,
   reportContent,
   setLiked,
+  setPinned,
   updateComment,
   updatePost,
   type Comment,
   type Post,
   type ReportReason,
+  type Viewer,
 } from "@/data/community";
-import { hapticError, hapticSelection, hapticSuccess } from "@/lib/haptics";
-import { colors, GLASS_BORDER } from "@/theme";
-
-import type { Viewer } from "./feed-screen";
+import { config } from "@/lib/config";
+import { hapticError, hapticSelection, hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { animateListChange } from "@/lib/layout-animation";
+import { colors } from "@/theme";
 
 const BODY_TRUNCATE_LENGTH = 220;
 const LIKE_RED = "#ed4956";
 const COMMENT_PREVIEW_COUNT = 2;
 
+type Choice = { text: string; style?: "destructive"; onPress: () => void };
+
+/**
+ * "Pick one of these" as a system alert, with a Cancel (the Kanvas app's
+ * chooseOne). iOS lists every choice; Android's alert only has room for
+ * three buttons, so there it shows two at a time with "More…".
+ */
+function chooseOne(title: string, message: string | undefined, choices: Choice[]) {
+  if (Platform.OS !== "android") {
+    Alert.alert(title, message, [...choices, { text: "Cancel", style: "cancel" }]);
+    return;
+  }
+  const page = choices.slice(0, 2);
+  const rest = choices.slice(2);
+  Alert.alert(
+    title,
+    message,
+    rest.length > 0
+      ? [...page, { text: "More…", onPress: () => chooseOne(title, message, rest) }]
+      : [...page, { text: "Cancel", style: "cancel" }],
+    { cancelable: true }
+  );
+}
+
 type MenuTarget = { postId: string } | { commentId: string };
 
 /**
- * The options sheet on a post or comment: your own gets Edit/Delete; someone
- * else's gets Report and Block (plus Delete for a trainer).
+ * The options sheet on a post or comment, built from native alerts: your own
+ * gets Edit and Delete; someone else's gets Report and Block (plus Delete
+ * for a trainer, and Pin on posts). Report asks for a reason and sends it
+ * straight to the trainers; Block asks first, then hides that member.
  */
 function showContentMenu(opts: {
+  viewer: Viewer;
   target: MenuTarget;
   authorId: string;
   authorName: string;
+  authorIsTrainer: boolean;
   isMine: boolean;
   canDelete: boolean;
+  pinned?: boolean;
   onEdit?: () => void;
+  onTogglePin?: () => void;
   onDelete: () => void;
   onBlocked: () => void;
 }) {
@@ -53,7 +86,7 @@ function showContentMenu(opts: {
     try {
       await reportContent(opts.target, reason);
       hapticSuccess();
-      Alert.alert("Thanks", "The Nelly & Nova team will take a look within 24 hours.");
+      Alert.alert("Thanks", "A trainer will take a look within 24 hours.");
     } catch (err) {
       hapticError();
       Alert.alert("Couldn't send the report", err instanceof Error ? err.message : "Please try again.");
@@ -61,10 +94,11 @@ function showContentMenu(opts: {
   }
 
   function report() {
-    Alert.alert(`Report this ${noun}`, "Why are you reporting it? The team will take a look.", [
-      ...REPORT_REASONS.map((r) => ({ text: r.label, onPress: () => sendReport(r.value) })),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
+    chooseOne(
+      `Report this ${noun}`,
+      "Why are you reporting it? A trainer will take a look.",
+      REPORT_REASONS.map((r) => ({ text: r.label, onPress: () => sendReport(r.value) }))
+    );
   }
 
   function block() {
@@ -74,8 +108,14 @@ function showContentMenu(opts: {
         text: "Block",
         style: "destructive",
         onPress: async () => {
-          await blockUser(opts.authorId).catch(() => undefined);
-          opts.onBlocked();
+          try {
+            await blockUser(opts.viewer.id, opts.authorId);
+            hapticSuccess();
+            opts.onBlocked();
+          } catch (err) {
+            hapticError();
+            Alert.alert("Couldn't block", err instanceof Error ? err.message : "Please try again.");
+          }
         },
       },
     ]);
@@ -88,20 +128,20 @@ function showContentMenu(opts: {
     ]);
   }
 
-  const buttons: { text: string; style?: "cancel" | "destructive"; onPress?: () => void }[] = [];
-  if (opts.isMine && opts.onEdit) buttons.push({ text: "Edit", onPress: opts.onEdit });
+  const choices: Choice[] = [];
+  if (opts.isMine && opts.onEdit) choices.push({ text: "Edit", onPress: opts.onEdit });
+  if (opts.viewer.isTrainer && opts.onTogglePin) choices.push({ text: opts.pinned ? "Unpin" : "Pin to top", onPress: opts.onTogglePin });
   if (!opts.isMine) {
-    buttons.push({ text: "Report", onPress: report });
-    buttons.push({ text: `Block ${first}`, onPress: block });
+    choices.push({ text: "Report", onPress: report });
+    if (!opts.authorIsTrainer) choices.push({ text: `Block ${first}`, onPress: block });
   }
-  if (opts.canDelete) buttons.push({ text: "Delete", style: "destructive", onPress: remove });
-  buttons.push({ text: "Cancel", style: "cancel" });
+  if (opts.canDelete) choices.push({ text: "Delete", style: "destructive", onPress: remove });
 
-  Alert.alert(noun === "post" ? "Post options" : "Comment options", undefined, buttons);
+  chooseOne(noun === "post" ? "Post options" : "Comment options", undefined, choices);
 }
 
 /** Instagram-style: a bare heart that fills red when it's yours, with the count beside it. */
-function LikeButton({ postId, likeCount, likedByMe }: { postId: string; likeCount: number; likedByMe: boolean }) {
+function LikeButton({ viewer, postId, likeCount, likedByMe }: { viewer: Viewer; postId: string; likeCount: number; likedByMe: boolean }) {
   const [liked, setLikedState] = useState(likedByMe);
   const [count, setCount] = useState(likeCount);
 
@@ -111,7 +151,7 @@ function LikeButton({ postId, likeCount, likedByMe }: { postId: string; likeCoun
     setLikedState(next);
     setCount((c) => c + (next ? 1 : -1));
     try {
-      await setLiked(postId, next);
+      await setLiked(viewer.id, postId, next);
     } catch {
       setLikedState(!next);
       setCount((c) => c + (next ? -1 : 1));
@@ -119,19 +159,42 @@ function LikeButton({ postId, likeCount, likedByMe }: { postId: string; likeCoun
   }
 
   return (
-    <Pressable
-      onPress={handlePress}
-      hitSlop={8}
-      accessibilityLabel={liked ? "Unlike" : "Like"}
-      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-    >
+    <Pressable onPress={handlePress} hitSlop={8} accessibilityLabel={liked ? "Unlike" : "Like"} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
       <Ionicons name={liked ? "heart" : "heart-outline"} size={26} color={liked ? LIKE_RED : colors.foreground} />
       {count > 0 && <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "600" }}>{count}</Text>}
     </Pressable>
   );
 }
 
-/** Editing your own words in place — title and body, nothing else. */
+/** The one-time Community Guidelines agreement row, shared by the composer and the comment box. */
+export function GuidelinesAgreement({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  return (
+    <Pressable
+      onPress={() => {
+        hapticSelection();
+        onToggle();
+      }}
+      style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 8 }}
+    >
+      <Ionicons name={checked ? "checkbox" : "square-outline"} size={20} color={checked ? colors.foreground : colors.muted} style={{ marginTop: -1 }} />
+      <Text style={{ color: colors.muted, fontSize: 12, flex: 1, lineHeight: 17 }}>
+        I agree to the{" "}
+        <Text
+          style={{ color: colors.foreground, textDecorationLine: "underline" }}
+          onPress={() => WebBrowser.openBrowserAsync(new URL("/community-guidelines", config.siteUrl).toString())}
+        >
+          Community Guidelines
+        </Text>
+        . Bullying, abuse, or anything unkind isn&apos;t tolerated and will be removed.
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Editing text in place — your own comment, or a post's title and body.
+ * Kept to the words: photos stay exactly as they were.
+ */
 function InlineEditor({
   initialValue,
   initialTitle,
@@ -211,7 +274,8 @@ function InlineEditor({
 }
 
 /**
- * Under a post: a two-comment preview (plus "View all N"), and once the
+ * Under a post: nothing when there are no comments and the box is shut; a
+ * two-comment preview (plus "View all N") when there are; and, once the
  * speech bubble or "View all" is tapped, every comment with the box to write one.
  */
 function CommentsSection({
@@ -221,6 +285,7 @@ function CommentsSection({
   onChange,
   open,
   onOpen,
+  onGuidelinesAccepted,
   onBlocked,
 }: {
   viewer: Viewer;
@@ -229,23 +294,37 @@ function CommentsSection({
   onChange: (update: (prev: Comment[]) => Comment[]) => void;
   open: boolean;
   onOpen: () => void;
+  onGuidelinesAccepted: () => void;
   onBlocked: (authorId: string) => void;
 }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agree, setAgree] = useState(false);
+  // Which comment is open for editing, if any — your own only.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const guidelinesAccepted = viewer.guidelinesAccepted;
 
   async function handleSend() {
     const body = text.trim();
     if (!body) return;
+    if (!guidelinesAccepted && !agree) {
+      hapticWarning();
+      setError("Please agree to the Community Guidelines first.");
+      return;
+    }
     setError(null);
     setSending(true);
     try {
+      if (!guidelinesAccepted) {
+        await acceptGuidelines(viewer.id);
+        onGuidelinesAccepted();
+      }
       const comment = await addComment(viewer, postId, body);
+      hapticSuccess();
+      animateListChange();
       onChange((prev) => [...prev, comment]);
       setText("");
-      hapticSuccess();
     } catch (err) {
       hapticError();
       setError(err instanceof Error ? err.message : "Could not post your comment.");
@@ -256,17 +335,21 @@ function CommentsSection({
 
   function openMenu(c: Comment) {
     showContentMenu({
+      viewer,
       target: { commentId: c.id },
       authorId: c.authorId,
       authorName: c.authorName,
-      isMine: !!c.isMine,
-      canDelete: !!c.canDelete,
+      authorIsTrainer: c.authorIsTrainer,
+      isMine: c.isMine,
+      canDelete: c.canDelete,
       onEdit: () => setEditingId(c.id),
       onDelete: () => {
+        animateListChange();
         onChange((prev) => prev.filter((x) => x.id !== c.id));
         deleteComment(c.id).catch(() => undefined);
       },
       onBlocked: () => {
+        animateListChange();
         onChange((prev) => prev.filter((x) => x.authorId !== c.authorId));
         onBlocked(c.authorId);
       },
@@ -283,12 +366,19 @@ function CommentsSection({
       {shown.map((c) => (
         <Pressable key={c.id} onLongPress={() => openMenu(c)} delayLongPress={350} style={{ flexDirection: "row", gap: 8 }}>
           <AvatarCircle name={c.authorName} avatarUrl={c.authorAvatarUrl} size={28} />
-          <View style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, ...GLASS_BORDER, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8 }}>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600", flex: 1 }}>
-                {c.authorName}
-                {c.edited && <Text style={{ color: colors.muted, fontWeight: "400" }}>  edited</Text>}
-              </Text>
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 4, minWidth: 0 }}>
+                <Text numberOfLines={1} style={{ color: colors.foreground, fontSize: 13, fontWeight: "600", flexShrink: 1 }}>
+                  {c.authorName}
+                </Text>
+                {c.authorIsTrainer && <VerifiedTick size={13} />}
+                {c.edited && (
+                  <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 13, flexShrink: 1 }}>
+                    {" edited"}
+                  </Text>
+                )}
+              </View>
               <Pressable onPress={() => openMenu(c)} hitSlop={10} accessibilityLabel="Comment options">
                 <Ionicons name="ellipsis-horizontal" size={15} color={colors.muted} />
               </Pressable>
@@ -320,6 +410,9 @@ function CommentsSection({
       {open && (
         <>
           {error && <Text style={{ color: colors.danger, fontSize: 12 }}>{error}</Text>}
+
+          {!guidelinesAccepted && <GuidelinesAgreement checked={agree} onToggle={() => setAgree((v) => !v)} />}
+
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TextInput
               value={text}
@@ -330,13 +423,13 @@ function CommentsSection({
               style={{
                 flex: 1,
                 borderWidth: 1,
-                ...GLASS_BORDER,
+                borderColor: colors.border,
                 borderRadius: 999,
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 color: colors.foreground,
                 fontSize: 13,
-                backgroundColor: colors.surface,
+                backgroundColor: colors.background,
               }}
             />
             <Pressable
@@ -359,17 +452,24 @@ export function PostCard({
   viewer,
   post,
   onDeleted,
+  onPinnedChange,
   onAuthorBlocked,
+  onGuidelinesAccepted,
 }: {
   viewer: Viewer;
   post: Post;
   onDeleted: (postId: string) => void;
+  onPinnedChange: (postId: string, pinned: boolean) => void;
+  /** Blocking hides every post by that author straight away; the database keeps them hidden after that. */
   onAuthorBlocked: (authorId: string) => void;
+  onGuidelinesAccepted: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Editing your own words in place — title and body, nothing else.
   const [editingPost, setEditingPost] = useState(false);
   const [text, setText] = useState({ title: post.title ?? "", body: post.body });
+  // Comments live here so the count beside the speech bubble stays right.
   const [comments, setComments] = useState(post.comments);
   const [commentsOpen, setCommentsOpen] = useState(false);
 
@@ -378,12 +478,25 @@ export function PostCard({
 
   function openMenu() {
     showContentMenu({
+      viewer,
       target: { postId: post.id },
       authorId: post.authorId,
       authorName: post.authorName,
-      isMine: !!post.isMine,
-      canDelete: !!post.canDelete,
+      authorIsTrainer: post.authorIsTrainer,
+      isMine: post.isMine,
+      canDelete: post.canDelete,
+      pinned: post.pinned,
       onEdit: () => setEditingPost(true),
+      onTogglePin: async () => {
+        try {
+          await setPinned(post.id, !post.pinned);
+          hapticSuccess();
+          onPinnedChange(post.id, !post.pinned);
+        } catch (err) {
+          hapticError();
+          Alert.alert("Couldn't change the pin", err instanceof Error ? err.message : "Please try again.");
+        }
+      },
       onDelete: async () => {
         setDeleting(true);
         try {
@@ -409,21 +522,27 @@ export function PostCard({
 
   return (
     // Edge to edge, Instagram-style: the post owns the full width and pads
-    // its own text, so photos run right to the screen edges.
+    // its own text, so photos and video run right to the screen edges.
     <View style={{ borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: 14, paddingBottom: 6 }}>
       <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingHorizontal: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
           <AvatarCircle name={post.authorName} avatarUrl={post.authorAvatarUrl} size={38} />
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "600" }}>{post.authorName}</Text>
-              {post.authorIsTrainer && <Tag label="Official" solid />}
-              {post.pinned && <Tag label="Pinned" />}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 }}>
+                <Text numberOfLines={1} style={{ color: colors.foreground, fontSize: 14, fontWeight: "600", flexShrink: 1 }}>
+                  {post.authorName}
+                </Text>
+                {/* A trainer: the blue official tick, as on Instagram. */}
+                {post.authorIsTrainer && <VerifiedTick size={15} />}
+              </View>
+              {post.pinned && (
+                <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 1.5 }}>
+                  <Text style={{ color: colors.muted, fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>PINNED</Text>
+                </View>
+              )}
             </View>
-            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }}>
-              {postTimeLabel(post.createdAt)}
-              {post.authorDogs?.length ? ` · ${post.authorDogs.map((d) => `${d.name} L${d.level}`).join(" · ")}` : ""}
-            </Text>
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 1 }}>{post.createdAtLabel}</Text>
           </View>
         </View>
         <Pressable onPress={openMenu} hitSlop={8} style={{ padding: 4 }} accessibilityLabel="Post options">
@@ -455,7 +574,13 @@ export function PostCard({
             <View style={{ marginTop: text.title ? 4 : 12, paddingHorizontal: 16 }}>
               <Text style={{ color: colors.foreground, fontSize: 14, lineHeight: 20 }}>{shownBody}</Text>
               {isLong && (
-                <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={6}>
+                <Pressable
+                  onPress={() => {
+                    animateListChange();
+                    setExpanded((v) => !v);
+                  }}
+                  hitSlop={6}
+                >
                   <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600", marginTop: 4 }}>{expanded ? "See Less" : "See More"}</Text>
                 </Pressable>
               )}
@@ -464,13 +589,19 @@ export function PostCard({
         </>
       )}
 
-      <MediaGrid media={post.media} />
+      <MediaGrid
+        media={post.media}
+        caption={{ title: post.authorName, subtitle: post.createdAtLabel, body: [text.title, text.body].filter(Boolean).join("\n") }}
+      />
 
       {/* Heart, then the speech bubble that opens (or closes) the comment box. */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 18, marginTop: 12, paddingHorizontal: 16 }}>
-        <LikeButton postId={post.id} likeCount={post.likeCount} likedByMe={post.likedByMe} />
+        <LikeButton viewer={viewer} postId={post.id} likeCount={post.likeCount} likedByMe={post.likedByMe} />
         <Pressable
-          onPress={() => setCommentsOpen((v) => !v)}
+          onPress={() => {
+            animateListChange();
+            setCommentsOpen((v) => !v);
+          }}
           hitSlop={8}
           accessibilityLabel={commentsOpen ? "Hide comments" : "Comment"}
           style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
@@ -487,7 +618,11 @@ export function PostCard({
           comments={comments}
           onChange={setComments}
           open={commentsOpen}
-          onOpen={() => setCommentsOpen(true)}
+          onOpen={() => {
+            animateListChange();
+            setCommentsOpen(true);
+          }}
+          onGuidelinesAccepted={onGuidelinesAccepted}
           onBlocked={onAuthorBlocked}
         />
       </View>

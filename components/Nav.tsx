@@ -52,7 +52,7 @@ export function Nav() {
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
         scrolled || open
-          ? "bg-ink/90 backdrop-blur-md border-b border-white/10"
+          ? "bg-ink/90 backdrop-blur-md"
           : "bg-gradient-to-b from-black/60 to-transparent"
       }`}
     >
@@ -177,7 +177,7 @@ export function Nav() {
             {/* Sign in / log out — a pill so it stands out from the links. */}
             <div className="mx-auto max-w-6xl px-4 pb-6 pt-2 sm:px-6">
               {session ? (
-                <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
+                <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.04] p-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10">
                       {accountAvatar(session) ? (
@@ -203,7 +203,7 @@ export function Nav() {
                   <button
                     type="button"
                     onClick={logout}
-                    className="inline-flex h-10 shrink-0 items-center rounded-full border border-white/20 px-4 text-sm font-semibold text-paper transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="inline-flex h-10 shrink-0 items-center glass rounded-full px-4 text-sm font-semibold text-paper transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     Log out
                   </button>

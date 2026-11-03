@@ -19,13 +19,13 @@ export function Faq() {
     });
 
   return (
-    <section id="faq" className="bg-ink py-20 sm:py-28">
+    <section id="faq" className="bg-ink py-20 sm:py-32">
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
         <h2 className="sr-only">
           {faq.heading}
         </h2>
 
-        <div className="mt-10 overflow-hidden rounded-3xl bg-white/[0.04] ring-1 ring-white/5">
+        <div className="mt-10 flex flex-col gap-3">
           {faq.items.map((item, i) => {
             const isOpen = open.has(i);
             const panelId = `faq-panel-${i}`;
@@ -33,7 +33,7 @@ export function Faq() {
             return (
               <div
                 key={item.q}
-                className={i > 0 ? "border-t border-white/10" : undefined}
+                className="overflow-hidden rounded-3xl bg-white/[0.04]"
               >
                 <h3>
                   <button

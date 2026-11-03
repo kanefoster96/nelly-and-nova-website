@@ -160,11 +160,19 @@ body {
  */
 @utility glass {
   background-color: rgb(255 255 255 / 0.08);
-  border: 1px solid rgb(255 255 255 / 0.16);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   backdrop-filter: blur(16px) saturate(160%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
   &:hover {
     background-color: rgb(255 255 255 / 0.14);
   }
+}
+
+/*
+ * Text boxes don't stretch: no drag handle in the corner (they grow with
+ * what's typed where needed instead). Unlayered, so it wins over any
+ * `resize-*` utility left on a field.
+ */
+textarea {
+  resize: none;
 }

@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, useRouter, useSegments } from "expo-router";
-import { View } from "react-native";
+import { useEffect, useState } from "react";
+import { Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { FloatingBar, type BarTab } from "@/components/floating-bar";
 import { TopBar } from "@/components/top-bar";
+import { countPendingRequests, countUnpaid } from "@/data/sessions";
 import { FloatingBarProvider } from "@/lib/floating-bar";
 import { colors } from "@/theme";
 
@@ -14,12 +16,12 @@ function TabIcon({ name, focused, color }: { name: IoniconName; focused: boolean
   return <Ionicons name={focused ? name : (`${name}-outline` as IoniconName)} size={24} color={color} />;
 }
 
-type TabKey = "community" | "homework" | "schedule" | "chat" | "registers" | "menu";
+type TabKey = "community" | "dog" | "homework" | "schedule" | "chat" | "registers" | "menu";
 type TabDef = { key: TabKey; label: string; icon: IoniconName };
 
 const MEMBER_TABS: TabDef[] = [
   { key: "community", label: "Community", icon: "home" },
-  { key: "homework", label: "Homework", icon: "school" },
+  { key: "dog", label: "Profile", icon: "paw" },
   { key: "schedule", label: "Schedule", icon: "calendar" },
   { key: "chat", label: "Chat", icon: "chatbubble-ellipses" },
 ];
@@ -36,8 +38,26 @@ const TRAINER_TABS: TabDef[] = [
   { key: "menu", label: "Menu", icon: "grid" },
 ];
 
-/** Every screen in the navigator: each side's bar shows only its own. */
-const ALL_KEYS: TabKey[] = ["community", "homework", "schedule", "registers", "chat", "menu"];
+/**
+ * Every screen in the navigator: each side's bar shows only its own.
+ * Members' Homework is no longer a tab of its own: it opens from the
+ * Profile tab (and from notifications and links), and the bar keeps
+ * Profile lit while it's showing.
+ */
+const ALL_KEYS: TabKey[] = ["community", "dog", "homework", "schedule", "registers", "chat", "menu"];
+const TITLES: Partial<Record<TabKey, string>> = { homework: "Homework" };
+
+/** A count on a tab's icon (the trainer's Menu: requests waiting and unpaid sessions). */
+function Badge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <View
+      style={{ position: "absolute", top: -4, right: -10, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", backgroundColor: colors.warning }}
+    >
+      <Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{count > 99 ? "99+" : count}</Text>
+    </View>
+  );
+}
 
 /**
  * The same shell as the Kanvas app: the floating top buttons (avatar →
@@ -55,12 +75,31 @@ export default function TabsLayout() {
   const TABS = isTrainer ? TRAINER_TABS : MEMBER_TABS;
   const segments = useSegments() as string[];
   // ["(app)", "(tabs)", "schedule"]
-  const activeKey = segments[2] ?? "community";
+  const shownKey = segments[2] ?? "community";
+  const activeKey = !isTrainer && shownKey === "homework" ? "dog" : shownKey;
+
+  // Trainers: requests waiting for them (and unpaid sessions) on Menu, refreshed as they move between tabs.
+  const [menuCount, setMenuCount] = useState(0);
+  useEffect(() => {
+    if (!isTrainer) return;
+    let live = true;
+    Promise.all([countPendingRequests(), countUnpaid()])
+      .then(([a, b]) => live && setMenuCount(a + b))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [isTrainer, shownKey]);
 
   const tabs: BarTab[] = TABS.map((t) => ({
     key: t.key,
     label: t.label,
-    icon: (focused, color) => <TabIcon name={t.icon} focused={focused} color={color} />,
+    icon: (focused, color) => (
+      <View>
+        <TabIcon name={t.icon} focused={focused} color={color} />
+        {t.key === "menu" && <Badge count={menuCount} />}
+      </View>
+    ),
     onPress: () => router.navigate(`/${t.key}`),
   }));
 
@@ -77,7 +116,7 @@ export default function TabsLayout() {
           }}
         >
           {ALL_KEYS.map((key) => (
-            <Tabs.Screen key={key} name={key} options={{ title: [...TRAINER_TABS, ...MEMBER_TABS].find((t) => t.key === key)?.label }} />
+            <Tabs.Screen key={key} name={key} options={{ title: [...TRAINER_TABS, ...MEMBER_TABS].find((t) => t.key === key)?.label ?? TITLES[key] }} />
           ))}
         </Tabs>
         <FloatingBar tabs={tabs} activeKey={activeKey} />

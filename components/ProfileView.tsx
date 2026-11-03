@@ -23,13 +23,11 @@ import {
 import { useUnseenReportCount } from "@/lib/reports/seen";
 import { accountDogProfile } from "@/lib/dogs/account";
 import { AvatarUpload } from "./ui/AvatarUpload";
-import { sampleReportCards } from "@/lib/reports/sample";
-import { useOutboxCards } from "@/lib/reports/outbox";
-import { useHomeworkProgress } from "@/lib/reports/progress";
-import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
+import { useReports } from "@/lib/reports/client";
+import { resetAtFor } from "@/lib/reports/reset";
 import { dogCompletion, monthsAgoISO } from "@/lib/reports/completion";
 import { nextDateForDay, dayIdFromISO, formatSessionDate } from "@/lib/schedule/sessions";
-import { SKILL_PILLARS, pillarProgress, pillarLevel, accountLevel } from "@/config/skills";
+import { pillarProgress, pillarLevel, accountLevel } from "@/config/skills";
 import { useSkills, learntSet } from "@/lib/skills/store";
 import { HolidayReminder } from "./profile/HolidayReminder";
 import { HeatReminder } from "./profile/HeatReminder";
@@ -59,22 +57,19 @@ export function ProfileView({
   const session = useSession();
   const authStatus = useAuthStatus();
   const unseen = useUnseenReportCount(session?.dogId);
-  const outbox = useOutboxCards();
-  const progress = useHomeworkProgress();
-  const resets = useHomeworkResets();
+  const { cards: reportCards, progress, resets } = useReports();
   const skills = useSkills();
   const router = useRouter();
 
   // Homework completion over the past 6 months (shown as a header stat). Cards
   // count from the later of any trainer reset or the 6-month cutoff.
   const homeworkPercent = useMemo(() => {
-    const byId = new Map<string, (typeof sampleReportCards)[number]>();
-    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
     const sixMonthsAgo = monthsAgoISO(todayISO, 6);
     const reset = resetAtFor(resets, session?.dogId);
     const since = [reset, sixMonthsAgo].filter(Boolean).sort().pop();
-    return dogCompletion([...byId.values()], progress, session?.dogId, since).percent;
-  }, [outbox, progress, resets, session?.dogId, todayISO]);
+    const sent = reportCards.filter((c) => c.status !== "draft");
+    return dogCompletion(sent, progress, session?.dogId, since).percent;
+  }, [reportCards, progress, resets, session?.dogId, todayISO]);
 
   function logout() {
     void signOut();
@@ -117,7 +112,7 @@ export function ProfileView({
   // Skill levels: each pillar has its own level; the account level is the
   // rounded-up average of the three (so strong pillars aren't dragged down).
   const learnt = learntSet(skills, session.dogId);
-  const level = accountLevel(learnt);
+  const level = accountLevel(learnt, skills.pillars);
 
   // The active dog's next session date (today if it's their training day).
   // Computed client-side from todayISO so it follows the dog switcher.
@@ -221,7 +216,7 @@ export function ProfileView({
         </h2>
         <div className="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
           <div className="space-y-2.5">
-            {SKILL_PILLARS.map((pillar) => {
+            {skills.pillars.map((pillar) => {
               const { learnt: done, total } = pillarProgress(pillar, learnt);
               return (
                 <PillarStat

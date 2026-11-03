@@ -2,30 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CheckIcon, CheckCircleIcon, CloseIcon } from "@/components/ui/Icons";
-import { sampleReportCards } from "@/lib/reports/sample";
-import { useOutboxCards } from "@/lib/reports/outbox";
-import { useHomeworkOverrides } from "@/lib/reports/homework";
-import {
-  useHomeworkProgress,
-  markHomeworkDay,
-  daysFor,
-  HOMEWORK_TARGET_DAYS,
-} from "@/lib/reports/progress";
-import { useHomeworkResets, resetAtFor } from "@/lib/reports/reset";
+import { useReports, byDateDesc } from "@/lib/reports/client";
+import { markHomeworkDay, daysFor, HOMEWORK_TARGET_DAYS } from "@/lib/reports/progress";
+import { resetAtFor } from "@/lib/reports/reset";
 import { isWindowOpen, windowEnd } from "@/lib/reports/completion";
+import { CARD, PRIMARY, shortDate } from "@/components/reports/styles";
 import type { ReportCard } from "@/lib/reports/types";
-
-const byDateDesc = (a: ReportCard, b: ReportCard) =>
-  a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
-
-/** "12 Aug" from a YYYY-MM-DD date. */
-function shortDay(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
-}
 
 /** Whole days left in the 14-day logging window (0 = last day). */
 function daysToExpiry(cardDateISO: string, todayISO: string): number {
@@ -47,26 +29,23 @@ export function CompleteHomework({
   dogId?: string;
   todayISO: string;
 }) {
-  const outbox = useOutboxCards();
-  const overrides = useHomeworkOverrides();
-  const progress = useHomeworkProgress();
-  const resets = useHomeworkResets();
+  const { cards: all, progress, resets, staff } = useReports();
   const [open, setOpen] = useState(false);
 
+  // Published cards for this dog, still open: not yet done 3 days, inside 14 days.
   const cards = useMemo(() => {
+    if (staff) return [];
     const resetAt = resetAtFor(resets, dogId);
-    const byId = new Map<string, ReportCard>();
-    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
-    return [...byId.values()]
-      .filter((c) => !dogId || !c.dogId || c.dogId === dogId)
+    return all
+      .filter((c) => c.status !== "draft")
+      .filter((c) => !dogId || c.dogId === dogId)
       .filter((c) => !resetAt || c.date >= resetAt)
-      .map((c) => ({ ...c, homework: overrides[c.id] ?? c.homework }))
       .filter((c) => {
         const done = daysFor(progress, c.id).length >= HOMEWORK_TARGET_DAYS;
         return !done && isWindowOpen(c.date, todayISO);
       })
       .sort(byDateDesc);
-  }, [outbox, overrides, progress, resets, dogId, todayISO]);
+  }, [all, progress, resets, dogId, todayISO, staff]);
 
   // How many still need a day logged today (drives the button badge).
   const todo = useMemo(
@@ -174,11 +153,22 @@ function HomeworkItem({
   const days = daysFor(progress, card.id);
   const doneToday = days.includes(todayISO);
   const left = daysToExpiry(card.date, todayISO);
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  async function practised() {
+    setSaving(true);
+    setProblem(await markHomeworkDay(card.id, todayISO, progress));
+    setSaving(false);
+  }
 
   return (
-    <div className="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+    <div className={`${CARD} p-4`}>
       <div className="flex items-start justify-between gap-3">
-        <p className="font-semibold text-paper">{card.focus}</p>
+        <div className="min-w-0">
+          <p className="text-xs text-paper-dim">Report card · {shortDate(card.date)}</p>
+          <p className="mt-0.5 font-semibold text-paper">{card.focus}</p>
+        </div>
         <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper-dim">
           {left === 0 ? "last day" : `${left} day${left === 1 ? "" : "s"} left`}
         </span>
@@ -202,39 +192,40 @@ function HomeworkItem({
       </div>
 
       {/* Day progress — 3 separate days, one per calendar day. */}
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {Array.from({ length: HOMEWORK_TARGET_DAYS }, (_, i) => {
-          const date = days[i];
-          return (
-            <div
-              key={i}
-              className={`rounded-lg px-2 py-1.5 text-center ${
-                date ? "bg-accent/15 text-accent" : "bg-white/[0.04] text-paper-dim"
-              }`}
-            >
-              <span className="flex items-center justify-center gap-1 text-xs font-semibold">
-                {date && <CheckIcon width={12} height={12} />} Day {i + 1}
-              </span>
-              <span className="mt-0.5 block text-[11px]">{date ? shortDay(date) : "—"}</span>
-            </div>
-          );
-        })}
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <span className="text-paper">Days practised</span>
+        <span className="text-paper-dim">
+          {days.length} of {HOMEWORK_TARGET_DAYS}
+        </span>
+      </div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.round((days.length / HOMEWORK_TARGET_DAYS) * 100)}%` }} />
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
+        {Array.from({ length: HOMEWORK_TARGET_DAYS }, (_, i) => (
+          <span
+            key={i}
+            className={`rounded-full px-2.5 py-1 ${
+              days[i] ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border border-white/10 text-paper-dim"
+            }`}
+          >
+            {days[i] ? `✓ ${shortDate(days[i])}` : `Day ${i + 1}`}
+          </span>
+        ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => markHomeworkDay(card.id, todayISO)}
-        disabled={doneToday}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90 disabled:cursor-default disabled:bg-white/10 disabled:text-paper-dim"
-      >
+      <button type="button" onClick={practised} disabled={doneToday || saving} className={`${PRIMARY} mt-3 w-full`}>
         {doneToday ? (
-          "Done for today ✓"
+          "Practised today ✓"
+        ) : saving ? (
+          "Saving…"
         ) : (
           <>
-            <CheckIcon width={16} height={16} /> Mark today&apos;s day done
+            <CheckIcon width={16} height={16} /> I practised today
           </>
         )}
       </button>
+      {problem && <p className="mt-2 text-sm text-red-300">{problem}</p>}
     </div>
   );
 }

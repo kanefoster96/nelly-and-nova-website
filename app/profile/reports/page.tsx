@@ -3,36 +3,31 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ReportCards } from "@/components/ReportCards";
-import { getReportCards } from "@/lib/reports/data";
+import { EYEBROW, TITLE, INTRO, BACK } from "@/components/reports/styles";
 
 export const metadata: Metadata = {
   title: "Report cards",
   robots: { index: false, follow: false },
 };
 
-export default async function ReportCardsPage() {
-  const cards = await getReportCards();
+export default function ReportCardsPage() {
   return (
     <>
       <Nav />
       <main id="main" className="flex-1">
         <section className="bg-ink pb-24 pt-28 sm:pt-32">
           <div className="mx-auto max-w-md px-4 sm:px-6">
-            <Link
-              href="/profile"
-              className="text-sm text-paper-dim underline underline-offset-2 hover:text-accent"
-            >
+            <Link href="/profile" className={BACK}>
               ← Back to profile
             </Link>
-            <h1 className="display-heading mt-4 text-3xl text-paper sm:text-4xl">
-              Report cards
-            </h1>
-            <p className="mt-3 text-paper/75">
-              After each session, here&apos;s what your dog worked on and their
-              homework. Tick homework off as you go, and ask us anything.
+            <p className={`mt-6 ${EYEBROW}`}>Training</p>
+            <h1 className={TITLE}>Report cards</h1>
+            <p className={INTRO}>
+              After each session, here&apos;s what your dog worked on and their homework. Practise it on 3
+              separate days, and ask us anything.
             </p>
             <div className="mt-8">
-              <ReportCards initial={cards} />
+              <ReportCards />
             </div>
           </div>
         </section>

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from "react";
+import { AppState } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
-import { getNotifications, markNotificationsRead, type Notification } from "@/data/notifications";
+import { getNotifications, markNotificationsRead, subscribeToNotifications, type Notification } from "@/data/notifications";
 
 type State = {
   notifications: Notification[] | null;
@@ -13,26 +14,47 @@ type State = {
 
 const Ctx = createContext<State>({ notifications: null, unread: 0, reload: async () => {}, markAllRead: () => {} });
 
-/** Notifications + the unread count the top bar's bell shows. */
+/**
+ * Your notifications (the `notifications` table) and the unread count the
+ * top bar's bell shows: live over Realtime as one arrives, and again each
+ * time the app comes back to the front.
+ */
 export function NotificationsProvider({ children }: PropsWithChildren) {
-  const { session, isTrainer } = useAuth();
+  const { session } = useAuth();
+  const userId = session?.user.id ?? null;
   const [notifications, setNotifications] = useState<Notification[] | null>(null);
 
   const reload = useCallback(async () => {
-    if (!session) return setNotifications(null);
-    setNotifications(await getNotifications(isTrainer));
-  }, [session, isTrainer]);
+    if (!userId) {
+      setNotifications(null);
+      return;
+    }
+    try {
+      setNotifications(await getNotifications());
+    } catch {
+      setNotifications((prev) => prev ?? []);
+    }
+  }, [userId]);
 
   useEffect(() => {
     reload();
-  }, [reload]);
+    if (!userId) return;
+    const unsubscribe = subscribeToNotifications(userId, () => void reload());
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") void reload();
+    });
+    return () => {
+      unsubscribe();
+      appState.remove();
+    };
+  }, [reload, userId]);
 
   const markAllRead = useCallback(() => {
     setNotifications((prev) => {
       if (!prev) return prev;
       const unreadIds = prev.filter((n) => !n.readAt).map((n) => n.id);
       if (unreadIds.length === 0) return prev;
-      markNotificationsRead(unreadIds);
+      markNotificationsRead(unreadIds).catch(() => {});
       const now = new Date().toISOString();
       return prev.map((n) => (n.readAt ? n : { ...n, readAt: now }));
     });

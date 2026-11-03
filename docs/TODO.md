@@ -6,9 +6,9 @@ Last updated 3 November 2026. Tick things off as they're done.
 
 - [ ] **Supabase secret key → Vercel** (needed for the app's log in, the
       register reminders and creating accounts): Supabase → Project Settings
-      → API Keys → copy the **secret** (service_role) key and send it to
-      Claude, who'll add it to Vercel as `SUPABASE_SERVICE_ROLE_KEY`
-      (Production only)
+      → API Keys → Secret keys → copy the `sb_secret_…` key and add it in
+      Vercel yourself as `SUPABASE_SERVICE_ROLE_KEY` (Production only,
+      Sensitive), then tell Claude so it can redeploy
 - [ ] **Apple Team ID** (developer.apple.com → Membership details, 10
       letters/numbers) → send to Claude, so the "Set up my account" email
       button opens the app directly (`APPLE_TEAM_ID` on Vercel)
@@ -55,6 +55,11 @@ Last updated 3 November 2026. Tick things off as they're done.
       the Resend DNS records to the new host so email keeps working
 
 ## Ask Claude to do (needs your go-ahead)
+
+- [ ] **Before early 2027: swap the Supabase public key** — Supabase is
+      retiring the legacy anon key. Replace `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+      (Vercel, all environments) and the app's key with the
+      `sb_publishable_…` key, then redeploy the site and publish an app update
 
 - [ ] **Put today's work live**: open a pull request for the
       `claude/awesome-pasteur-m8jeyo` branch and merge it. The live site is

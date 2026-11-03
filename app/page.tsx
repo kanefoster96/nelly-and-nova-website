@@ -9,7 +9,6 @@ import { Footer } from "@/components/Footer";
 import { HomeGate } from "@/components/HomeGate";
 import { getWeekSchedule } from "@/lib/schedule/data";
 import { getGoogleReviews } from "@/lib/reviews/google";
-import { sampleCommunityPosts } from "@/lib/community/sample";
 
 export default async function Home() {
   // Dogs with a scheduled slot — a logged-in member whose dog is on the roster
@@ -20,7 +19,7 @@ export default async function Home() {
   return (
     <>
       <Nav />
-      <HomeGate scheduledDogIds={scheduledDogIds} posts={sampleCommunityPosts}>
+      <HomeGate scheduledDogIds={scheduledDogIds}>
         <main id="main" className="flex-1">
           <Hero />
           <WeUnderstand />

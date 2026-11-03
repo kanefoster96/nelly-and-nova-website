@@ -5,10 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { CloseIcon } from "@/components/ui/Icons";
 import { saveDetails, useDogDetails } from "@/lib/dogs/details";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { sampleReportCards } from "@/lib/reports/sample";
-import { useOutboxCards } from "@/lib/reports/outbox";
-import { useHomeworkProgress } from "@/lib/reports/progress";
-import { useHomeworkResets, resetAtFor, resetDogHomework } from "@/lib/reports/reset";
+import { useReports } from "@/lib/reports/client";
+import { resetAtFor, resetDogHomework } from "@/lib/reports/reset";
 import { dogCompletion } from "@/lib/reports/completion";
 
 export type DogRow = {
@@ -43,15 +41,9 @@ export function DogsList({ dogs }: { dogs: DogRow[] }) {
   const editing = rows.find((r) => r.id === editId) ?? null;
 
   // Homework completion per dog, for the "reset to 100%" control.
-  const outbox = useOutboxCards();
-  const progress = useHomeworkProgress();
-  const resets = useHomeworkResets();
+  const { cards: allCards, progress, resets } = useReports();
   const { confirm, dialog } = useConfirm();
-  const cards = useMemo(() => {
-    const byId = new Map<string, (typeof sampleReportCards)[number]>();
-    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
-    return [...byId.values()];
-  }, [outbox]);
+  const cards = useMemo(() => allCards.filter((c) => c.status !== "draft"), [allCards]);
 
   async function resetHomework(d: Editable, percent: number) {
     const ok = await confirm({
@@ -65,7 +57,7 @@ export function DogsList({ dogs }: { dogs: DogRow[] }) {
       ),
       confirmLabel: "Reset to 100%",
     });
-    if (ok) resetDogHomework(d.id);
+    if (ok) resetDogHomework(d.id).catch((err) => window.alert(err instanceof Error ? err.message : "Couldn't reset."));
   }
 
   return (
@@ -192,7 +184,7 @@ function EditDogModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Anything the team should know…"
-              className={`${input} resize-y`}
+              className={`${input} resize-none`}
             />
           </Labeled>
         </div>

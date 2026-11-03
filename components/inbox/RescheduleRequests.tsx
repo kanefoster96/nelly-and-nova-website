@@ -1,322 +1,419 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CloseIcon, CheckIcon, MailIcon, MessageIcon } from "@/components/ui/Icons";
-import { useReschedules, decide, suggest } from "@/lib/reschedule/store";
-import { applyOverrides, useScheduleOverrides } from "@/lib/schedule/allocations";
-import { formatSessionDate, dateForDayInWeek, spaceOnDate } from "@/lib/schedule/sessions";
-import { dayLabel } from "@/lib/schedule/types";
-import { extraSessionPrice, money } from "@/lib/payments/pricing";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { formatTime } from "@/lib/inbox/format";
-import type { DayId, DaySchedule } from "@/lib/schedule/types";
-import type { RescheduleRequest } from "@/lib/reschedule/types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckIcon, CloseIcon } from "@/components/ui/Icons";
+import {
+  DAY_CAPACITY,
+  chargeSession,
+  dayCounts,
+  decideRequest,
+  hasMembership,
+  isRegularKind,
+  listRequests,
+  listUnpaid,
+  moveSession,
+  requestDetail,
+  requestTitle,
+  setPaymentStatus,
+  shortDay,
+  type SessionRequest,
+  type UnpaidSession,
+} from "@/lib/sessions/client";
+import { defaultSessionPrice, priceHint } from "@/lib/sessions/prices";
+import type { DaySchedule } from "@/lib/schedule/types";
+
+const BTN = "inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold disabled:opacity-50";
+const PRIMARY = `${BTN} bg-accent text-accent-ink`;
+const OUTLINE = `${BTN} border border-white/20 text-paper hover:border-white/40`;
+const QUIET = `${BTN} border border-white/10 text-paper/70 hover:text-paper`;
+const INPUT =
+  "rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none";
+
+const STATUS_STYLE: Record<string, string> = {
+  pending: "bg-accent/20 text-accent",
+  offered: "bg-amber-400/15 text-amber-300",
+  confirmed: "bg-emerald-400/15 text-emerald-300",
+  declined: "bg-white/10 text-paper-dim",
+  withdrawn: "bg-white/10 text-paper-dim",
+};
+
+function londonToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" });
+}
+function addDays(iso: string, n: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function isWeekday(iso: string): boolean {
+  const d = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return d >= 1 && d <= 5;
+}
 
 /**
- * Admin queue of member reschedule requests. Open one to approve (optionally
- * moving it to a different day first), reject, or message the member. Approval
- * is guarded against the strict 6-space limit using live occupancy.
+ * Trainers: owners' session requests, live from session_requests: a
+ * replacement for a cancelled day, an extra Full Day or a 1-1, a new
+ * regular day, or a switch. Accept books it; Suggest offers 1–3 other
+ * dates for the owner to pick; Decline (with an optional note). A
+ * confirmed one-off can be moved afterwards. Under them, sessions still to
+ * be paid: Charge by Direct Debit (the amount is editable), Mark paid or
+ * Waive. The owner hears about every decision (app push, notification
+ * and a line in their chat). Used on /admin/requests and the trainer's
+ * Messages. `week` is no longer needed (the day counts come from the
+ * database) and is ignored.
  */
-export function RescheduleRequests({ week }: { week: DaySchedule[] }) {
-  const all = useReschedules();
-  const overrides = useScheduleOverrides();
-  const merged = useMemo(() => applyOverrides(week, overrides), [week, overrides]);
-  const pending = all.filter((r) => r.status === "pending");
-  const decided = all.filter((r) => r.status !== "pending").slice(0, 5);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const open = all.find((r) => r.id === openId) ?? null;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function RescheduleRequests(_props: { week?: DaySchedule[] } = {}) {
+  const [requests, setRequests] = useState<SessionRequest[] | null>(null);
+  const [unpaid, setUnpaid] = useState<UnpaidSession[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
 
-  if (all.length === 0) {
-    return <p className="text-sm text-paper-dim">No reschedule requests.</p>;
+  // Bumped after each decision to load again.
+  const [version, setVersion] = useState(0);
+  const load = useCallback(() => setVersion((v) => v + 1), []);
+
+  useEffect(() => {
+    let live = true;
+    const today = londonToday();
+    Promise.all([listRequests(), listUnpaid(), dayCounts(today, addDays(today, 120))])
+      .then(([r, u, c]) => {
+        if (!live) return;
+        setError(null);
+        setRequests(r);
+        setUnpaid(u);
+        setCounts(c);
+      })
+      .catch((err: unknown) => live && setError(err instanceof Error ? err.message : "Couldn't load the requests."));
+    return () => {
+      live = false;
+    };
+  }, [version]);
+
+  const open = useMemo(() => (requests ?? []).filter((r) => r.status === "pending" || r.status === "offered"), [requests]);
+  const recent = useMemo(() => (requests ?? []).filter((r) => r.status !== "pending" && r.status !== "offered").slice(0, 12), [requests]);
+
+  if (!requests) {
+    return <p className="text-sm text-paper-dim">{error ?? "Loading requests…"}</p>;
   }
 
-  return (
-    <div className="space-y-4">
-      {pending.length > 0 && (
-        <ul className="space-y-2">
-          {pending.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                onClick={() => setOpenId(r.id)}
-                className="w-full rounded-2xl bg-white/[0.04] p-4 text-left ring-1 ring-white/10 transition-colors hover:ring-accent/50"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />
-                      <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-paper/80">
-                        {r.kind === "extra" ? "extra session" : "reschedule"}
-                      </span>
-                    </div>
-                    <p className="mt-2 font-semibold text-paper">
-                      {r.dogName} · {r.ownerName}
-                    </p>
-                    <p className="mt-0.5 truncate text-sm text-paper/70">
-                      {r.kind === "extra"
-                        ? `${r.service} · ${formatSessionDate(r.toDate)}`
-                        : `${formatSessionDate(r.sessionDate)} → ${formatSessionDate(r.toDate)}`}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-paper-dim">{formatTime(r.createdAt)}</span>
-                </div>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+  const after = (message: string) => {
+    setDone(message);
+    load();
+  };
 
-      {decided.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-paper-dim">Recent</p>
-          <ul className="space-y-1.5">
-            {decided.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.02] px-4 py-2.5 text-sm"
-              >
-                <span className="truncate text-paper/80">
-                  {r.dogName} · {formatSessionDate(r.sessionDate)} → {formatSessionDate(r.toDate)}
-                </span>
-                <span
-                  className={`shrink-0 text-xs font-medium ${r.status === "approved" ? "text-emerald-300" : "text-paper-dim"}`}
-                >
-                  {r.status}
-                </span>
+  return (
+    <div className="space-y-6">
+      {error && <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">{error}</p>}
+      {done && <p className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">{done}</p>}
+
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-paper-dim">
+          Waiting for you {open.length > 0 && <span className="ml-1 rounded-full bg-accent px-2 py-0.5 text-[11px] text-accent-ink">{open.length}</span>}
+        </h2>
+        {open.length === 0 ? (
+          <p className="text-sm text-paper-dim">No requests waiting.</p>
+        ) : (
+          <ul className="space-y-3">
+            {open.map((r) => (
+              <li key={r.id}>
+                <OpenRequest request={r} counts={counts} onDone={after} onError={setError} />
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </section>
 
-      {open && (
-        <Detail request={open} merged={merged} all={all} onClose={() => setOpenId(null)} />
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-paper-dim">
+          Unpaid sessions {unpaid.length > 0 && <span className="ml-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] text-amber-300">{unpaid.length}</span>}
+        </h2>
+        {unpaid.length === 0 ? (
+          <p className="text-sm text-paper-dim">Nothing to collect.</p>
+        ) : (
+          <ul className="space-y-2">
+            {unpaid.map((s) => (
+              <li key={s.id}>
+                <UnpaidRow session={s} onDone={after} onError={setError} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {recent.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-paper-dim">Recent</h2>
+          <ul className="space-y-1.5">
+            {recent.map((r) => (
+              <li key={r.id}>
+                <RecentRequest request={r} onDone={after} onError={setError} />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
 }
 
-function Detail({
-  request,
-  merged,
-  all,
-  onClose,
+function CountBadge({ date, counts }: { date: string | null; counts: Record<string, number> }) {
+  if (!date || counts[date] === undefined) return null;
+  const n = counts[date];
+  const tone = n >= DAY_CAPACITY ? "text-red-300" : n === DAY_CAPACITY - 1 ? "text-amber-300" : "text-emerald-300";
+  return (
+    <span className={`text-xs font-semibold ${tone}`}>
+      {n}/{DAY_CAPACITY}
+    </span>
+  );
+}
+
+function OpenRequest({
+  request: r,
+  counts,
+  onDone,
+  onError,
 }: {
-  request: RescheduleRequest;
-  merged: DaySchedule[];
-  all: RescheduleRequest[];
-  onClose: () => void;
+  request: SessionRequest;
+  counts: Record<string, number>;
+  onDone: (m: string) => void;
+  onError: (m: string) => void;
 }) {
-  const [toDay, setToDay] = useState<DayId>(request.toDay);
-  const [note, setNote] = useState<string | null>(null);
-  const { confirm, dialog } = useConfirm();
-  const decidedAlready = request.status !== "pending";
-  // The date the target day maps to — same week as the (session or requested) date.
-  const baseDate = request.kind === "extra" ? request.toDate : request.sessionDate;
-  const targetDate = () => dateForDayInWeek(baseDate, toDay);
-  // Live space excluding this request's own reservation, so it never blocks itself.
-  const others = all.filter((r) => r.id !== request.id);
-  const options = merged
-    .filter((d) => d.capacity > 0 && d.day !== request.fromDay)
-    .map((d) => ({
-      day: d.day,
-      label: dayLabel(d.day),
-      spaces: spaceOnDate(dateForDayInWeek(baseDate, d.day), merged, others, true),
-    }));
-  const targetSpace = spaceOnDate(targetDate(), merged, others, true);
-  const mailto = request.email
-    ? `mailto:${request.email}?subject=${encodeURIComponent("Your reschedule request — Nelly & Nova")}`
-    : null;
+  const [mode, setMode] = useState<"idle" | "suggest" | "decline">("idle");
+  const [dates, setDates] = useState<string[]>(["", "", ""]);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const min = addDays(londonToday(), 1);
 
-  const extraPrice = request.kind === "extra" ? extraSessionPrice(request.service ?? "") : 0;
-
-  async function approve() {
-    if (targetSpace <= 0) {
-      setNote(`${dayLabel(toDay)} is full — choose another day.`);
-      return;
+  async function run(decision: "accept" | "suggest" | "decline") {
+    const picked = dates.filter(Boolean);
+    if (decision === "suggest") {
+      if (picked.length === 0) return onError("Pick at least one date to suggest.");
+      if (picked.some((d) => !isWeekday(d))) return onError("Suggest weekdays only (Monday to Friday).");
     }
-    const ok = await confirm({
-      title: request.kind === "extra" ? "Approve & charge?" : "Approve this change?",
-      message:
-        request.kind === "extra" ? (
+    setBusy(true);
+    try {
+      await decideRequest(r.id, decision, decision === "suggest" ? picked : [], note.trim());
+      onDone(
+        decision === "accept"
+          ? `Confirmed ${r.dogName}'s ${requestTitle(r).toLowerCase()}. ${r.ownerName ?? "The owner"} has been told.`
+          : decision === "suggest"
+            ? `Offered ${picked.map(shortDay).join(", ")} to ${r.ownerName ?? "the owner"}.`
+            : `Declined. ${r.ownerName ?? "The owner"} has been told.`
+      );
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "That didn't go through.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const date = r.requestedDate;
+  return (
+    <div className="rounded-2xl bg-white/[0.04] p-4 ring-1 ring-white/10">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${STATUS_STYLE[r.status]}`}>{r.status}</span>
+            <span className="text-xs text-paper-dim">{requestTitle(r)}</span>
+          </div>
+          <p className="mt-2 font-semibold text-paper">
+            {r.dogName} · {r.ownerName ?? "Owner"}
+          </p>
+          <p className="mt-0.5 text-sm text-paper/80">
+            {requestDetail(r)} {!isRegularKind(r.kind) && r.service === "full_day" && <CountBadge date={date} counts={counts} />}
+          </p>
+          {r.note && <p className="mt-1 whitespace-pre-wrap text-sm text-paper-dim">&ldquo;{r.note}&rdquo;</p>}
+          {r.status === "offered" && <p className="mt-1 text-xs text-amber-300">Offered {r.offeredDates.map(shortDay).join(", ")} · waiting for the owner</p>}
+        </div>
+        <span className="shrink-0 text-xs text-paper-dim">{shortDay(r.createdAt)}</span>
+      </div>
+
+      {mode === "suggest" && (
+        <div className="mt-3 grid gap-2">
+          <p className="text-xs text-paper-dim">
+            Offer up to three {isRegularKind(r.kind) ? "start dates (their weekday becomes the regular day)" : "dates"}. The owner taps one to book it.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {dates.map((d, i) => (
+              <span key={i} className="flex items-center gap-1">
+                <input
+                  type="date"
+                  min={min}
+                  value={d}
+                  onChange={(e) => setDates((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                  className={INPUT}
+                />
+                <CountBadge date={d || null} counts={counts} />
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {mode !== "idle" && (
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={mode === "decline" ? "Reason (optional)" : "Note for the owner (optional)"}
+          className={`${INPUT} mt-2 w-full`}
+        />
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {mode === "idle" ? (
           <>
-            Book {request.dogName}&apos;s extra {request.service} on{" "}
-            <b className="text-paper">{formatSessionDate(targetDate())}</b>.
+            {r.status === "pending" && (
+              <button type="button" disabled={busy} onClick={() => run("accept")} className={PRIMARY}>
+                <CheckIcon width={16} height={16} /> Accept
+              </button>
+            )}
+            <button type="button" disabled={busy} onClick={() => setMode("suggest")} className={OUTLINE}>
+              Suggest
+            </button>
+            <button type="button" disabled={busy} onClick={() => setMode("decline")} className={QUIET}>
+              Decline
+            </button>
           </>
         ) : (
           <>
-            Move {request.dogName}&apos;s session to{" "}
-            <b className="text-paper">{formatSessionDate(targetDate())}</b>.
+            <button type="button" disabled={busy} onClick={() => run(mode)} className={PRIMARY}>
+              {busy ? "Saving…" : mode === "suggest" ? "Send suggestions" : "Decline request"}
+            </button>
+            <button type="button" disabled={busy} onClick={() => setMode("idle")} className={QUIET}>
+              <CloseIcon width={14} height={14} /> Back
+            </button>
           </>
-        ),
-      amount: extraPrice ? money(extraPrice) : undefined,
-      amountNote: extraPrice ? `Charged to ${request.ownerName} via GoCardless` : undefined,
-      confirmLabel: request.kind === "extra" ? "Approve & charge" : "Approve",
-    });
-    if (!ok) return;
-    decide(request.id, "approved", { toDay, toDate: targetDate() });
-    onClose();
-  }
-  async function reject() {
-    const ok = await confirm({
-      title: "Reject this request?",
-      message: <>This declines {request.dogName}&apos;s request. You can message them why.</>,
-      danger: true,
-      confirmLabel: "Reject",
-    });
-    if (ok) {
-      decide(request.id, "rejected");
-      onClose();
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecentRequest({ request: r, onDone, onError }: { request: SessionRequest; onDone: (m: string) => void; onError: (m: string) => void }) {
+  const [moving, setMoving] = useState(false);
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const canMove = r.status === "confirmed" && !!r.resultBookingId && !!r.confirmedDate && r.confirmedDate >= londonToday();
+
+  async function move() {
+    if (!to || !isWeekday(to)) return onError("Pick a weekday to move it to.");
+    setBusy(true);
+    try {
+      await moveSession({ dogId: r.dogId, from: r.confirmedDate!, to, bookingId: r.resultBookingId });
+      setMoving(false);
+      onDone(`Moved ${r.dogName}'s session to ${shortDay(to)}. ${r.ownerName ?? "The owner"} has been told.`);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Couldn't move it.");
+    } finally {
+      setBusy(false);
     }
-  }
-  function suggestDate() {
-    suggest(request.id, toDay, targetDate());
-    onClose();
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-3xl bg-ink ring-1 ring-white/15 sm:rounded-3xl"
-      >
-        <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
-          <div>
-            <span className="inline-block rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-paper/80">
-              {request.kind === "extra" ? "extra session" : "reschedule"}
-              {decidedAlready ? ` · ${request.status}` : ""}
-            </span>
-            <h2 className="mt-2 text-lg font-bold text-paper">
-              {request.dogName} · {request.ownerName}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-paper/70 hover:bg-white/10 hover:text-paper"
-          >
-            <CloseIcon width={20} height={20} />
-          </button>
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-          <div className="rounded-xl bg-white/[0.03] p-4 text-sm">
-            {request.kind === "extra" ? (
-              <>
-                <p className="text-paper-dim">Extra session</p>
-                <p className="mt-0.5 font-semibold text-paper">{request.service}</p>
-                <p className="mt-2 text-paper-dim">Requested date</p>
-                <p className="mt-0.5 font-semibold text-paper">{formatSessionDate(request.toDate)}</p>
-              </>
-            ) : (
-              <>
-                <p className="text-paper-dim">Moving this session</p>
-                <p className="mt-0.5 font-semibold text-paper">{formatSessionDate(request.sessionDate)}</p>
-                <p className="mt-2 text-paper-dim">Requested day</p>
-                <p className="mt-0.5 font-semibold text-paper">{formatSessionDate(request.toDate)}</p>
-              </>
-            )}
-            {request.note && (
-              <>
-                <p className="mt-2 text-paper-dim">Reason</p>
-                <p className="mt-0.5 whitespace-pre-wrap text-paper">{request.note}</p>
-              </>
-            )}
-          </div>
-
-          {!decidedAlready && (
-            <div className="mt-4">
-              <p className="mb-2 text-sm font-medium text-paper/90">
-                Approve on this day, or suggest another
-              </p>
-              <div className="grid gap-2">
-                {options.map((a) => {
-                  const full = a.spaces <= 0;
-                  const selected = toDay === a.day;
-                  return (
-                    <button
-                      key={a.day}
-                      type="button"
-                      disabled={full}
-                      onClick={() => setToDay(a.day)}
-                      className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-left text-sm transition-colors ${
-                        selected
-                          ? "border-accent bg-accent/10 text-paper"
-                          : full
-                            ? "border-white/10 text-paper-dim opacity-60"
-                            : "border-white/15 text-paper hover:border-white/35"
-                      }`}
-                    >
-                      <span className="font-medium">
-                        {a.label}
-                        <span className="ml-2 text-xs text-paper-dim">
-                          {formatSessionDate(dateForDayInWeek(request.sessionDate, a.day))}
-                        </span>
-                      </span>
-                      <span className={`text-xs ${full ? "text-paper-dim" : "text-accent"}`}>
-                        {full ? "Full" : `${a.spaces} space${a.spaces > 1 ? "s" : ""}`}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+    <div className="rounded-xl bg-white/[0.02] px-4 py-2.5 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className="min-w-0 truncate text-paper/80">
+          {r.dogName} · {requestTitle(r)} · {r.confirmedDate ? shortDay(r.confirmedDate) : requestDetail(r)}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {canMove && !moving && (
+            <button type="button" onClick={() => setMoving(true)} className="text-xs font-medium text-accent">
+              Edit date
+            </button>
           )}
-        </div>
-
-        <footer className="flex flex-wrap gap-2 border-t border-white/10 p-4">
-          {mailto ? (
-            <a
-              href={mailto}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full border border-white/20 px-4 text-sm font-medium text-paper hover:border-white/40"
-            >
-              <MailIcon width={18} height={18} /> Message
-            </a>
-          ) : (
-            <span className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full border border-white/10 px-4 text-sm text-paper-dim">
-              <MessageIcon width={18} height={18} /> No email on file
-            </span>
-          )}
-          {!decidedAlready && (
-            <div className="w-full pt-1">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={approve}
-                  className="inline-flex min-h-[44px] flex-[2] items-center justify-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink"
-                >
-                  <CheckIcon width={16} height={16} />
-                  {request.kind === "extra" ? "Approve & charge" : "Approve"}
-                </button>
-                <button
-                  type="button"
-                  onClick={suggestDate}
-                  className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full border border-white/20 px-4 text-sm font-medium text-paper hover:border-white/40"
-                >
-                  Suggest
-                </button>
-                <button
-                  type="button"
-                  onClick={reject}
-                  className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full border border-white/15 px-4 text-sm font-medium text-paper/70 hover:text-paper"
-                >
-                  Reject
-                </button>
-              </div>
-              {note && <p className="mt-2 text-center text-[11px] text-red-300">{note}</p>}
-              {request.kind === "extra" && !note && (
-                <p className="mt-2 text-center text-[11px] text-paper-dim">
-                  Approving charges the customer via GoCardless.
-                </p>
-              )}
-            </div>
-          )}
-        </footer>
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_STYLE[r.status]}`}>{r.status}</span>
+        </span>
       </div>
-      {dialog}
+      {moving && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input type="date" min={londonToday()} value={to} onChange={(e) => setTo(e.target.value)} className={INPUT} />
+          <button type="button" disabled={busy} onClick={move} className={PRIMARY}>
+            {busy ? "Moving…" : "Move"}
+          </button>
+          <button type="button" onClick={() => setMoving(false)} className={QUIET}>
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UnpaidRow({ session: s, onDone, onError }: { session: UnpaidSession; onDone: (m: string) => void; onError: (m: string) => void }) {
+  const [member, setMember] = useState<boolean | null>(null);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!s.accountId) return;
+    let live = true;
+    hasMembership(s.accountId).then((m) => {
+      if (!live) return;
+      setMember(m);
+      setAmount((prev) => prev || ((s.amountPence ?? defaultSessionPrice(s.kind, m)) / 100).toFixed(2).replace(/\.00$/, ""));
+    });
+    return () => {
+      live = false;
+    };
+  }, [s.accountId, s.amountPence, s.kind]);
+
+  async function run(key: string, action: () => Promise<string>) {
+    setBusy(key);
+    try {
+      onDone(await action());
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "That didn't go through.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const pence = Math.round(Number(amount) * 100);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-4 py-3 ring-1 ring-white/10">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-paper">
+          {s.dogName ?? "Dog"} · {s.kind === "one_to_one" ? "1-1" : "Full Day"} · {shortDay(s.date)}
+        </p>
+        <p className="text-xs text-paper-dim">
+          {s.ownerName ?? "Owner"}
+          {s.notes ? ` · ${s.notes}` : ""} · {s.paymentStatus === "failed" ? <span className="text-red-300">Payment failed</span> : "Unpaid"}
+          {member !== null && ` · ${priceHint(s.kind, member)}`}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center rounded-xl border border-white/15 bg-white/[0.04] pl-3 text-sm text-paper">
+          £
+          <input
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+            aria-label="Amount in pounds"
+            className="w-16 bg-transparent px-1 py-2 focus:outline-none"
+          />
+        </span>
+        <button
+          type="button"
+          disabled={!!busy || !(pence >= 100)}
+          onClick={() => run("charge", () => chargeSession(s.id, pence))}
+          className={PRIMARY}
+        >
+          {busy === "charge" ? "Charging…" : `Charge £${amount || "?"}`}
+        </button>
+        <button type="button" disabled={!!busy} onClick={() => run("paid", async () => {
+            await setPaymentStatus(s.id, "paid");
+            return "Marked paid.";
+          })} className={OUTLINE}>
+          Mark paid
+        </button>
+        <button type="button" disabled={!!busy} onClick={() => run("waive", async () => {
+            await setPaymentStatus(s.id, "waived");
+            return "Waived.";
+          })} className={QUIET}>
+          Waive
+        </button>
+      </div>
     </div>
   );
 }

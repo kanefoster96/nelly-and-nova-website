@@ -10,7 +10,7 @@ export function Marquee() {
   const items = marqueeWords;
   return (
     <div
-      className="relative flex overflow-hidden border-t border-white/10 py-4 select-none"
+      className="relative flex overflow-hidden py-6 select-none"
       aria-hidden="true"
     >
       <div className="marquee-track flex shrink-0 items-center whitespace-nowrap">

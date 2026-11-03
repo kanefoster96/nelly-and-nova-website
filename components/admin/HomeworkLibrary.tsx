@@ -8,12 +8,9 @@ import {
   ChevronDownIcon,
 } from "@/components/ui/Icons";
 import {
-  HOMEWORK_LIBRARY,
-  type LibCategory,
-  type LibPillar,
-} from "@/config/homeworkLibrary";
-import {
   useLibrary,
+  type LibCategoryState,
+  type LibPillarState,
   categoryDrills,
   moveDrill,
   addLibraryDrill,
@@ -26,13 +23,15 @@ import {
   type LibDrillState,
 } from "@/lib/homework-library/store";
 import { DrillBlockEditor } from "./DrillBlockEditor";
+import { CARD, ERROR_BANNER } from "@/components/reports/styles";
 
 /**
  * The drill library: pillar cards → category cards → the drills as one ordered
  * list with a "Level N" title before each level. A drill is a card the trainer
  * moves up/down (crossing a title moves a level); opening a card shows its
  * blog-style page — headings, paragraphs, photos and videos — which the trainer
- * builds up. Changes show here and (by name) on the owner's practice screen.
+ * builds up. Saved to the library tables in Supabase (lib/homework-library/
+ * store.ts); owners see each drill's page from their homework and Practice.
  */
 export function HomeworkLibrary() {
   const overlay = useLibrary();
@@ -40,10 +39,21 @@ export function HomeworkLibrary() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const pillar = HOMEWORK_LIBRARY.find((p) => p.id === pillarId) ?? null;
+  const pillar = overlay.pillars.find((p) => p.id === pillarId) ?? null;
   const category = pillar?.categories.find((c) => c.id === categoryId) ?? null;
 
-  const count = (p: LibPillar, c: LibCategory) => categoryDrills(overlay, p.id, c.id).length;
+  const count = (p: LibPillarState, c: LibCategoryState) => categoryDrills(overlay, p.id, c.id).length;
+  const banner = overlay.error ? <p className={`mt-6 ${ERROR_BANNER}`}>{overlay.error}</p> : null;
+
+  if (!overlay.loaded) {
+    return (
+      <div className="mt-8 grid gap-3 sm:grid-cols-3" aria-busy="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`${CARD} h-28 animate-pulse`} />
+        ))}
+      </div>
+    );
+  }
 
   // --- View 3: a category's drills — one list with level titles ------------
   if (pillar && category) {
@@ -57,17 +67,21 @@ export function HomeworkLibrary() {
     // View 4: a drill's page editor (full page, not a pop-up).
     if (editing) {
       return (
+        <>
+        {banner}
         <DrillEditorView
           pillarId={pillar.id}
           categoryId={category.id}
           drill={editing}
           onBack={() => setEditingId(null)}
         />
+        </>
       );
     }
 
     return (
       <div className="mt-8">
+        {banner}
         <BackButton label={pillar.name} onClick={() => setCategoryId(null)} />
         <h2 className="mt-3 display-heading text-2xl text-paper">{category.name}</h2>
         <p className="mt-1 text-sm text-paper-dim">
@@ -126,7 +140,7 @@ export function HomeworkLibrary() {
               key={c.id}
               type="button"
               onClick={() => setCategoryId(c.id)}
-              className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.04] p-4 text-left ring-1 ring-white/10 transition-colors hover:ring-white/25"
+              className={`flex items-center justify-between gap-3 ${CARD} p-4 text-left transition-colors hover:border-white/25`}
             >
               <span className="min-w-0">
                 <span className="block font-semibold text-paper">{c.name}</span>
@@ -142,13 +156,15 @@ export function HomeworkLibrary() {
 
   // --- View 1: the three pillars -------------------------------------------
   return (
+    <>
+    {banner}
     <div className="mt-8 grid gap-3 sm:grid-cols-3">
-      {HOMEWORK_LIBRARY.map((p) => (
+      {overlay.pillars.map((p) => (
         <button
           key={p.id}
           type="button"
           onClick={() => setPillarId(p.id)}
-          className="flex flex-col rounded-2xl bg-white/[0.04] p-5 text-left ring-1 ring-white/10 transition-colors hover:ring-white/25"
+          className={`flex flex-col ${CARD} p-5 text-left transition-colors hover:border-white/25`}
         >
           <span className="text-lg font-semibold text-paper">{p.name}</span>
           <span className="mt-0.5 text-xs text-paper-dim">{p.blurb}</span>
@@ -159,6 +175,7 @@ export function HomeworkLibrary() {
         </button>
       ))}
     </div>
+    </>
   );
 }
 

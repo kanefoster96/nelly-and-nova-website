@@ -6,7 +6,7 @@ import { services } from "@/config/site";
 /** The two services — Full Day Training and 1-1 Training — as photo cards. */
 export function WhatWeDo() {
   return (
-    <section id="services" aria-labelledby="services-heading" className="bg-ink pb-20 sm:pb-28">
+    <section id="services" aria-labelledby="services-heading" className="bg-ink pb-20 sm:pb-32">
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
         <h2 id="services-heading" className="sr-only">
           {services.heading}

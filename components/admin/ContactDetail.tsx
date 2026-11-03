@@ -318,7 +318,7 @@ function EditDetailsModal({
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className={`${input} resize-y`}
+              className={`${input} resize-none`}
               placeholder="Anything to note on their profile"
             />
           </Labelled>

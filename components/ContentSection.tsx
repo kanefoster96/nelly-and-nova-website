@@ -20,8 +20,11 @@ type ContentSectionProps = {
   align?: "left" | "center";
   size?: "md" | "xl";
   as?: "h1" | "h2";
-  /** Show the Book a Free Visit + Contact Us buttons. */
+  /** Show the booking + Contact Us buttons. */
   cta?: boolean;
+  /** The booking button's words and link (defaults to the free meet & greet). */
+  ctaLabel?: string;
+  ctaHref?: string;
   priority?: boolean;
   /** Extra top padding so the first section clears the fixed header. */
   first?: boolean;
@@ -41,6 +44,8 @@ export function ContentSection({
   size = "md",
   as = "h2",
   cta = false,
+  ctaLabel = "Book a Free Meet & Greet",
+  ctaHref = `${BOOKING_HREF}?service=full-day-training`,
   priority = false,
   first = false,
 }: ContentSectionProps) {
@@ -108,8 +113,8 @@ export function ContentSection({
         {cta && (
           <Reveal delay={0.15}>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-              <Button href={BOOKING_HREF} radius="xl" size="lg">
-                Book a Free Visit
+              <Button href={ctaHref} radius="xl" size="lg">
+                {ctaLabel}
               </Button>
               <Button href={CONTACT_HREF} variant="ghost">
                 Contact Us

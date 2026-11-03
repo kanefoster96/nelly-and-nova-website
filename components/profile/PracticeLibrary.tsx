@@ -4,16 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/ui/Icons";
 import { useSession } from "@/lib/auth/session";
-import { SKILL_PILLARS, pillarProgress, pillarLevel } from "@/config/skills";
+import { pillarProgress, pillarLevel, pillarLevels } from "@/config/skills";
 import { useSkills, learntSet } from "@/lib/skills/store";
-import { sampleReportCards } from "@/lib/reports/sample";
-import { useOutboxCards } from "@/lib/reports/outbox";
-import { useHomeworkOverrides } from "@/lib/reports/homework";
+import { useReports } from "@/lib/reports/client";
 import { practiceByPillar } from "@/lib/practice";
-import { useLibrary, libraryNameIndex, findLibraryDrillByName } from "@/lib/homework-library/store";
+import { useLibrary, findLibraryDrill, findLibraryDrillByName } from "@/lib/homework-library/store";
 import { DrillBlocks } from "./DrillPage";
+import { CARD, EYEBROW, TITLE, INTRO, BACK, PILL } from "@/components/reports/styles";
 import type { DrillBlock } from "@/config/homeworkLibrary";
-import type { ReportCard } from "@/lib/reports/types";
 
 /**
  * "Practice" — the owner's library as a full page (/profile/practice). Shows the
@@ -26,30 +24,25 @@ export function PracticeView() {
   const dogId = session?.dogId;
   const skills = useSkills();
   const library = useLibrary();
-  const outbox = useOutboxCards();
-  const overrides = useHomeworkOverrides();
+  const { cards, loaded } = useReports();
   const [pillarId, setPillarId] = useState<string | null>(null);
-  const [drill, setDrill] = useState<{ name: string; blocks: DrillBlock[] } | null>(null);
+  const [drill, setDrill] = useState<{ name: string; level: number; blocks: DrillBlock[] } | null>(null);
 
   const learnt = learntSet(skills, dogId);
+  const pillars = skills.pillars;
 
-  const byPillar = useMemo(() => {
-    const byId = new Map<string, ReportCard>();
-    for (const c of [...outbox, ...sampleReportCards]) if (!byId.has(c.id)) byId.set(c.id, c);
-    const merged = [...byId.values()].map((c) => ({ ...c, homework: overrides[c.id] ?? c.homework }));
-    return practiceByPillar(merged, dogId, libraryNameIndex(library));
-  }, [outbox, overrides, dogId, library]);
+  const byPillar = useMemo(
+    () => practiceByPillar(cards, dogId, library, pillars.map((p) => p.id)),
+    [cards, dogId, library, pillars]
+  );
 
-  const pillar = SKILL_PILLARS.find((p) => p.id === pillarId) ?? null;
+  const pillar = pillars.find((p) => p.id === pillarId) ?? null;
 
   if (!session) {
     return (
-      <div className="rounded-3xl bg-white/[0.04] p-8 text-center ring-1 ring-white/10">
+      <div className={`${CARD} p-8 text-center`}>
         <p className="text-paper/80">Log in to see your practice library.</p>
-        <Link
-          href="/login"
-          className="mt-4 inline-block rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:opacity-90"
-        >
+        <Link href="/login" className="mt-4 inline-block rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:opacity-90">
           Log in
         </Link>
       </div>
@@ -60,45 +53,79 @@ export function PracticeView() {
   if (drill) {
     return (
       <div>
-        <BackButton label={pillar?.name ?? "Back"} onClick={() => setDrill(null)} />
-        <h1 className="mt-3 display-heading text-2xl text-paper sm:text-3xl">{drill.name}</h1>
-        <div className="mt-5">
+        <button type="button" onClick={() => setDrill(null)} className={BACK}>
+          ← {pillar?.name ?? "Back"}
+        </button>
+        <p className={`mt-6 ${EYEBROW}`}>
+          {pillar?.name} · Level {drill.level}
+        </p>
+        <h1 className={TITLE}>{drill.name}</h1>
+        <div className="mt-6">
           <DrillBlocks blocks={drill.blocks} />
         </div>
       </div>
     );
   }
 
-  // --- A pillar's given drills ---------------------------------------------
+  // --- A pillar: the dog's skills so far, then the homework drills ---------
   if (pillar) {
     const drills = byPillar[pillar.id] ?? [];
+    const done = pillar.drills.filter((d) => learnt.has(d.id));
+    const next = pillar.drills.filter((d) => !learnt.has(d.id)).slice(0, 3);
+    const level = pillarLevel(pillar, learnt);
+    const levels = pillarLevels(pillar);
     return (
       <div>
-        <BackButton label="All pillars" onClick={() => setPillarId(null)} />
-        <h1 className="mt-3 display-heading text-2xl text-paper sm:text-3xl">{pillar.name}</h1>
+        <button type="button" onClick={() => setPillarId(null)} className={BACK}>
+          ← Practice
+        </button>
+        <p className={`mt-6 ${EYEBROW}`}>{session.dogName ?? "Your dog"}</p>
+        <h1 className={TITLE}>{pillar.name}</h1>
+        <p className={INTRO}>{pillar.blurb}</p>
+
+        <section className={`${CARD} mt-6 p-5`}>
+          <p className="text-base text-paper">
+            ⭐ <span className="font-semibold">Level {level}</span>
+            {levels.length > 1 && <span className="text-sm text-paper-dim"> · {levels.length} levels</span>}
+          </p>
+          <SkillsBar done={done.length} total={pillar.drills.length} />
+          <ul className="mt-3 flex flex-wrap gap-1.5 text-xs">
+            {done.map((s) => (
+              <li key={s.id} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+                ✓ {s.name}
+              </li>
+            ))}
+            {next.map((s) => (
+              <li key={s.id} className="rounded-full border border-white/10 px-2.5 py-1 text-paper-dim">
+                {s.name}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <h2 className="mt-8 text-lg font-semibold text-paper">Homework to practise</h2>
         {drills.length === 0 ? (
-          <p className="mt-4 rounded-2xl bg-white/[0.04] p-4 text-sm text-paper-dim ring-1 ring-white/10">
-            No homework here yet — your trainer will add drills after your sessions.
+          <p className={`${CARD} mt-3 px-6 py-8 text-center text-sm text-paper-dim`}>
+            No homework here yet. Your trainer will add drills after your sessions.
           </p>
         ) : (
-          <ul className="mt-5 space-y-2">
-            {drills.map((d, i) => (
-              <li key={i}>
+          <ul className={`${CARD} mt-3 divide-y divide-white/10`}>
+            {drills.map((d) => (
+              <li key={`${d.ref ?? d.name}`}>
                 <button
                   type="button"
                   onClick={() =>
-                    setDrill({ name: d.name, blocks: findLibraryDrillByName(library, d.name)?.blocks ?? [] })
+                    setDrill({
+                      name: d.name,
+                      level: d.level,
+                      blocks: (findLibraryDrill(library, d.ref)?.drill ?? findLibraryDrillByName(library, d.name))?.blocks ?? [],
+                    })
                   }
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 text-left ring-1 ring-white/10 transition-colors hover:ring-white/25"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
                 >
-                  <span className="flex items-start gap-2 text-sm text-paper/90">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                    {d.name}
-                  </span>
+                  <span className="text-sm text-paper/90">{d.name}</span>
                   <span className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper-dim">
-                      Lvl {d.level}
-                    </span>
+                    <span className={`${PILL} bg-white/10 font-medium text-paper-dim`}>Level {d.level}</span>
                     <ArrowRightIcon width={15} height={15} className="text-paper-dim" />
                   </span>
                 </button>
@@ -113,13 +140,13 @@ export function PracticeView() {
   // --- The three pillars ---------------------------------------------------
   return (
     <div>
-      <h1 className="display-heading text-3xl text-paper sm:text-4xl">Practice</h1>
-      <p className="mt-3 text-paper/75">
-        Access your homework and skills between sessions — practising helps your
-        dog land each one faster and rise up the levels.
+      <p className={EYEBROW}>{session.dogName ?? "Your dog"}</p>
+      <h1 className={TITLE}>Practice</h1>
+      <p className={INTRO}>
+        Your homework and skills between sessions. Practising helps your dog land each one faster and rise up the levels.
       </p>
-      <div className="mt-6 space-y-2.5">
-        {SKILL_PILLARS.map((p) => {
+      <div className="mt-6 space-y-3">
+        {pillars.map((p) => {
           const { learnt: done, total } = pillarProgress(p, learnt);
           const count = byPillar[p.id]?.length ?? 0;
           return (
@@ -127,23 +154,18 @@ export function PracticeView() {
               key={p.id}
               type="button"
               onClick={() => setPillarId(p.id)}
-              className="w-full rounded-2xl bg-white/[0.04] p-4 text-left ring-1 ring-white/10 transition-colors hover:ring-white/25"
+              className={`${CARD} block w-full p-5 text-left transition-colors hover:border-white/25`}
             >
               <div className="flex items-center gap-2">
-                <span className="flex-1 font-semibold text-paper">{p.name}</span>
-                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent">
-                  Level {pillarLevel(p, learnt)}
-                </span>
+                <span className="flex-1 text-xs uppercase tracking-widest text-paper-dim">{p.name}</span>
                 <ArrowRightIcon width={16} height={16} className="text-paper-dim" />
               </div>
-              <div className="mt-2 h-1.5 rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-accent transition-all"
-                  style={{ width: `${total ? (done / total) * 100 : 0}%` }}
-                />
-              </div>
+              <p className="mt-1 text-base text-paper">
+                ⭐ <span className="font-semibold">Level {pillarLevel(p, learnt)}</span>
+              </p>
+              <SkillsBar done={done} total={total} />
               <p className="mt-2 text-xs text-paper-dim">
-                {count} drill{count === 1 ? "" : "s"} to practise
+                {loaded ? `${count} drill${count === 1 ? "" : "s"} to practise` : "Loading homework…"}
               </p>
             </button>
           );
@@ -153,14 +175,19 @@ export function PracticeView() {
   );
 }
 
-function BackButton({ label, onClick }: { label: string; onClick: () => void }) {
+/** "Skills · 3 of 5" with a green bar, as on Kanvas's Levels & Badges. */
+export function SkillsBar({ done, total }: { done: number; total: number }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 text-sm text-paper-dim transition-colors hover:text-accent"
-    >
-      <ArrowRightIcon width={16} height={16} className="rotate-180" /> {label}
-    </button>
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-paper">Skills</span>
+        <span className="text-paper-dim">
+          {done} of {total}
+        </span>
+      </div>
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }} />
+      </div>
+    </div>
   );
 }

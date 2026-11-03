@@ -206,8 +206,19 @@ export default function DogScreen() {
           ))}
         </DetailCard>
 
+        <DetailCard index={4} title="Skills and levels" icon="ribbon-outline">
+          <Text style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>Tick off the skills {dog.name} has learnt. Their owner sees the levels in the app.</Text>
+          <Pressable
+            onPress={() => router.push({ pathname: "/dog-skills/[id]", params: { id: dog.id, name: dog.name } })}
+            style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingVertical: 4 }}
+          >
+            <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600", flex: 1 }}>Open skills</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </Pressable>
+        </DetailCard>
+
         {(dog.vetName || dog.vetPhone || dog.notes) && (
-          <DetailCard index={4} title="Vet and notes" icon="medkit-outline">
+          <DetailCard index={5} title="Vet and notes" icon="medkit-outline">
             {!!dog.vetName && <Line label="Vet" value={dog.vetName} last={!dog.vetPhone && !dog.notes} />}
             {!!dog.vetPhone && <Line label="Vet's number" value={dog.vetPhone} onPress={() => Linking.openURL(`tel:${dog.vetPhone!.replace(/\s+/g, "")}`)} last={!dog.notes} />}
             {!!dog.notes && <Line label="Notes" value={dog.notes} last />}

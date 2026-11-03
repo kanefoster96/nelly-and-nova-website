@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { AccountInfo } from "@/components/AccountInfo";
 
 export const metadata: Metadata = {
-  title: "Account holder information",
+  title: "Your account",
   robots: { index: false, follow: false },
 };
 
@@ -22,15 +22,16 @@ export default function AccountPage() {
             >
               ← Back to profile
             </Link>
-            <h1 className="display-heading mt-4 text-3xl text-paper sm:text-4xl">
-              Account holder.
-            </h1>
-            <p className="mt-3 text-paper/75">
-              Your own details and password. Your dog stays the main profile.
-            </p>
+            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Account</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-paper sm:text-4xl">Manage your account</h1>
             <div className="mt-8">
               <AccountInfo />
             </div>
+            <p className="mt-8 text-center text-sm text-paper-dim">
+              <Link href="/community-guidelines" className="underline underline-offset-2 hover:text-paper">
+                Community Guidelines
+              </Link>
+            </p>
           </div>
         </section>
       </main>

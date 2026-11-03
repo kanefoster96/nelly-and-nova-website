@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 // brightens its border on focus. (Phones get 16px text via globals.css so iOS
 // doesn't zoom into the field.)
 const inputClass =
-  "w-full rounded-lg border border-white/10 bg-ink px-4 py-2.5 text-sm text-paper placeholder:text-paper-dim/70 outline-none transition-colors focus:border-white/40 aria-[invalid=true]:border-red-400/60";
+  "w-full rounded-xl border border-transparent bg-white/[0.05] px-4 py-3 text-sm text-paper placeholder:text-paper-dim/70 outline-none transition-colors focus:border-white/30 focus:bg-white/[0.07] aria-[invalid=true]:border-red-400/60";
 
 type BaseProps = {
   label: ReactNode;
@@ -76,7 +76,7 @@ export function Field({
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={!!error}
-          className={`${inputClass} resize-y`}
+          className={`${inputClass} resize-none`}
         />
       ) : (
         <input
