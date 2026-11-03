@@ -133,7 +133,7 @@ export const services = {
  * Google reviews carousel.
  * ------------------------
  * Live reviews come from Google (lib/reviews/google.ts) once
- * NEXT_PUBLIC_GOOGLE_PLACE_ID and GOOGLE_PLACES_API_KEY are set. Until then,
+ * GOOGLE_PLACES_API_KEY is set. Until then,
  * or if Google can't be reached, the `items` below are shown instead.
  * "Leave us a review" goes to /review, which forwards to Google's review box.
  */
