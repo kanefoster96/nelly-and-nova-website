@@ -117,3 +117,69 @@ export function priceFor(
   const total = b.base + (dogs - 1) * (b.base - booking.secondDogDiscount);
   return { total, unit: b.unit, base: b.base };
 }
+
+/* ------------------------------------------------------------------------- */
+/* Free meet & greet request (/book)                                          */
+/* ------------------------------------------------------------------------- */
+
+export type MeetGreetChoice = { value: string; label: string; desc: string; icon?: "paw" | "handshake" };
+
+export const meetGreet = {
+  /** Step 2 — what they're interested in. */
+  services: [
+    { value: "full-day-training", label: "Full Day Training", desc: "We collect, train all day and drop off", icon: "paw" },
+    { value: "one-to-one", label: "1-1 Training", desc: "An hour with you and your dog", icon: "handshake" },
+    { value: "not-sure", label: "Not sure yet", desc: "We'll help you choose at the meet & greet" },
+  ] as MeetGreetChoice[],
+
+  /** Step 3 — what they'd like help with (pick any). "other" asks for a note. */
+  help: [
+    { value: "lead-pulling", label: "Lead pulling" },
+    { value: "lunging-at-dogs", label: "Lunging at dogs" },
+    { value: "basic-obedience", label: "Basic obedience" },
+    { value: "other", label: "Other" },
+  ],
+
+  /**
+   * Step 4 — the postcode check. Outward codes (the first half of a postcode)
+   * we travel to, with the area name shown back to them. Anything else can
+   * still send the request; it's just flagged for us to check.
+   */
+  coverage: {
+    NE23: "Cramlington",
+    NE25: "Whitley Bay & Holywell",
+    NE26: "Whitley Bay",
+    NE27: "Shiremoor & Backworth",
+    NE28: "Wallsend",
+    NE29: "North Shields",
+    NE30: "Tynemouth, Cullercoats & North Shields",
+  } as Record<string, string>,
+};
+
+const UK_POSTCODE_RE = /^([A-Z]{1,2}\d[A-Z\d]?) ?(\d[A-Z]{2})$/;
+
+/**
+ * Checks a postcode against the areas we cover.
+ *  - "invalid": doesn't look like a UK postcode
+ *  - "covered": in one of our areas (area = the name to show)
+ *  - "outside": a real postcode we don't normally travel to
+ * `partial` accepts just the outward code (e.g. "NE30") while they're typing.
+ */
+export function checkPostcode(raw: string): { status: "invalid" | "covered" | "outside"; outward?: string; area?: string; formatted?: string } {
+  const pc = raw.toUpperCase().replace(/\s+/g, " ").trim();
+  const full = pc.replace(/\s/g, "").match(/^([A-Z]{1,2}\d[A-Z\d]?)(\d[A-Z]{2})$/);
+  const outward = full ? full[1] : /^[A-Z]{1,2}\d[A-Z\d]?$/.test(pc) ? pc : null;
+  if (!outward) return { status: "invalid" };
+  const formatted = full ? `${full[1]} ${full[2]}` : outward;
+  if (full && !UK_POSTCODE_RE.test(formatted)) return { status: "invalid" };
+  const area = meetGreet.coverage[outward];
+  return area ? { status: "covered", outward, area, formatted } : { status: "outside", outward, formatted };
+}
+
+export function meetGreetServiceLabel(value: string): string {
+  return meetGreet.services.find((s) => s.value === value)?.label ?? value;
+}
+
+export function meetGreetHelpLabels(values: string[], other?: string): string[] {
+  return values.map((v) => (v === "other" && other?.trim() ? `Other: ${other.trim()}` : meetGreet.help.find((h) => h.value === v)?.label ?? v));
+}

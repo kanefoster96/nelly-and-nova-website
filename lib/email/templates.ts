@@ -50,23 +50,26 @@ export function bookingConfirmation(d: {
   serviceLabel?: string;
 }): EmailMessage {
   const name = d.firstName || "there";
-  const svc = d.serviceLabel ? ` for ${d.serviceLabel}` : "";
-  const html = layout("We've got your request", `
+  const dog = d.dogName || "your dog";
+  const html = layout("We'll be in touch", `
     <p>Hi ${escape(name)},</p>
-    <p>Thanks for your booking request${escape(svc)} with ${escape(d.dogName || "your dog")}. We've received it and we'll be in touch shortly to arrange your free meet &amp; greet.</p>
-    <p>There's nothing more you need to do for now — we'll email you the next steps.</p>
+    <p>Thanks for your free meet &amp; greet request for ${escape(dog)}${d.serviceLabel && d.serviceLabel !== "Not sure yet" ? ` (${escape(d.serviceLabel)})` : ""}. We've got everything you sent us.</p>
+    <p>We'll read through it, give you a call or message with a few questions, and book a day that suits you to meet ${escape(dog)} — completely free.</p>
+    <p>There's nothing else you need to do for now. Usually we're back in touch within a day or two.</p>
     <p style="margin-top:20px;">Speak soon,<br/>The ${escape(BRAND)} team</p>
   `);
   const text = [
     `Hi ${name},`,
     "",
-    `Thanks for your booking request${svc} with ${d.dogName || "your dog"}. We've received it and we'll be in touch shortly to arrange your free meet & greet.`,
+    `Thanks for your free meet & greet request for ${dog}. We've got everything you sent us.`,
     "",
-    "There's nothing more you need to do for now — we'll email you the next steps.",
+    `We'll read through it, give you a call or message with a few questions, and book a day that suits you to meet ${dog} — completely free.`,
+    "",
+    "There's nothing else you need to do for now. Usually we're back in touch within a day or two.",
     "",
     `Speak soon, The ${BRAND} team`,
   ].join("\n");
-  return { to: d.email, subject: `We've got your request — ${BRAND}`, html, text, replyTo: undefined };
+  return { to: d.email, subject: `We'll be in touch — ${BRAND}`, html, text, replyTo: undefined };
 }
 
 // --- Team: new booking request --------------------------------------------
@@ -80,13 +83,13 @@ export function bookingOwnerNotification(d: {
   to: string;
 }): EmailMessage {
   const who = `${d.firstName} ${d.lastName}`.trim();
-  const html = layout("New booking request", `
-    <p>${escape(who)} sent a meet &amp; greet request${d.serviceLabel ? ` for ${escape(d.serviceLabel)}` : ""}.</p>
+  const html = layout("New meet & greet request", `
+    <p>${escape(who)} sent a meet &amp; greet request${d.serviceLabel ? ` (${escape(d.serviceLabel)})` : ""}. It's in your Onboarding list.</p>
     <pre style="white-space:pre-wrap;font-family:inherit;background:#1a1a1a;padding:14px;border-radius:10px;color:#d4d4d4;">${escape(d.detailsText)}</pre>
   `);
   return {
     to: d.to,
-    subject: `New booking request — ${who} (${d.serviceLabel ?? "enquiry"})`,
+    subject: `New meet & greet request — ${who} (${d.serviceLabel ?? "enquiry"})`,
     html,
     text: d.detailsText,
     replyTo: d.email,
