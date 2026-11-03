@@ -168,3 +168,12 @@ body {
     background-color: rgb(255 255 255 / 0.14);
   }
 }
+
+/*
+ * Text boxes don't stretch: no drag handle in the corner (they grow with
+ * what's typed where needed instead). Unlayered, so it wins over any
+ * `resize-*` utility left on a field.
+ */
+textarea {
+  resize: none;
+}

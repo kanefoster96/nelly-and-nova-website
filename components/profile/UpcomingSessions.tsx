@@ -417,7 +417,7 @@ function PickDayModal({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Anything we should know?"
-                className="mt-1.5 w-full resize-y rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                className="mt-1.5 w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-3.5 py-2.5 text-sm text-paper placeholder:text-paper-dim focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </label>
           )}

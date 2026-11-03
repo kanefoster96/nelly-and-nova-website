@@ -576,7 +576,7 @@ function ReportEntryModal({
               value={form.summary}
               onChange={(e) => onChange({ summary: e.target.value })}
               placeholder="How the day went…"
-              className={`${inputCls} resize-y`}
+              className={`${inputCls} resize-none`}
             />
           </div>
 

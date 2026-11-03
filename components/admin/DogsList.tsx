@@ -192,7 +192,7 @@ function EditDogModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Anything the team should know…"
-              className={`${input} resize-y`}
+              className={`${input} resize-none`}
             />
           </Labeled>
         </div>

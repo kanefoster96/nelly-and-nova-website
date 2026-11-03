@@ -76,7 +76,7 @@ export function Field({
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={!!error}
-          className={`${inputClass} resize-y`}
+          className={`${inputClass} resize-none`}
         />
       ) : (
         <input
