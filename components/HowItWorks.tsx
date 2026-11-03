@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { stepIcons } from "./ui/Icons";
 import { howItWorks } from "@/config/site";
+import { media } from "@/config/media";
 
 // Travelling marker size (px). The card left-padding reserves this lane.
 const MARKER = 64;
@@ -65,7 +67,7 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-ink py-20 sm:py-28">
       <div className="mx-auto max-w-xl px-4 sm:px-6">
-        <h2 className="display-heading text-center text-3xl text-paper sm:text-4xl">
+        <h2 className="sr-only">
           {howItWorks.heading}
         </h2>
 
@@ -100,12 +102,21 @@ export function HowItWorks() {
                   ref={(el) => {
                     cardRefs.current[i] = el;
                   }}
-                  className={`relative rounded-3xl border p-6 transition-all duration-300 ${
-                    isActive
-                      ? "border-white/20 bg-white/[0.06] opacity-100"
-                      : "border-transparent bg-white/[0.02] opacity-55"
+                  className={`relative isolate rounded-3xl border p-6 transition-all duration-300 ${
+                    isActive ? "border-white/20 opacity-100" : "border-white/5 opacity-55"
                   }`}
                 >
+                  {/* Photo behind the card, kept faint so the words stay easy to read. */}
+                  <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden rounded-3xl bg-ink-raised">
+                    <Image
+                      src={media.howItWorks[i % media.howItWorks.length]}
+                      alt=""
+                      fill
+                      sizes="(min-width: 640px) 36rem, 100vw"
+                      className={`object-cover transition-opacity duration-300 ${isActive ? "opacity-30" : "opacity-20"}`}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-ink/70 via-ink/40 to-ink/20" />
+                  </div>
                   {/* Static per-card icon when motion is reduced */}
                   {reduced && (
                     <span

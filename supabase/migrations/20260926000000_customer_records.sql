@@ -84,7 +84,8 @@ security definer
 set search_path = public
 as $$
 begin
-  if new.role is distinct from old.role and not public.nn_is_admin() then
+  -- (auth.uid() is null = the Supabase dashboard / SQL editor: allowed.)
+  if new.role is distinct from old.role and auth.uid() is not null and not public.nn_is_admin() then
     new.role := old.role;
   end if;
   return new;

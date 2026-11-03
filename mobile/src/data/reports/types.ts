@@ -1,7 +1,7 @@
 /**
  * Dog profile + report cards (training progress).
  * ------------------------------------------------
- * The account is centred on the dog. After each Walk & Train session the dog
+ * The account is centred on the dog. After each Full Day Training session the dog
  * gets a report card with homework the owner marks complete; owners can ask
  * questions about homework in a thread only they and staff can see.
  */
@@ -53,7 +53,7 @@ export type ReportCard = {
 export type Skill = { label: string; level: number; of: number };
 
 export type TrainingPlan = {
-  service: string; // "Walk & Train"
+  service: string; // "Full Day Training"
   day: string; // the day they train, e.g. "Thursdays"
   /** Structured recurring pattern — drives the upcoming-sessions list. */
   dayId: import("@/data/schedule/types").DayId;

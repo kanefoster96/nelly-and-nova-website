@@ -17,7 +17,7 @@ export const ACCOUNT_DOG_PROFILES: Record<string, DogProfile> = {
     sessions: 8,
     level: 2,
     plan: {
-      service: "Walk & Train",
+      service: "Full Day Training",
       day: "Thursdays",
       dayId: "thu",
       cadence: "weekly",
@@ -38,7 +38,7 @@ export const ACCOUNT_DOG_PROFILES: Record<string, DogProfile> = {
     sessions: 4,
     level: 1,
     plan: {
-      service: "Walk & Train",
+      service: "Full Day Training",
       day: "Tuesdays",
       dayId: "tue",
       cadence: "weekly",

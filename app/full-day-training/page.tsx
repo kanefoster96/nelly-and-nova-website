@@ -8,12 +8,12 @@ import { media } from "@/config/media";
 import { walkTrainPage } from "@/config/site";
 
 export const metadata: Metadata = {
-  title: "Walk & Train",
+  title: "Full Day Training",
   description:
-    "Full-day Walk & Train sessions: real-world training, safe transport, detailed report cards and a free meet & greet across Tynemouth, Backworth and the North East.",
+    "Full Day Training sessions: real-world training, safe transport, detailed report cards and a free meet & greet across Tynemouth, Backworth and the North East.",
 };
 
-export default function WalkAndTrainPage() {
+export default function FullDayTrainingPage() {
   const { intro, van, report, meetGreet } = walkTrainPage;
   return (
     <>

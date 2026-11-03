@@ -1,11 +1,9 @@
 /**
- * Data-access seam for the inbox (chat + notifications + requests).
+ * Data-access seam for the inbox's notifications and requests. Live chat is
+ * real now and lives in lib/chat (supabase/migrations/20261103000000_chat.sql).
  * ------------------------------------------------------------------
  * This is the ONE place to swap the scaffold's sample data for a real backend.
  * Per the reference architecture, the intended backend is Supabase:
- *   - getConversations()  → select from `conversations`
- *   - getMessages(id)     → select from `messages` where conversation_id = id
- *   - sendMessage(...)    → insert into `messages` (returns the row)
  *   - getNotifications()  → select from `notifications`
  *   - getRequests()       → select from `requests` where status = 'pending'
  *   - getUnreadCounts()   → three count() queries
@@ -16,9 +14,7 @@
  * Everything below is async on purpose so the swap to real queries is drop-in.
  */
 import type {
-  Conversation,
   InboxRequest,
-  Message,
   NewRequest,
   Notification,
   UnreadCounts,
@@ -26,38 +22,10 @@ import type {
 import type { OnboardingEntry, OnboardingStage } from "./onboarding";
 import { nextStage } from "./onboarding";
 import {
-  sampleConversations,
-  sampleMessages,
   sampleNotifications,
   sampleRequests,
   sampleOnboarding,
 } from "./sample";
-
-export async function getConversations(): Promise<Conversation[]> {
-  // TODO(backend): select * from conversations order by last_message_at desc
-  return sampleConversations;
-}
-
-export async function getMessages(conversationId: string): Promise<Message[]> {
-  // TODO(backend): select * from messages where conversation_id = $1 order by created_at
-  return sampleMessages[conversationId] ?? [];
-}
-
-export async function sendMessage(
-  conversationId: string,
-  body: string,
-  fromStaff: boolean
-): Promise<Message> {
-  // TODO(backend): insert into messages (...) returning *
-  // Scaffold: echo a confirmed message back to the caller.
-  return {
-    id: `local-${conversationId}-${body.length}-${body.slice(0, 8)}`,
-    conversationId,
-    body,
-    fromStaff,
-    createdAt: new Date().toISOString(),
-  };
-}
 
 export async function getNotifications(): Promise<Notification[]> {
   // TODO(backend): select * from notifications where recipient_id is null or = me
@@ -114,7 +82,8 @@ export async function advanceOnboarding(
 
 export async function getUnreadCounts(): Promise<UnreadCounts> {
   return {
-    chat: sampleConversations.filter((c) => c.unread).length,
+    // Live chat unread counts come from Supabase (lib/chat/client.ts).
+    chat: 0,
     notifications: sampleNotifications.filter((n) => !n.readAt).length,
     requests: sampleRequests.filter((r) => r.status === "pending").length,
   };

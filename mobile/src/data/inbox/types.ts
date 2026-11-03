@@ -27,7 +27,14 @@ export type Conversation = {
   phone?: string | null;
 };
 
-export type Attachment = { name: string; type: "image" | "video" | "file"; url: string };
+export type Attachment = {
+  name: string;
+  type: "image" | "video" | "file";
+  /** A signed URL for a sent file, or the local file:// URI while sending. */
+  url: string;
+  /** Set when picking a file to send (used for the upload). */
+  mimeType?: string;
+};
 
 export type Message = {
   id: string;
@@ -35,6 +42,7 @@ export type Message = {
   body: string;
   /** Which side sent it — staff (the business) or the visitor/member. */
   fromStaff: boolean;
+  senderId?: string | null;
   createdAt: string; // ISO
   /** Optimistic message not yet confirmed by the backend. */
   pending?: boolean;

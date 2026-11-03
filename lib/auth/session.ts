@@ -149,9 +149,19 @@ async function hydrate() {
   // user's metadata; copy them onto the profile the first time we see them.
   // Only fills empty columns, so it never overwrites an edit.
   const meta = user.user_metadata ?? {};
-  for (const col of ["phone", "address"] as const) {
-    const value = typeof meta[col] === "string" ? meta[col].trim() : "";
+  // (Sign-up's database trigger saves them now; this covers older accounts.)
+  for (const [key, col] of [["phone", "phone"], ["address", "pickup_address"]] as const) {
+    const value = typeof meta[key] === "string" ? meta[key].trim() : "";
     if (value) void sb().from("profiles").update({ [col]: value }).eq("id", user.id).is(col, null).then(() => undefined);
+  }
+
+  // A photo chosen at sign-up when the account still had to be confirmed by
+  // email (no session to save it with then) — saved now, on first log-in.
+  let avatarUrl = profile?.avatar_url ?? undefined;
+  const pending = takePendingAvatar(user.email);
+  if (pending && !avatarUrl) {
+    avatarUrl = pending;
+    void sb().from("profiles").update({ avatar_url: pending }).eq("id", user.id).then(() => undefined);
   }
   const dogs: SessionDog[] = (dogsRes.data ?? []).map((d) => ({
     id: d.id as string,
@@ -166,7 +176,7 @@ async function hydrate() {
       ownerName: profile?.owner_name ?? user.email ?? "",
       dogName: "",
       dogPhoto: "",
-      accountPhoto: profile?.avatar_url ?? undefined,
+      accountPhoto: avatarUrl,
       role: profile?.role === "admin" ? "admin" : "member",
     },
     dogs
@@ -223,6 +233,9 @@ export async function signUpNewAccount(input: {
     email: input.email,
     password: input.password,
     options: {
+      // The "confirm your email" link (if confirmation is switched on) lands
+      // on /auth/confirm, which signs them in and opens their profile.
+      emailRedirectTo: `${window.location.origin}/auth/confirm`,
       data: {
         owner_name: input.ownerName,
         phone: input.phone?.trim() || undefined,
@@ -233,9 +246,16 @@ export async function signUpNewAccount(input: {
       },
     },
   });
-  if (error) return { error: error.message, needsConfirmation: false };
+  if (error) return { error: friendlySignUpError(error.message), needsConfirmation: false };
+
+  // Supabase hides "this email already has an account" when confirmation is
+  // on: it answers as if it worked but with no identities on the user.
+  if (data.user && (data.user.identities?.length ?? 0) === 0) {
+    return { error: "An account with this email already exists — please log in instead.", needsConfirmation: false };
+  }
 
   const needsConfirmation = !data.session;
+  if (needsConfirmation && input.avatarUrl) savePendingAvatar(input.email, input.avatarUrl);
   if (!needsConfirmation) {
     // Signed in straight away — persist the avatar and build the session.
     if (input.avatarUrl && data.user) {
@@ -245,6 +265,38 @@ export async function signUpNewAccount(input: {
     await hydrate();
   }
   return { error: null, needsConfirmation };
+}
+
+/** Supabase's sign-up errors, in plain English. */
+function friendlySignUpError(message: string): string {
+  if (/already registered|already exists/i.test(message)) return "An account with this email already exists — please log in instead.";
+  if (/rate limit|too many/i.test(message)) return "Too many sign-ups just now — please try again in a few minutes.";
+  if (/password/i.test(message)) return "Please choose a stronger password (at least 8 characters).";
+  if (/invalid.*email|email.*invalid/i.test(message)) return "Please check your email address.";
+  if (/fetch|network/i.test(message)) return "Couldn't reach us just now — check your connection and try again.";
+  return message;
+}
+
+const PENDING_AVATAR_KEY = "nn-pending-avatar";
+function savePendingAvatar(email: string, dataUrl: string) {
+  try {
+    localStorage.setItem(PENDING_AVATAR_KEY, JSON.stringify({ email: email.toLowerCase(), dataUrl }));
+  } catch {
+    // storage full or blocked — they can add a photo from their profile
+  }
+}
+function takePendingAvatar(email: string | undefined): string | null {
+  if (!email) return null;
+  try {
+    const raw = localStorage.getItem(PENDING_AVATAR_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { email?: string; dataUrl?: string };
+    if (saved.email !== email.toLowerCase() || !saved.dataUrl) return null;
+    localStorage.removeItem(PENDING_AVATAR_KEY);
+    return saved.dataUrl;
+  } catch {
+    return null;
+  }
 }
 
 /** Update the signed-in user's password. Returns an error message, or null. */

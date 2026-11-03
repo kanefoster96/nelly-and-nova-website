@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   keywords: [
     "dog training",
     "puppy training",
-    "Walk and Train",
+    "Full Day Dog Training",
     "Tynemouth",
     "Backworth",
     "North East",

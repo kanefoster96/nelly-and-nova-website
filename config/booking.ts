@@ -34,8 +34,8 @@ export const booking = {
   services: [
     {
       value: "walk-train",
-      label: "Walk & Train",
-      desc: "Full-day training",
+      label: "Full Day Training",
+      desc: "We collect, train & drop off",
       icon: "paw",
       bookingTypes: [
         { value: "weekly", label: "Weekly Membership", desc: "Same day every week", base: 60, unit: "week" },

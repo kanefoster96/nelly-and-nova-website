@@ -3,13 +3,23 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { AttachmentContent } from "@/components/chat/attachment-content";
-import { getMessages, markChatRead, sendMessage, type Attachment, type Message } from "@/data/inbox";
+import {
+  chatHeartbeat,
+  getMessages,
+  getMessagesSince,
+  markChatRead,
+  sendMessage,
+  subscribeToMessages,
+  toMessages,
+  type Attachment,
+  type Message,
+} from "@/data/inbox";
 import { useAsync } from "@/lib/useAsync";
-import { colors } from "@/theme";
+import { colors, glass } from "@/theme";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DIVIDER_GAP_MS = 5 * 60 * 1000;
@@ -25,6 +35,34 @@ function needsDivider(current: Message, previous: Message | undefined): boolean 
   if (!previous) return true;
   return new Date(current.createdAt).getTime() - new Date(previous.createdAt).getTime() > DIVIDER_GAP_MS;
 }
+
+/**
+ * Folds freshly-arrived messages (Realtime or the back-up poll) into the
+ * list — by id, so the same message arriving twice is shown once, and one of
+ * ours that's still sending is replaced rather than duplicated.
+ */
+function mergeMessages(prev: Message[], incoming: Message[], viewerIsStaff: boolean): Message[] {
+  let next = prev;
+  for (const message of incoming) {
+    const existing = next.findIndex((m) => m.id === message.id);
+    if (existing !== -1) {
+      next = next.map((m, i) => (i === existing ? { ...message, attachment: m.attachment ?? message.attachment } : m));
+      continue;
+    }
+    if (message.fromStaff === viewerIsStaff) {
+      const pending = next.findIndex((m) => m.pending && m.body === message.body);
+      if (pending !== -1) {
+        next = next.map((m, i) => (i === pending ? { ...message, attachment: m.attachment ?? message.attachment } : m));
+        continue;
+      }
+    }
+    next = [...next, message];
+  }
+  return next === prev ? prev : [...next].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+const POLL_MS = 5000;
+const HEARTBEAT_MS = 30 * 1000;
 
 type RowMessage = Message & { showDivider: boolean; showSenderLabel: boolean };
 
@@ -64,6 +102,45 @@ export function ChatThread({
     markChatRead(conversationId, viewerIsStaff).catch(() => {});
   }, [conversationId, viewerIsStaff]);
 
+  // Live: new messages arrive over Realtime, with a poll every few seconds
+  // as a back-up in case one is ever missed (same as the website).
+  const messagesRef = useRef<Message[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+  useEffect(() => {
+    const fold = (incoming: Message[]) => {
+      if (incoming.length === 0) return;
+      setMessages((prev) => mergeMessages(prev, incoming, viewerIsStaff));
+      if (incoming.some((m) => m.fromStaff !== viewerIsStaff)) markChatRead(conversationId).catch(() => {});
+    };
+    const unsubscribe = subscribeToMessages(conversationId, (row) => {
+      toMessages([row]).then(fold).catch(() => {});
+    });
+    const poll = setInterval(() => {
+      if (AppState.currentState !== "active") return;
+      const lastReal = [...messagesRef.current].reverse().find((m) => !m.pending);
+      getMessagesSince(conversationId, lastReal?.createdAt ?? new Date(0).toISOString())
+        .then(fold)
+        .catch(() => {});
+    }, POLL_MS);
+    return () => {
+      unsubscribe();
+      clearInterval(poll);
+    };
+  }, [conversationId, viewerIsStaff]);
+
+  // An owner's chat says "I'm here" while it's open, like on the website.
+  useEffect(() => {
+    if (viewerIsStaff) return;
+    const beat = () => {
+      if (AppState.currentState === "active") chatHeartbeat().catch(() => {});
+    };
+    beat();
+    const interval = setInterval(beat, HEARTBEAT_MS);
+    return () => clearInterval(interval);
+  }, [viewerIsStaff, conversationId]);
+
   // How far the keyboard overlaps this thread, measured against where the
   // thread really ends on screen — right whether the tab bar is under it or not.
   const rootRef = useRef<View>(null);
@@ -97,7 +174,10 @@ export function ChatThread({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const saved = await sendMessage(conversationId, body, viewerIsStaff, attachment);
-      setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+      // Realtime may already have delivered it — then just drop the temp copy.
+      setMessages((prev) =>
+        prev.some((m) => m.id === saved.id) ? prev.filter((m) => m.id !== tempId) : prev.map((m) => (m.id === tempId ? saved : m))
+      );
     } catch {
       setError("Could not send that — please try again.");
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
@@ -120,7 +200,12 @@ export function ChatThread({
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: [kind === "image" ? "images" : "videos"], quality: 0.8 });
     if (result.canceled || result.assets.length === 0) return;
     const asset = result.assets[0];
-    send(draft.trim(), { type: kind, url: asset.uri, name: asset.fileName ?? (kind === "image" ? "Photo" : "Video") });
+    send(draft.trim(), {
+      type: kind,
+      url: asset.uri,
+      name: asset.fileName ?? (kind === "image" ? "Photo.jpg" : "Video.mp4"),
+      mimeType: asset.mimeType ?? (kind === "image" ? "image/jpeg" : "video/mp4"),
+    });
   }
 
   async function pickFile() {
@@ -128,7 +213,7 @@ export function ChatThread({
     const result = await DocumentPicker.getDocumentAsync({ multiple: false });
     if (result.canceled || result.assets.length === 0) return;
     const asset = result.assets[0];
-    send(draft.trim(), { type: "file", url: asset.uri, name: asset.name });
+    send(draft.trim(), { type: "file", url: asset.uri, name: asset.name, mimeType: asset.mimeType ?? undefined });
   }
 
   const rows: RowMessage[] = messages.map((message, i) => {
@@ -148,7 +233,7 @@ export function ChatThread({
         borderRadius: 14,
         borderWidth: 1,
         borderColor: colors.border,
-        backgroundColor: colors.surface,
+        backgroundColor: "rgba(26,26,26,0.96)",
         paddingVertical: 4,
         zIndex: 10,
       }}
@@ -263,9 +348,9 @@ export function ChatThread({
               onPress={() => setAttachMenuOpen((v) => !v)}
               accessibilityLabel="Attach"
               hitSlop={6}
-              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+              style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", ...glass }}
             >
-              <Ionicons name="add-circle-outline" size={28} color={colors.foreground} />
+              <Ionicons name="add" size={24} color={colors.foreground} />
             </Pressable>
             {attachMenu}
           </View>

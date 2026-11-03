@@ -10,7 +10,7 @@ import { colors } from "@/theme";
 
 const DAYS_AHEAD = 14;
 
-/** Every Walk & Train day for the next two weeks, with the dogs booked on each. */
+/** Every Full Day Training day for the next two weeks, with the dogs booked on each. */
 export function TrainerSchedule() {
   const { data: week, error, reload } = useAsync(getWeekSchedule);
   const [refreshing, setRefreshing] = useState(false);
@@ -38,14 +38,14 @@ export function TrainerSchedule() {
         />
       }
     >
-      <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17 }}>Every Walk &amp; Train day for the next {DAYS_AHEAD} days and the dogs booked on it.</Text>
+      <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17 }}>Every Full Day Training day for the next {DAYS_AHEAD} days and the dogs booked on it.</Text>
       {days.map(({ iso, schedule }, i) => {
         const s = schedule!;
         const spaces = spacesLeft(s);
         return (
           <DayGroup key={iso} heading={formatSessionDate(iso)}>
             <SessionCard
-              title="Walk & Train"
+              title="Full Day Training"
               detail={`${s.dogs.length} of ${s.capacity} booked · ${spaces === 0 ? "Full" : `${spaces} space${spaces === 1 ? "" : "s"} left`}`}
               tag={i === 0 ? "Next" : undefined}
               highlight={i === 0}

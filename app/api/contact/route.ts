@@ -27,6 +27,10 @@ export async function POST(request: Request) {
   const message = String(body.message ?? "").trim();
   // Honeypot — bots fill hidden fields; humans never see it.
   if (String(body.company ?? "").trim()) return Response.json({ ok: true });
+  // Too fast to be a person (filled and sent within 3 seconds of the page
+  // loading): pretend it worked so a bot learns nothing, but send nothing.
+  const startedAt = Number(body.startedAt);
+  if (Number.isFinite(startedAt) && Date.now() - startedAt < 3000) return Response.json({ ok: true });
 
   if (!name || !email || !message) {
     return Response.json({ error: "Please fill in your name, email and message." }, { status: 400 });

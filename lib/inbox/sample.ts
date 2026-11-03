@@ -3,87 +3,8 @@
  * in lib/inbox/data.ts. Timestamps are fixed ISO strings (deterministic — no
  * `Date.now()` — so server and client render identically).
  */
-import type {
-  Conversation,
-  Message,
-  Notification,
-  InboxRequest,
-} from "./types";
+import type { Notification, InboxRequest } from "./types";
 import type { OnboardingEntry } from "./onboarding";
-
-export const sampleConversations: Conversation[] = [
-  {
-    id: "c1",
-    user: { id: "u1", name: "Visitor", isGuest: true },
-    lastMessageAt: "2026-08-11T13:48:00Z",
-    lastMessagePreview: "Hi! Do you cover the Cullercoats area for Walk & Train?",
-    unread: true,
-    status: "new",
-  },
-  {
-    // Staff see the owner + their dog(s) so they know exactly who they're
-    // talking to — see accountAdminLabel() in lib/auth/session.ts.
-    // TODO(backend): derive the conversation title from owner + account dogs.
-    id: "c2",
-    user: { id: "u2", name: "Rachel T. (Nova & Rex)" },
-    lastMessageAt: "2026-08-11T12:10:00Z",
-    lastMessagePreview: "Perfect, see you Thursday for the meet & greet 🐾",
-    unread: false,
-    status: "active",
-  },
-  {
-    id: "c3",
-    user: { id: "u3", name: "James P. (Rex)" },
-    lastMessageAt: "2026-08-10T17:22:00Z",
-    lastMessagePreview: "Thanks so much — Nova's recall is so much better!",
-    unread: false,
-    status: "closed",
-  },
-];
-
-export const sampleMessages: Record<string, Message[]> = {
-  c1: [
-    {
-      id: "m1",
-      conversationId: "c1",
-      body: "Hi! Do you cover the Cullercoats area for Walk & Train?",
-      fromStaff: false,
-      createdAt: "2026-08-11T13:48:00Z",
-    },
-  ],
-  c2: [
-    {
-      id: "m2",
-      conversationId: "c2",
-      body: "Hi Rachel — we'd love to help with Nova. Want to book a free meet & greet?",
-      fromStaff: true,
-      createdAt: "2026-08-11T11:55:00Z",
-    },
-    {
-      id: "m3",
-      conversationId: "c2",
-      body: "Yes please! Thursday works for us.",
-      fromStaff: false,
-      createdAt: "2026-08-11T12:05:00Z",
-    },
-    {
-      id: "m4",
-      conversationId: "c2",
-      body: "Perfect, see you Thursday for the meet & greet 🐾",
-      fromStaff: true,
-      createdAt: "2026-08-11T12:10:00Z",
-    },
-  ],
-  c3: [
-    {
-      id: "m5",
-      conversationId: "c3",
-      body: "Thanks so much — Nova's recall is so much better!",
-      fromStaff: false,
-      createdAt: "2026-08-10T17:22:00Z",
-    },
-  ],
-};
 
 export const sampleNotifications: Notification[] = [
   {
@@ -107,7 +28,7 @@ export const sampleNotifications: Notification[] = [
   {
     id: "n1",
     title: "New booking request",
-    body: "Rachel T. requested a Walk & Train weekly membership for Nova.",
+    body: "Rachel T. requested a Full Day Training weekly membership for Nova.",
     createdAt: "2026-08-11T12:02:00Z",
     actionHref: "/inbox",
     sentByName: "Website",
@@ -130,7 +51,7 @@ export const sampleRequests: InboxRequest[] = [
     requesterName: "Rachel T.",
     email: "rachel@example.com",
     phone: "07123 456789",
-    summary: "Walk & Train · Weekly Membership · 1 dog",
+    summary: "Full Day Training · Weekly Membership · 1 dog",
     createdAt: "2026-08-11T12:02:00Z",
     status: "pending",
     details: [
@@ -139,7 +60,7 @@ export const sampleRequests: InboxRequest[] = [
       { label: "Phone", value: "07123 456789" },
       { label: "Address", value: "14 Beach Rd, Whitley Bay, NE26" },
       { label: "Found us via", value: "website" },
-      { label: "Service", value: "Walk & Train" },
+      { label: "Service", value: "Full Day Training" },
       { label: "Booking type", value: "Weekly Membership" },
       { label: "Dogs", value: "1" },
       { label: "Estimated price", value: "£60 per week" },
@@ -160,14 +81,14 @@ export const sampleRequests: InboxRequest[] = [
     kind: "contact",
     requesterName: "Website visitor",
     email: "visitor@example.com",
-    summary: "Hi! Do you cover the Cullercoats area for Walk & Train?",
+    summary: "Hi! Do you cover the Cullercoats area for Full Day Training?",
     createdAt: "2026-08-11T13:49:00Z",
     status: "pending",
     details: [
       { label: "Name", value: "—" },
       { label: "Email", value: "visitor@example.com" },
       { label: "Phone", value: "—" },
-      { label: "Message", value: "Hi! Do you cover the Cullercoats area for Walk & Train? We have a 1 year old cocker spaniel who pulls a lot on the lead." },
+      { label: "Message", value: "Hi! Do you cover the Cullercoats area for Full Day Training? We have a 1 year old cocker spaniel who pulls a lot on the lead." },
     ],
   },
 ];
@@ -177,7 +98,7 @@ export const sampleOnboarding: OnboardingEntry[] = [
     id: "o1",
     name: "Rachel T.",
     dogName: "Nova",
-    service: "Walk & Train · Weekly Membership",
+    service: "Full Day Training · Weekly Membership",
     email: "rachel@example.com",
     phone: "07123 456789",
     stage: "new",
@@ -187,7 +108,7 @@ export const sampleOnboarding: OnboardingEntry[] = [
     id: "o2",
     name: "James P.",
     dogName: "Ziggy",
-    service: "Walk & Train · One Off",
+    service: "Full Day Training · One Off",
     email: "james@example.com",
     phone: "07234 567890",
     stage: "booked",

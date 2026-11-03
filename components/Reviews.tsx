@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { GoogleGIcon, StarIcon } from "./ui/Icons";
-import { AvatarMarquee } from "./ui/AvatarMarquee";
 import { media } from "@/config/media";
 import { googleReviews, type Review } from "@/config/site";
 
@@ -24,11 +23,14 @@ function Avatar({ review }: { review: Review }) {
   return (
     <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink">
       {review.avatar ? (
-        <Image
+        // Google profile photos: a plain <img> (any host), no referrer so Google serves it.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={review.avatar}
           alt=""
           width={44}
           height={44}
+          referrerPolicy="no-referrer"
           className="h-full w-full object-cover"
         />
       ) : (
@@ -53,7 +55,7 @@ export function Reviews({
   return (
     <section id="reviews" className="bg-ink py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <h2 className="display-heading text-center text-3xl text-paper sm:text-4xl">
+        <h2 className="sr-only">
           {googleReviews.heading}
         </h2>
       </div>
@@ -88,12 +90,9 @@ export function Reviews({
         ))}
       </ul>
 
-      {/* Customer-dog avatars — swap placeholders for real photos later */}
-      <AvatarMarquee className="mt-8" />
-
       <div className="mx-auto mt-8 flex max-w-6xl justify-center px-4 sm:px-6">
         <a
-          href={googleReviews.reviewUrl}
+          href="/review"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-full border border-white/25 px-8 text-paper transition-colors hover:border-white/50 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-accent"
