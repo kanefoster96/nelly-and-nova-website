@@ -669,6 +669,7 @@ export const marqueeWords: string[] = [
   "Heel Work",
   "Socialisation",
   "Settling",
+  "Life Skills",
 ];
 
 export type SocialLink = { label: string; href: string; icon: "facebook" | "instagram" };
