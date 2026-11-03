@@ -114,3 +114,13 @@ export async function getMandateStatus(id: string): Promise<string> {
   const json = await gc<{ mandates: { status: string } }>("GET", `/mandates/${encodeURIComponent(id)}`);
   return json.mandates.status;
 }
+
+/** Cancels a Direct Debit the site set up (stops anything collecting on it). Already cancelled is fine. */
+export async function cancelMandate(id: string): Promise<void> {
+  try {
+    await gc("POST", `/mandates/${encodeURIComponent(id)}/actions/cancel`, { data: { metadata: { reason: "account_deleted" } } });
+  } catch (err) {
+    if (err instanceof GoCardlessError && (err.status === 422 || err.status === 404)) return; // already cancelled / gone
+    throw err;
+  }
+}

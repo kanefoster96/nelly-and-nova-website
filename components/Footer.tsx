@@ -47,6 +47,9 @@ export function Footer() {
             <Link href="/cookies" className="transition-colors hover:text-accent">
               Cookie Policy
             </Link>
+            <Link href="/community-guidelines" className="transition-colors hover:text-accent">
+              Community Guidelines
+            </Link>
             <CookieSettingsButton />
             <Link href="/holidays" className="transition-colors hover:text-accent">
               Holidays

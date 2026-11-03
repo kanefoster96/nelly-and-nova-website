@@ -31,6 +31,14 @@ export default function AccountPage() {
             <div className="mt-8">
               <AccountInfo />
             </div>
+            <p className="mt-10 flex flex-wrap gap-x-5 gap-y-2 text-sm text-paper-dim">
+              <Link href="/account/your-data" className="underline underline-offset-2 hover:text-paper">
+                Download your data
+              </Link>
+              <Link href="/account/delete" className="underline underline-offset-2 hover:text-paper">
+                Delete your account
+              </Link>
+            </p>
           </div>
         </section>
       </main>
