@@ -1,87 +1,96 @@
+import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { BuildInfo } from "@/components/build-info";
 import { Logo } from "@/components/logo";
-import { ErrorText, FieldLabel, FormScrollView, LinkButton, PrimaryButton, TextField } from "@/components/ui";
+import { ErrorText, FieldLabel, FormScrollView, PrimaryButton, TextField } from "@/components/ui";
+import { EMAIL_RE, lookupAccount } from "@/lib/auth-flow";
 import { config, isSupabaseConfigured } from "@/lib/config";
-import { supabase } from "@/lib/supabase";
 import { colors } from "@/theme";
 
-const MEMBERSHIP_URL = "https://www.nellyandnova.co.uk";
-
 /**
- * The app's front door, laid out like the Kanvas app's login. Members only —
- * accounts are made on the website, so anyone new is sent there.
+ * The app's front door, email first (like Kanvas Academy's app 1.1): one box,
+ * then whichever screen fits that address —
+ *   - it has an account → password
+ *   - no account, but they've asked for a meet & greet → "Check your email"
+ *     (a button to set up their account)
+ *   - neither → "No account yet": ask for a free meet & greet
+ * `email` arrives filled in when another screen sends someone back here.
  */
 export default function SignInScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const params = useLocalSearchParams<{ email?: string }>();
+  const [email, setEmail] = useState(typeof params.email === "string" ? params.email : "");
   const [error, setError] = useState<string | null>(
     isSupabaseConfigured ? null : "The app isn't connected to Supabase yet (EXPO_PUBLIC_SUPABASE_* missing)."
   );
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin() {
-    setError(null);
-    setNotice(null);
-    setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setLoading(false);
-    if (signInError) {
-      setError(signInError.message === "Invalid login credentials" ? "That email and password don't match a member account." : signInError.message);
-    }
-    // The root layout's auth gate takes it from here once the session lands.
-  }
-
-  async function handleForgot() {
-    setNotice(null);
-    if (!email.trim()) {
-      setError("Enter your email above, then tap “Forgot password?”.");
+  async function handleContinue() {
+    const trimmed = email.trim();
+    if (loading) return;
+    if (!EMAIL_RE.test(trimmed)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setError("Please enter your email address.");
       return;
     }
     setError(null);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: new URL("/reset-password", config.siteUrl).toString(),
-    });
-    if (resetError) setError(resetError.message);
-    else setNotice("Check your inbox for a link to reset your password.");
+    setLoading(true);
+    const found = await lookupAccount(trimmed);
+    setLoading(false);
+    if (!found.ok) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(found.message);
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (found.account) router.push({ pathname: "/password", params: { email: trimmed } });
+    else if (found.known) router.push({ pathname: "/check-email", params: { email: trimmed, mode: "setup" } });
+    else router.push({ pathname: "/no-account", params: { email: trimmed } });
   }
 
   return (
-    <FormScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 24, paddingTop: 72, paddingBottom: 48 }}>
-      <View style={{ alignItems: "center" }}>
+    <FormScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ flexGrow: 1, padding: 24, paddingTop: 96, paddingBottom: 32 }}>
+      <View style={{ alignItems: "center", marginBottom: 36 }}>
         <Logo size={96} />
-        <Text style={{ color: colors.foreground, fontSize: 24, fontWeight: "600", marginTop: 28, textAlign: "center" }}>Member Log In</Text>
-        <Text style={{ color: colors.muted, fontSize: 15, marginTop: 8, marginBottom: 32, textAlign: "center", lineHeight: 21 }}>
-          Your community, homework, schedule and chat with the team — all in one place.
-        </Text>
+        <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: "700", marginTop: 24, textAlign: "center" }}>Log in to Nelly &amp; Nova</Text>
       </View>
 
       <ErrorText>{error}</ErrorText>
-      {notice && <Text style={{ color: colors.success, fontSize: 14, marginBottom: 12 }}>{notice}</Text>}
 
       <FieldLabel>Email</FieldLabel>
-      <TextField value={email} onChangeText={setEmail} keyboardType="email-address" textContentType="emailAddress" autoComplete="email" placeholder="you@example.com" />
-
-      <FieldLabel>Password</FieldLabel>
       <TextField
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        textContentType="password"
-        autoComplete="current-password"
-        placeholder="••••••••"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        // "username" so iOS offers saved Nelly & Nova logins here and fills the password next.
+        textContentType="username"
+        autoComplete="username"
+        placeholder="you@example.com"
         returnKeyType="go"
-        onSubmitEditing={handleLogin}
+        onSubmitEditing={handleContinue}
       />
 
-      <PrimaryButton title="Log In" onPress={handleLogin} loading={loading} disabled={!isSupabaseConfigured || !email || !password} />
+      <PrimaryButton title="Continue" onPress={handleContinue} loading={loading} />
 
-      <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center", marginTop: 12, lineHeight: 17 }}>
-        By logging in you agree to our{" "}
+      <Text style={{ color: colors.muted, fontSize: 15, textAlign: "center", marginTop: 20 }}>
+        New here?{" "}
+        <Text
+          style={{ color: colors.foreground, fontWeight: "600", textDecorationLine: "underline" }}
+          onPress={() => Linking.openURL(new URL("/book", config.siteUrl).toString())}
+          accessibilityRole="link"
+        >
+          Book a free meet &amp; greet
+        </Text>
+      </Text>
+
+      <View style={{ flex: 1, minHeight: 48 }} />
+
+      <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center", lineHeight: 17 }}>
+        By continuing you agree to our{" "}
         <Text style={{ color: colors.foreground, textDecorationLine: "underline" }} onPress={() => Linking.openURL(new URL("/terms", config.siteUrl).toString())}>
           Terms
         </Text>{" "}
@@ -91,30 +100,6 @@ export default function SignInScreen() {
         </Text>
         .
       </Text>
-
-      <View style={{ marginTop: 16, alignItems: "center" }}>
-        <LinkButton title="Forgot password?" onPress={handleForgot} />
-      </View>
-
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 36, marginBottom: 24 }}>
-        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-        <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 1 }}>OR</Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-      </View>
-
-      <Pressable
-        onPress={() => Linking.openURL(MEMBERSHIP_URL)}
-        style={({ pressed }) => [
-          { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 20, paddingVertical: 18, alignItems: "center" },
-          pressed && { opacity: 0.8 },
-        ]}
-      >
-        <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600" }}>Become a Member</Text>
-        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 4, textAlign: "center", lineHeight: 18 }}>
-          New to Nelly &amp; Nova? Book a meet &amp; greet on our website — nellyandnova.co.uk
-        </Text>
-      </Pressable>
-
       <BuildInfo />
     </FormScrollView>
   );

@@ -1,27 +1,58 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Fragment, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
 import { NavDivider, NavList } from "@/components/nav-row";
+import { PageTitle } from "@/components/page-title";
+import { ScreenHeader } from "@/components/screen-header";
+import { Pressable } from "@/components/pressable";
 import { LoadingState } from "@/components/ui";
 import { categoryDrillCount, getLibrary } from "@/data/homework";
+import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
+import { hapticSelection } from "@/lib/haptics";
+import { animateListChange } from "@/lib/layout-animation";
 import { useAsync } from "@/lib/useAsync";
-import { colors, pressedBg } from "@/theme";
+import { colors } from "@/theme";
 
-/** Trainer: the drill library — pillars, categories (tap to expand), levels and drills. */
-export function TrainerLibrary() {
+const SUBTITLE = "The drill library. Tap a category to see its levels, and a drill to open its how-to.";
+
+/**
+ * Trainer: the drill library — pillars, categories (tap to expand), levels
+ * and drills. `pushed`: opened from Menu, as a page over the tabs with a
+ * back button (app/(app)/library.tsx), rather than as a tab.
+ */
+export function TrainerLibrary({ pushed = false }: { pushed?: boolean }) {
   const router = useRouter();
   const { data: library, error } = useAsync(getLibrary);
   const [open, setOpen] = useState<string | null>(null);
+  const barScroll = useBarScroll();
+  const barInset = useBarInset();
+  const topInset = useTopBarInset();
 
-  if (!library) return <LoadingState error={error ? "Could not load the library." : null} />;
+  if (!library) {
+    const loading = <LoadingState error={error ? "Could not load the library." : null} />;
+    return pushed ? (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScreenHeader title="Homework" />
+        {loading}
+      </View>
+    ) : (
+      loading
+    );
+  }
 
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}>
-      <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, paddingHorizontal: 20, marginTop: 12 }}>
-        The homework drill library. Tap a category to see its levels, and a drill to open its how-to.
-      </Text>
+  const list = (
+    <ScrollView
+      {...(pushed ? {} : barScroll)}
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingTop: pushed ? 0 : topInset + 8, paddingBottom: pushed ? 48 : barInset }}
+    >
+      {pushed ? (
+        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 21, paddingHorizontal: 20 }}>{SUBTITLE}</Text>
+      ) : (
+        <PageTitle title="Homework" subtitle={SUBTITLE} style={{ paddingHorizontal: 20 }} />
+      )}
       {library.map((pillar) => (
         <View key={pillar.id}>
           <Text style={{ color: colors.muted, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, marginTop: 24, marginBottom: 8, paddingHorizontal: 20 }}>
@@ -34,8 +65,12 @@ export function TrainerLibrary() {
                 <Fragment key={cat.id}>
                   {i > 0 && <NavDivider />}
                   <Pressable
-                    onPress={() => setOpen(expanded ? null : cat.id)}
-                    style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }, pressed && { backgroundColor: pressedBg }]}
+                    onPress={() => {
+                      hapticSelection();
+                      animateListChange();
+                      setOpen(expanded ? null : cat.id);
+                    }}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}
                   >
                     <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(245,245,242,0.06)", alignItems: "center", justifyContent: "center" }}>
                       <Ionicons name="school-outline" size={18} color={colors.muted} />
@@ -56,7 +91,7 @@ export function TrainerLibrary() {
                           <Pressable
                             key={d.id}
                             onPress={() => router.push({ pathname: "/drill/[id]", params: { id: d.id } })}
-                            style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", paddingVertical: 9, gap: 8 }, pressed && { opacity: 0.6 }]}
+                            style={{ flexDirection: "row", alignItems: "center", paddingVertical: 9, gap: 8 }}
                           >
                             <Text style={{ color: colors.foreground, fontSize: 14, flex: 1 }}>{d.name}</Text>
                             <Ionicons name="chevron-forward" size={15} color={colors.muted} />
@@ -71,5 +106,13 @@ export function TrainerLibrary() {
         </View>
       ))}
     </ScrollView>
+  );
+
+  if (!pushed) return list;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader title="Homework" />
+      {list}
+    </View>
   );
 }

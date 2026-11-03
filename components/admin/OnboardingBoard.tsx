@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { listEnquiries, updateEnquiry } from "@/lib/records/client";
+import { getOnboardingProgress, listEnquiries, updateEnquiry, type OnboardingProgress } from "@/lib/records/client";
 import { ENQUIRY_STATUSES, type Enquiry, type EnquiryStatus } from "@/lib/records/types";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -41,11 +41,17 @@ export function OnboardingBoard() {
   const [items, setItems] = useState<Enquiry[] | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<EnquiryStatus>("new");
+  const [progress, setProgress] = useState<Record<string, OnboardingProgress>>({});
 
   const load = useCallback(async () => {
     try {
-      setItems(await listEnquiries());
+      const list = await listEnquiries();
+      setItems(list);
       setError("");
+      // Direct Debit / account / dogs for everyone in onboarding.
+      getOnboardingProgress(list.filter((e) => e.status === "onboarding"))
+        .then(setProgress)
+        .catch(() => {});
     } catch (e) {
       setError((e as Error).message);
       setItems([]);
@@ -97,7 +103,7 @@ export function OnboardingBoard() {
       ) : (
         <ul className="mt-6 space-y-3">
           {visible.map((e) => (
-            <EnquiryCard key={e.id} enquiry={e} onChange={(p) => patchLocal(e.id, p)} />
+            <EnquiryCard key={e.id} enquiry={e} progress={progress[e.id]} onChange={(p) => patchLocal(e.id, p)} onReload={() => void load()} />
           ))}
         </ul>
       )}
@@ -105,8 +111,49 @@ export function OnboardingBoard() {
   );
 }
 
-function EnquiryCard({ enquiry: e, onChange }: { enquiry: Enquiry; onChange: (p: Partial<Enquiry>) => void }) {
+const DD_LABEL: Record<string, string> = {
+  none: "Not started",
+  link_sent: "Link sent — waiting for them",
+  pending_submission: "Set up — bank confirming",
+  submitted: "Set up — bank confirming",
+  active: "Active",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  expired: "Expired",
+};
+
+function Tick({ done, label, detail }: { done: boolean; label: string; detail: string }) {
+  return (
+    <li className="flex items-start gap-2.5">
+      <span
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+          done ? "bg-emerald-400 text-ink" : "bg-white/10 text-paper-dim"
+        }`}
+      >
+        {done ? "✓" : ""}
+      </span>
+      <span className="min-w-0">
+        <span className="font-medium text-paper">{label}</span>
+        <span className="block text-paper-dim">{detail}</span>
+      </span>
+    </li>
+  );
+}
+
+function EnquiryCard({
+  enquiry: e,
+  progress,
+  onChange,
+  onReload,
+}: {
+  enquiry: Enquiry;
+  progress?: OnboardingProgress;
+  onChange: (p: Partial<Enquiry>) => void;
+  onReload: () => void;
+}) {
   const [booking, setBooking] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [settingDay, setSettingDay] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -121,14 +168,60 @@ function EnquiryCard({ enquiry: e, onChange }: { enquiry: Enquiry; onChange: (p:
     }
   }
 
-  async function copySignupLink() {
-    const params = new URLSearchParams({ name: e.name.split(" ")[0] ?? "", email: e.email });
-    const link = `${window.location.origin}/create-account?${params.toString()}`;
+  /**
+   * After the meet & greet, when you're going ahead: creates their join link
+   * and Direct Debit set-up, and emails it (and messages it, if they have an
+   * account). Pressing it again re-sends the same link.
+   */
+  async function startOnboarding(resend = false) {
+    const first = e.name.split(" ")[0];
+    if (!resend && !window.confirm(`Start onboarding ${first}? They'll be emailed a link to set up their Direct Debit and register ${e.dogNames || "their dog"}.`)) return;
+    setStarting(true);
+    setError("");
+    setNote("");
+    try {
+      const res = await fetch("/api/onboarding/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enquiryId: e.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Couldn't start onboarding.");
+      const how = [json.emailed && "emailed", json.messaged && "messaged in their chat"].filter(Boolean).join(" and ");
+      setNote(
+        how
+          ? `${resend ? "Link re-sent" : "Onboarding started"} — ${first} has been ${how}.`
+          : `${resend ? "Link ready" : "Onboarding started"}. The email didn't go (email isn't fully set up yet) — copy the link below and send it to ${first}.`
+      );
+      onChange({ status: "onboarding" });
+      onReload();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function copyJoinLink() {
+    if (!e.onboardingToken) return;
+    const link = `${window.location.origin}/join/${e.onboardingToken}`;
     try {
       await navigator.clipboard.writeText(link);
-      setNote("Sign-up link copied — paste it into a message to them.");
+      setNote("Join link copied — paste it into a message to them.");
     } catch {
       setNote(link);
+    }
+  }
+
+  async function notAFit() {
+    const reason = window.prompt(`Close ${e.name.split(" ")[0]}'s request? Add a note for yourself (optional):`, "Not a fit");
+    if (reason === null) return;
+    setError("");
+    try {
+      await updateEnquiry(e.id, { status: "closed", closedReason: reason.trim() || null });
+      onChange({ status: "closed" });
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
 
@@ -189,6 +282,51 @@ function EnquiryCard({ enquiry: e, onChange }: { enquiry: Enquiry; onChange: (p:
         </div>
       )}
 
+      {e.status === "onboarding" && (
+        <ul className="mt-4 grid gap-3 rounded-xl border border-white/10 bg-ink p-4 text-sm">
+          <Tick
+            done={["pending_submission", "submitted", "active"].includes(progress?.directDebit ?? "")}
+            label="Direct Debit"
+            detail={progress ? DD_LABEL[progress.directDebit] ?? progress.directDebit : "Loading…"}
+          />
+          <Tick
+            done={!!progress?.accountLinked}
+            label="Account"
+            detail={progress?.accountLinked ? "Created and linked" : "Not created yet (or not opened the link signed in)"}
+          />
+          <Tick
+            done={!!e.trainingDay && !!e.firstSessionOn}
+            label="Training day"
+            detail={
+              e.trainingDay && e.firstSessionOn
+                ? `${cap(e.trainingDay)}s, ${e.trainingCadence === "alternating" ? "every other week" : "every week"} · first session ${new Date(`${e.firstSessionOn}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`
+                : "Not set yet"
+            }
+          />
+          <Tick
+            done={!!progress && progress.dogs.length > 0 && progress.dogs.every((d) => d.registered)}
+            label="Dog registered (health, vet, consent & waiver)"
+            detail={
+              !progress || progress.dogs.length === 0
+                ? "Not yet"
+                : progress.dogs.map((d) => `${d.name}: ${d.registered ? "done" : "not yet"}`).join(" · ")
+            }
+          />
+        </ul>
+      )}
+
+      {settingDay && (
+        <TrainingDayForm
+          enquiry={e}
+          onCancel={() => setSettingDay(false)}
+          onSaved={(p) => {
+            onChange(p);
+            setSettingDay(false);
+            setNote("Training day saved. They'll get reminders to register before the first session.");
+          }}
+        />
+      )}
+
       {booking ? (
         <BookMeetGreet
           enquiry={e}
@@ -202,25 +340,45 @@ function EnquiryCard({ enquiry: e, onChange }: { enquiry: Enquiry; onChange: (p:
       ) : (
         <div className="mt-4 flex flex-wrap gap-2">
           {(e.status === "new" || e.status === "meet_greet_booked") && (
-            <Button radius="xl" onClick={() => setBooking(true)}>
-              {e.meetGreetAt ? "Change time" : "Book meet & greet"}
+            <Button radius="xl" variant={e.status === "meet_greet_booked" ? "secondary" : "primary"} onClick={() => setBooking(true)}>
+              {e.meetGreetAt ? "Change meet & greet" : "Book meet & greet"}
             </Button>
           )}
-          {e.status === "meet_greet_booked" && (
-            <Button radius="xl" variant="secondary" onClick={() => void move("onboarding")}>
-              Met — start onboarding
+          {(e.status === "new" || e.status === "meet_greet_booked") && (
+            <Button
+              radius="xl"
+              variant={e.status === "meet_greet_booked" ? "primary" : "secondary"}
+              disabled={starting}
+              onClick={() => void startOnboarding()}
+              className="disabled:opacity-60"
+            >
+              {starting ? "Starting…" : "Start onboarding"}
             </Button>
           )}
-          {e.status !== "closed" && (
-            <Button radius="xl" variant="secondary" onClick={() => void copySignupLink()}>
-              Copy sign-up link
+          {e.status === "onboarding" && (
+            <>
+              <Button radius="xl" onClick={() => setSettingDay(true)}>
+                {e.trainingDay ? "Change training day" : "Set training day"}
+              </Button>
+              <Button radius="xl" variant="secondary" onClick={() => void copyJoinLink()} disabled={!e.onboardingToken}>
+                Copy join link
+              </Button>
+              <Button radius="xl" variant="secondary" disabled={starting} onClick={() => void startOnboarding(true)} className="disabled:opacity-60">
+                {starting ? "Sending…" : "Re-send link"}
+              </Button>
+            </>
+          )}
+          {e.status !== "closed" && e.status !== "onboarding" && (
+            <Button radius="xl" variant="ghost" onClick={() => void notAFit()}>
+              Not a fit
             </Button>
           )}
-          {e.status !== "closed" ? (
+          {e.status === "onboarding" && (
             <Button radius="xl" variant="ghost" onClick={() => void move("closed")}>
-              {e.status === "onboarding" ? "Done" : "Close"}
+              Done
             </Button>
-          ) : (
+          )}
+          {e.status === "closed" && (
             <Button radius="xl" variant="ghost" onClick={() => void move("new")}>
               Reopen
             </Button>
@@ -280,8 +438,81 @@ function BookMeetGreet({
       <Field label="Notes (address, parking, what to bring…)" name={`notes-${e.id}`} textarea rows={2} value={notes} onChange={setNotes} />
       <label className="flex items-center gap-3 text-sm text-paper/85">
         <input type="checkbox" checked={emailThem} onChange={(ev) => setEmailThem(ev.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
-        Email {e.name.split(" ")[0]} the details and a sign-up link
+        Email {e.name.split(" ")[0]} the day and time
       </label>
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      <div className="flex gap-2">
+        <Button radius="xl" onClick={() => void save()} disabled={busy} className="disabled:opacity-60">
+          {busy ? "Saving…" : "Save"}
+        </Button>
+        <Button radius="xl" variant="ghost" onClick={onCancel} disabled={busy}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+/**
+ * Their regular Full Day Training day (usually repeats weekly or every
+ * other week) and first session. Agreed with them directly; this just
+ * records it. Owners without a registered dog get reminders before the
+ * first session (/api/cron/register-reminders).
+ */
+function TrainingDayForm({
+  enquiry: e,
+  onCancel,
+  onSaved,
+}: {
+  enquiry: Enquiry;
+  onCancel: () => void;
+  onSaved: (p: Partial<Enquiry>) => void;
+}) {
+  const [day, setDay] = useState(e.trainingDay ?? "");
+  const [cadence, setCadence] = useState<string>(e.trainingCadence ?? "weekly");
+  const [first, setFirst] = useState(e.firstSessionOn ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    if (!day || !first) return setError("Choose the day and the first session date.");
+    const firstDay = DAYS[(new Date(`${first}T12:00:00`).getDay() + 6) % 7];
+    if (firstDay !== day) return setError(`The first session should be on a ${cap(day)} (that date is a ${cap(firstDay)}).`);
+    setBusy(true);
+    setError("");
+    try {
+      await updateEnquiry(e.id, { trainingDay: day, trainingCadence: cadence, firstSessionOn: first });
+      onSaved({ trainingDay: day, trainingCadence: cadence as "weekly" | "alternating", firstSessionOn: first });
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 grid gap-4 rounded-lg border border-white/10 bg-ink p-4">
+      <Field
+        label="Training day"
+        name={`day-${e.id}`}
+        required
+        value={day}
+        onChange={setDay}
+        options={[{ value: "", label: "Choose…" }, ...DAYS.slice(0, 5).map((d) => ({ value: d, label: `${cap(d)}s` }))]}
+      />
+      <Field
+        label="How often"
+        name={`cadence-${e.id}`}
+        value={cadence}
+        onChange={setCadence}
+        options={[
+          { value: "weekly", label: "Every week" },
+          { value: "alternating", label: "Every other week" },
+        ]}
+      />
+      <Field label="First session" name={`first-${e.id}`} type="date" required value={first} onChange={setFirst} />
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="flex gap-2">
         <Button radius="xl" onClick={() => void save()} disabled={busy} className="disabled:opacity-60">

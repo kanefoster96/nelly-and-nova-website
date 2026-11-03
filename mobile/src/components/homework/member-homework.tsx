@@ -1,17 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
-import { LoadingState, PrimaryButton, SectionLabel, Tag } from "@/components/ui";
+import { Appear } from "@/components/appear";
+import { PageTitle } from "@/components/page-title";
+import { RefreshControl } from "@/components/refresh-control";
+import { CARD, LoadingState, PrimaryButton, SectionLabel, Tag } from "@/components/ui";
 import { formatDate } from "@/data/inbox";
 import { getReportCards, logHomeworkDay, type ReportCard } from "@/data/reports";
+import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
+import { hapticSuccess } from "@/lib/haptics";
 import { useAsync } from "@/lib/useAsync";
 import { colors } from "@/theme";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-const card = { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 14, padding: 14 } as const;
+const card = CARD;
 
 function HomeworkList({ report }: { report: ReportCard }) {
   return (
@@ -37,15 +41,20 @@ export function MemberHomework() {
   const [refreshing, setRefreshing] = useState(false);
   // TODO(backend): read today's completion from homework_completions.
   const [loggedOn, setLoggedOn] = useState<Record<string, string>>({});
+  const barScroll = useBarScroll();
+  const barInset = useBarInset();
+  const topInset = useTopBarInset();
 
   if (!cards) return <LoadingState error={error ? "Could not load your homework." : null} />;
 
   if (cards.length === 0) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center", padding: 32 }}>
-        <Text style={{ color: colors.muted, fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>Homework</Text>
-        <Text style={{ color: colors.foreground, fontSize: 22, fontWeight: "700", marginTop: 8 }}>Nothing yet</Text>
-        <Text style={{ color: colors.muted, fontSize: 14, marginTop: 8, textAlign: "center" }}>Your trainer&apos;s report card after each session will appear here.</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: topInset + 8, paddingHorizontal: 20 }}>
+        <PageTitle title="Homework" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 12, paddingBottom: barInset }}>
+          <Text style={{ color: colors.foreground, fontSize: 22, fontWeight: "700" }}>Nothing yet</Text>
+          <Text style={{ color: colors.muted, fontSize: 14, marginTop: 8, textAlign: "center" }}>Your trainer&apos;s report card after each session will appear here.</Text>
+        </View>
       </View>
     );
   }
@@ -55,8 +64,9 @@ export function MemberHomework() {
 
   return (
     <ScrollView
+      {...barScroll}
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: topInset + 8, paddingBottom: barInset }}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -69,7 +79,8 @@ export function MemberHomework() {
         />
       }
     >
-      <View style={card}>
+      <PageTitle title="Homework" style={{ marginBottom: 16 }} />
+      <Appear style={card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text style={{ color: colors.muted, fontSize: 12, flex: 1 }}>Report card · {formatDate(latest.date)}</Text>
           {latest.isNew && <Tag label="New" solid />}
@@ -86,32 +97,32 @@ export function MemberHomework() {
             ))}
           </View>
         )}
-      </View>
+      </Appear>
 
       <SectionLabel>This week&apos;s homework</SectionLabel>
-      <View style={[card, { gap: 16 }]}>
+      <Appear index={1} style={[card, { gap: 16 }]}>
         <HomeworkList report={latest} />
         <PrimaryButton
           title={doneToday ? "Practised today ✓" : "I practised today"}
           disabled={doneToday}
           onPress={() => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            hapticSuccess();
             setLoggedOn((s) => ({ ...s, [latest.id]: today() }));
             logHomeworkDay(latest.id, today());
           }}
         />
-      </View>
+      </Appear>
 
       {earlier.length > 0 && <SectionLabel>Earlier report cards</SectionLabel>}
       <View style={{ gap: 10 }}>
-        {earlier.map((report) => (
-          <View key={report.id} style={[card, { gap: 10 }]}>
+        {earlier.map((report, i) => (
+          <Appear key={report.id} index={i + 2} style={[card, { gap: 10 }]}>
             <View>
               <Text style={{ color: colors.muted, fontSize: 12 }}>{formatDate(report.date)}</Text>
               <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600", marginTop: 2 }}>{report.focus}</Text>
             </View>
             <HomeworkList report={report} />
-          </View>
+          </Appear>
         ))}
       </View>
     </ScrollView>

@@ -23,11 +23,10 @@ export default function DrillScreen() {
       ) : !data ? (
         <LoadingState error="This drill couldn't be found." />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 14 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 48, gap: 14 }}>
           <View style={{ flexDirection: "row" }}>
             <Tag label={`${data.category} · Level ${data.level}`} />
           </View>
-          <Text style={{ color: colors.foreground, fontSize: 24, fontWeight: "700" }}>{data.drill.name}</Text>
           {data.drill.blocks.length === 0 && <Text style={{ color: colors.muted, fontSize: 14 }}>No how-to written for this drill yet.</Text>}
           {data.drill.blocks.map((b) => {
             switch (b.type) {

@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Text, TextInput, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { MediaGrid } from "@/components/community/media-grid";
+import { Pressable } from "@/components/pressable";
 import { Tag } from "@/components/ui";
 import {
   REPORT_REASONS,
@@ -21,7 +21,8 @@ import {
   type Post,
   type ReportReason,
 } from "@/data/community";
-import { colors } from "@/theme";
+import { hapticError, hapticSelection, hapticSuccess } from "@/lib/haptics";
+import { colors, GLASS_BORDER } from "@/theme";
 
 import type { Viewer } from "./feed-screen";
 
@@ -51,8 +52,10 @@ function showContentMenu(opts: {
   async function sendReport(reason: ReportReason) {
     try {
       await reportContent(opts.target, reason);
+      hapticSuccess();
       Alert.alert("Thanks", "The Nelly & Nova team will take a look within 24 hours.");
     } catch (err) {
+      hapticError();
       Alert.alert("Couldn't send the report", err instanceof Error ? err.message : "Please try again.");
     }
   }
@@ -104,7 +107,7 @@ function LikeButton({ postId, likeCount, likedByMe }: { postId: string; likeCoun
 
   async function handlePress() {
     const next = !liked;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticSelection();
     setLikedState(next);
     setCount((c) => c + (next ? 1 : -1));
     try {
@@ -120,7 +123,7 @@ function LikeButton({ postId, likeCount, likedByMe }: { postId: string; likeCoun
       onPress={handlePress}
       hitSlop={8}
       accessibilityLabel={liked ? "Unlike" : "Like"}
-      style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6 }, pressed && { opacity: 0.6 }]}
+      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
     >
       <Ionicons name={liked ? "heart" : "heart-outline"} size={26} color={liked ? LIKE_RED : colors.foreground} />
       {count > 0 && <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "600" }}>{count}</Text>}
@@ -157,7 +160,9 @@ function InlineEditor({
     setSaving(true);
     try {
       await onSave(value.trim(), title.trim());
+      hapticSuccess();
     } catch (err) {
+      hapticError();
       setError(err instanceof Error ? err.message : "Could not save that edit.");
       setSaving(false);
     }
@@ -240,7 +245,9 @@ function CommentsSection({
       const comment = await addComment(viewer, postId, body);
       onChange((prev) => [...prev, comment]);
       setText("");
+      hapticSuccess();
     } catch (err) {
+      hapticError();
       setError(err instanceof Error ? err.message : "Could not post your comment.");
     } finally {
       setSending(false);
@@ -276,7 +283,7 @@ function CommentsSection({
       {shown.map((c) => (
         <Pressable key={c.id} onLongPress={() => openMenu(c)} delayLongPress={350} style={{ flexDirection: "row", gap: 8 }}>
           <AvatarCircle name={c.authorName} avatarUrl={c.authorAvatarUrl} size={28} />
-          <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 }}>
+          <View style={{ flex: 1, backgroundColor: colors.surface, borderWidth: 1, ...GLASS_BORDER, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
               <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600", flex: 1 }}>
                 {c.authorName}
@@ -323,13 +330,13 @@ function CommentsSection({
               style={{
                 flex: 1,
                 borderWidth: 1,
-                borderColor: colors.border,
+                ...GLASS_BORDER,
                 borderRadius: 999,
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 color: colors.foreground,
                 fontSize: 13,
-                backgroundColor: colors.background,
+                backgroundColor: colors.surface,
               }}
             />
             <Pressable
@@ -337,7 +344,7 @@ function CommentsSection({
               disabled={sending || !text.trim()}
               hitSlop={6}
               accessibilityLabel="Send comment"
-              style={({ pressed }) => [{ width: 38, alignItems: "center", justifyContent: "center" }, (sending || !text.trim()) && { opacity: 0.4 }, pressed && { opacity: 0.7 }]}
+              style={[{ width: 38, alignItems: "center", justifyContent: "center" }, (sending || !text.trim()) && { opacity: 0.4 }]}
             >
               {sending ? <ActivityIndicator color={colors.foreground} size="small" /> : <Ionicons name="send" size={20} color={colors.foreground} />}
             </Pressable>
@@ -381,8 +388,10 @@ export function PostCard({
         setDeleting(true);
         try {
           await deletePost(post.id);
+          hapticSuccess();
           onDeleted(post.id);
         } catch {
+          hapticError();
           setDeleting(false);
         }
       },
@@ -464,7 +473,7 @@ export function PostCard({
           onPress={() => setCommentsOpen((v) => !v)}
           hitSlop={8}
           accessibilityLabel={commentsOpen ? "Hide comments" : "Comment"}
-          style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 6 }, pressed && { opacity: 0.6 }]}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
         >
           <Ionicons name={commentsOpen ? "chatbubble" : "chatbubble-outline"} size={24} color={colors.foreground} />
           {comments.length > 0 && <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "600" }}>{comments.length}</Text>}

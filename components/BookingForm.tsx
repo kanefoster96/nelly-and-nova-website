@@ -1,238 +1,147 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Field } from "./ui/Field";
 import { SelectCards } from "./ui/SelectCards";
-import { AvatarUpload } from "./ui/AvatarUpload";
-import { CheckCircleIcon } from "./ui/Icons";
+import { CheckCircleIcon, CheckIcon, MapPinIcon, PlusIcon } from "./ui/Icons";
 import { DraftRestored, StepCard, WizardHeading, WizardNav, WizardProgress } from "./ui/WizardProgress";
 import { clearFormDraft, loadFormDraft, saveFormDraft } from "@/lib/forms/draft";
-import { booking, findService, priceFor } from "@/config/booking";
-import { DOG_PHOTO_HANDOFF_KEY, EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
+import { checkPostcode, meetGreet } from "@/config/booking";
+import { EXTRA_DOGS_HANDOFF_KEY } from "@/lib/storage/photos";
 
-// The owner-facing steps never repeat; only the dog steps do. Dog 1 lives in
-// the flat fields below; any additional dogs (chosen on "How many dogs?") each
-// get their own step, capturing the same details as the first.
-const BASE_STEPS = [
-  "About you",
-  "Choose a service",
-  "Booking options",
-  "Your dog",
-  "Behaviour",
-  "Care & handling",
-];
-const FIRST_EXTRA = BASE_STEPS.length; // index of the first additional-dog step
+/**
+ * Free meet & greet request — four short steps, laid out like Kanvas
+ * Academy's free trial form:
+ *   1. Your dog (name, breed, age — and any more dogs)
+ *   2. What you're interested in (Full Day / 1-1 / Not sure yet)
+ *   3. What you'd like help with (pick any)
+ *   4. Your details + a postcode check
+ * Then "Thanks — we'll be in touch". No times to pick: we read it, ask a few
+ * questions and arrange a day to meet their dog.
+ */
+
+const STEPS = ["Your dog", "What you're after", "What you'd like help with", "Your details"];
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-// Loose UK-friendly check: 10–15 digits once spaces, dashes, brackets and a leading + are removed.
 const PHONE_RE = /^\+?\d{10,15}$/;
-const DRAFT_KEY = "nn-booking-draft-v1";
+const DRAFT_KEY = "nn-meet-greet-draft-v2";
 
-type Data = Record<string, string>;
+type Dog = { name: string; breed: string; age: string };
+type Data = {
+  dogs: Dog[];
+  service: string;
+  help: string[];
+  helpOther: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  postcode: string;
+  company: string; // honeypot
+};
 
+const blankDog = (): Dog => ({ name: "", breed: "", age: "" });
 const INITIAL: Data = {
-  firstName: "", lastName: "", email: "", phone: "", address: "", findUs: "",
-  service: "", bookingType: "", dogs: "1",
-  dogName: "", breed: "", gender: "", age: "", withDogs: "", withPeople: "",
-  needHelp: "", allergies: "", tools: "", trust: "",
-  company: "", // honeypot
+  dogs: [blankDog()],
+  service: "",
+  help: [],
+  helpOther: "",
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  postcode: "",
+  company: "",
 };
 
-/** One additional dog — the same fields collected for the first dog. */
-type DogInput = {
-  name: string; breed: string; gender: string; age: string;
-  withDogs: string; withPeople: string; needHelp: string;
-  allergies: string; tools: string; trust: string;
-};
-const blankDog = (): DogInput => ({
-  name: "", breed: "", gender: "", age: "",
-  withDogs: "", withPeople: "", needHelp: "",
-  allergies: "", tools: "", trust: "",
-});
+type Draft = { step: number; data: Data };
 
-/** What "Next" saves, so a half-finished request survives closing the tab. */
-type BookingDraft = { step: number; data: Data; extraDogs: DogInput[]; photo: string | null };
+function dogNames(dogs: Dog[]): string {
+  const names = dogs.map((d) => d.name.trim()).filter(Boolean);
+  if (names.length <= 1) return names[0] ?? "your dog";
+  return `${names.slice(0, -1).join(", ")} & ${names.at(-1)}`;
+}
 
 export function BookingForm() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Data>(INITIAL);
-  // Additional dogs (dog 2, dog 3…). Length is kept in sync with "How many dogs?".
-  const [extraDogs, setExtraDogs] = useState<DogInput[]>([]);
-  // Optional dog photo — kept out of the POST body (data URLs are large) and
-  // handed to create-account via sessionStorage so it becomes the account image.
-  const [photo, setPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState<"idle" | "submitting" | "error" | "success">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [submitError, setSubmitError] = useState("");
   const [restored, setRestored] = useState(false);
   const [saved, setSaved] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
   const savedTimer = useRef<number | undefined>(undefined);
-  const router = useRouter();
 
   // Pick up a saved draft on first load.
   useEffect(() => {
-    const draft = loadFormDraft<BookingDraft>(DRAFT_KEY);
+    const draft = loadFormDraft<Draft>(DRAFT_KEY);
     if (!draft?.data) return;
-    const d: Data = { ...INITIAL, ...draft.data, company: "" };
-    const n = Math.max(0, (parseInt(d.dogs, 10) || 1) - 1);
-    const dogs = (draft.extraDogs ?? []).slice(0, n).map((x) => ({ ...blankDog(), ...x }));
-    while (dogs.length < n) dogs.push(blankDog());
     /* eslint-disable react-hooks/set-state-in-effect */
-    setData(d);
-    setExtraDogs(dogs);
-    setPhoto(draft.photo ?? null);
-    // Steps = base + extra dogs + meet & greet.
-    setStep(Math.min(Math.max(0, draft.step ?? 0), BASE_STEPS.length + n));
+    setData({ ...INITIAL, ...draft.data, dogs: draft.data.dogs?.length ? draft.data.dogs : [blankDog()], company: "" });
+    setStep(Math.min(Math.max(0, draft.step ?? 0), STEPS.length - 1));
     setRestored(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   function persist(nextStep: number) {
-    const draft: BookingDraft = { step: nextStep, data: { ...data, company: "" }, extraDogs, photo };
-    // A big photo can overflow storage — keep the answers even if the photo won't fit.
-    const ok = saveFormDraft(DRAFT_KEY, draft) || saveFormDraft(DRAFT_KEY, { ...draft, photo: null });
-    if (!ok) return;
+    if (!saveFormDraft(DRAFT_KEY, { step: nextStep, data: { ...data, company: "" } })) return;
     setSaved(true);
     window.clearTimeout(savedTimer.current);
     savedTimer.current = window.setTimeout(() => setSaved(false), 2000);
   }
 
-  // Also save if they leave mid-step (switch apps, close the tab), not just on Next.
-  const latest = useRef({ step, data, extraDogs, photo, status });
-  useEffect(() => {
-    latest.current = { step, data, extraDogs, photo, status };
-  }, [step, data, extraDogs, photo, status]);
-  useEffect(() => {
-    const onHide = () => {
-      const l = latest.current;
-      if (document.visibilityState !== "hidden" || l.status === "success") return;
-      const draft: BookingDraft = { step: l.step, data: { ...l.data, company: "" }, extraDogs: l.extraDogs, photo: l.photo };
-      if (!saveFormDraft(DRAFT_KEY, draft)) saveFormDraft(DRAFT_KEY, { ...draft, photo: null });
-    };
-    document.addEventListener("visibilitychange", onHide);
-    window.addEventListener("pagehide", onHide);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      window.removeEventListener("pagehide", onHide);
-    };
-  }, []);
+  function scrollTop() {
+    requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
 
   function startOver() {
     clearFormDraft(DRAFT_KEY);
     setData(INITIAL);
-    setExtraDogs([]);
-    setPhoto(null);
     setErrors({});
     setStep(0);
     setRestored(false);
     scrollTop();
   }
 
-  const set = (key: string) => (value: string) => {
+  const set = <K extends keyof Data>(key: K) => (value: Data[K]) => {
     setData((d) => ({ ...d, [key]: value }));
-    setErrors((e) => (e[key] ? { ...e, [key]: "" } : e));
+    setErrors((e) => (e[key as string] ? { ...e, [key as string]: "" } : e));
   };
 
-  const setService = (value: string) => {
-    const svc = findService(value);
-    setData((d) => ({
-      ...d,
-      service: value,
-      bookingType: svc && svc.bookingTypes.length === 1 ? svc.bookingTypes[0].value : "",
-    }));
-    setErrors((e) => ({ ...e, service: "", bookingType: "" }));
+  const setDog = (i: number, key: keyof Dog) => (value: string) => {
+    setData((d) => ({ ...d, dogs: d.dogs.map((dog, j) => (j === i ? { ...dog, [key]: value } : dog)) }));
+    setErrors((e) => (e[`dog${i}_${key}`] ? { ...e, [`dog${i}_${key}`]: "" } : e));
   };
 
-  const service = findService(data.service);
-  const dogsNum = parseInt(data.dogs, 10) || 1;
-  const price = priceFor(data.service, data.bookingType, dogsNum);
+  function toggleHelp(value: string) {
+    setData((d) => ({ ...d, help: d.help.includes(value) ? d.help.filter((h) => h !== value) : [...d.help, value] }));
+    setErrors((e) => ({ ...e, help: "" }));
+  }
 
-  // Steps grow with the dog count: base steps, then one step per extra dog,
-  // then Meet & greet last.
-  const extraCount = Math.max(0, dogsNum - 1);
-  const steps = [
-    ...BASE_STEPS,
-    ...Array.from({ length: extraCount }, (_, i) => `Dog ${i + 2}`),
-    "Meet & greet",
-  ];
-  const meetStep = steps.length - 1;
-  const isExtraStep = (s: number) => s >= FIRST_EXTRA && s < meetStep;
-  const extraIndex = (s: number) => s - FIRST_EXTRA;
-
-  // Keep the additional-dog list the same length as the chosen count.
-  const onDogsChange = (value: string) => {
-    setData((d) => ({ ...d, dogs: value }));
-    setErrors((e) => (e.dogs ? { ...e, dogs: "" } : e));
-    const n = Math.max(0, (parseInt(value, 10) || 1) - 1);
-    setExtraDogs((cur) => {
-      const next = cur.slice(0, n);
-      while (next.length < n) next.push(blankDog());
-      return next;
-    });
-  };
-
-  const setExtra = (idx: number, key: keyof DogInput) => (value: string) => {
-    setExtraDogs((cur) => cur.map((d, i) => (i === idx ? { ...d, [key]: value } : d)));
-    setErrors((e) => (e[`d${idx}_${key}`] ? { ...e, [`d${idx}_${key}`]: "" } : e));
-  };
-
-  function validate(s: number) {
+  function validate(s: number): Record<string, string> {
     const e: Record<string, string> = {};
-    const req = (k: string) => {
-      if (!data[k]?.trim()) e[k] = "Please fill this in.";
-    };
-    if (isExtraStep(s)) {
-      const idx = extraIndex(s);
-      const dog = extraDogs[idx];
-      const rq = (k: keyof DogInput) => {
-        if (!dog?.[k]?.trim()) e[`d${idx}_${k}`] = "Please fill this in.";
-      };
-      rq("name"); rq("breed"); rq("age");
-      rq("withDogs"); rq("withPeople"); rq("needHelp");
-      rq("allergies"); rq("tools");
-      if (!dog?.gender) e[`d${idx}_gender`] = "Please choose.";
-      if (!dog?.trust) e[`d${idx}_trust`] = "Please choose.";
-      return e;
+    if (s === 0) {
+      data.dogs.forEach((dog, i) => {
+        if (!dog.name.trim()) e[`dog${i}_name`] = "Please add their name.";
+        if (!dog.breed.trim()) e[`dog${i}_breed`] = "Please add their breed (or best guess).";
+        if (!dog.age.trim()) e[`dog${i}_age`] = "Please add their age.";
+      });
     }
-    switch (s) {
-      case 0: // About you
-        req("firstName"); req("lastName"); req("email"); req("phone"); req("address");
-        if (data.email && !EMAIL_RE.test(data.email.trim())) e.email = "Enter a valid email address.";
-        if (data.phone && !PHONE_RE.test(data.phone.replace(/[\s\-()]/g, ""))) e.phone = "Enter a valid phone number.";
-        break;
-      case 1: // Choose a service
-        if (!data.service) e.service = "Please choose a service.";
-        break;
-      case 2: // Booking options
-        if (!data.bookingType) e.bookingType = "Please choose an option.";
-        if (!data.dogs || !(dogsNum >= 1)) e.dogs = "Enter a number (1 or more).";
-        break;
-      case 3: // Your dog
-        req("dogName"); req("breed"); req("age");
-        if (!data.gender) e.gender = "Please choose.";
-        break;
-      case 4: // Behaviour
-        req("withDogs"); req("withPeople"); req("needHelp");
-        break;
-      case 5: // Care & handling
-        req("allergies"); req("tools");
-        if (!data.trust) e.trust = "Please choose.";
-        break;
+    if (s === 1 && !data.service) e.service = "Please choose one — “Not sure yet” is fine.";
+    if (s === 2) {
+      if (data.help.length === 0) e.help = "Pick at least one.";
+      if (data.help.includes("other") && !data.helpOther.trim()) e.helpOther = "Tell us a little about it.";
+    }
+    if (s === 3) {
+      if (!data.firstName.trim()) e.firstName = "Please add your first name.";
+      if (!data.lastName.trim()) e.lastName = "Please add your last name.";
+      if (!EMAIL_RE.test(data.email.trim())) e.email = "Enter a valid email address.";
+      if (!PHONE_RE.test(data.phone.replace(/[\s\-()]/g, ""))) e.phone = "Enter a valid phone number.";
+      if (checkPostcode(data.postcode).status === "invalid") e.postcode = "Enter your full postcode, e.g. NE30 4AA.";
     }
     return e;
   }
-
-  // Start each new step at the top of the page. Deferring to the next frame
-  // lets React swap in the new step first; then we move focus to the top of
-  // the form BEFORE scrolling — this clears focus from the "Next" button,
-  // whose retained focus would otherwise anchor the page part-way down as the
-  // taller/shorter step renders, and it announces the new step to screen readers.
-  const scrollTop = () =>
-    requestAnimationFrame(() => {
-      topRef.current?.focus({ preventScroll: true });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
 
   function next() {
     const e = validate(step);
@@ -240,322 +149,258 @@ export function BookingForm() {
       setErrors(e);
       return;
     }
-    const ns = Math.min(step + 1, steps.length - 1);
     setErrors({});
-    setStep(ns);
-    persist(ns);
+    persist(step + 1);
+    setStep(step + 1);
+    setRestored(false);
     scrollTop();
   }
 
   function back() {
-    jump(Math.max(step - 1, 0));
-  }
-
-  /** Go straight to an earlier step (from Back or the progress circles), saving first. */
-  function jump(target: number) {
     setErrors({});
-    setStep(target);
-    persist(target);
+    setStep(step - 1);
     scrollTop();
   }
 
   async function submit() {
-    for (let s = 0; s < steps.length - 1; s++) {
-      const e = validate(s);
-      if (Object.keys(e).length) {
-        setErrors(e);
-        setStep(s);
-        scrollTop();
-        return;
-      }
+    const e = validate(3);
+    if (Object.keys(e).length) {
+      setErrors(e);
+      return;
     }
     setStatus("submitting");
     setSubmitError("");
+    const pc = checkPostcode(data.postcode);
     try {
       const res = await fetch("/api/booking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, extraDogs }),
+        body: JSON.stringify({
+          ...data,
+          dogs: data.dogs.map((d) => ({ name: d.name.trim(), breed: d.breed.trim(), age: d.age.trim() })),
+          postcode: pc.formatted ?? data.postcode.trim(),
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSubmitError(json.error || "Something went wrong. Please try again.");
-        setStatus("error");
+        setStatus("idle");
         return;
       }
-      // Request sent — take them to create an account, prefilled from the form.
       clearFormDraft(DRAFT_KEY);
       setStatus("success");
-      // Hand the chosen photo + any extra dogs to create-account (files and
-      // arrays can't ride in the URL).
-      try {
-        if (photo) sessionStorage.setItem(DOG_PHOTO_HANDOFF_KEY, photo);
-        else sessionStorage.removeItem(DOG_PHOTO_HANDOFF_KEY);
-        if (extraDogs.length) sessionStorage.setItem(EXTRA_DOGS_HANDOFF_KEY, JSON.stringify(extraDogs));
-        else sessionStorage.removeItem(EXTRA_DOGS_HANDOFF_KEY);
-      } catch {
-        /* ignore */
-      }
-      const params = new URLSearchParams();
-      const prefill: Record<string, string> = {
-        name: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        dogName: data.dogName,
-        breed: data.breed,
-        age: data.age,
-      };
-      for (const [k, v] of Object.entries(prefill)) {
-        if (v?.trim()) params.set(k, v.trim());
-      }
-      router.push(`/create-account?${params.toString()}`);
+      scrollTop();
     } catch {
-      setSubmitError("Couldn’t reach the server. Please try again.");
-      setStatus("error");
+      setSubmitError("Couldn't reach us just now. Please check your connection and try again.");
+      setStatus("idle");
+    }
+  }
+
+  const names = dogNames(data.dogs);
+
+  // Their details carry into sign-up, so it's just a password.
+  const createAccountHref = `/create-account?${new URLSearchParams({
+    name: data.firstName.trim(),
+    lastName: data.lastName.trim(),
+    email: data.email.trim(),
+    phone: data.phone.trim(),
+    address: checkPostcode(data.postcode).formatted ?? data.postcode.trim(),
+    dogName: data.dogs[0]?.name.trim() ?? "",
+    breed: data.dogs[0]?.breed.trim() ?? "",
+    next: "/profile",
+  })}`;
+  function handOffDogs() {
+    try {
+      sessionStorage.setItem(
+        EXTRA_DOGS_HANDOFF_KEY,
+        JSON.stringify(data.dogs.slice(1).map((d) => ({ name: d.name.trim(), breed: d.breed.trim() })))
+      );
+    } catch {
+      /* ignore */
     }
   }
 
   if (status === "success") {
     return (
-      <div ref={topRef} className="rounded-2xl border border-white/10 bg-ink-soft p-8 text-center animate-fade-up">
-        <CheckCircleIcon width={44} height={44} className="mx-auto text-accent" />
-        <h2 className="mt-4 text-3xl font-semibold tracking-tight text-paper">Request sent</h2>
-        <p className="mx-auto mt-3 max-w-md text-paper/75">
-          Thanks {data.firstName || "there"} — taking you to create your
-          account…
+      <div ref={topRef} className="rounded-3xl border border-white/10 bg-ink-soft px-6 py-12 text-center animate-fade-up sm:px-10">
+        <CheckCircleIcon width={56} height={56} className="mx-auto text-paper" />
+        <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-paper-dim">Free meet &amp; greet</p>
+        <h2 className="display-heading mt-3 text-3xl uppercase text-paper sm:text-4xl">We&apos;ll be in touch</h2>
+        <p className="mx-auto mt-4 max-w-md text-paper/75">
+          Thanks {data.firstName.trim() || "for getting in touch"}! We&apos;ll read through everything you&apos;ve told us
+          about {names}, give you a call or message with a few questions, and book a day that suits you to meet{" "}
+          {data.dogs.length > 1 ? "them" : names} — completely free.
         </p>
+        <p className="mx-auto mt-3 max-w-md text-sm text-paper-dim">
+          We&apos;ve emailed you a copy. Usually we&apos;re back in touch within a day or two.
+        </p>
+        {/* Like Kanvas's trial bookings: an account now means they can chat
+            with us and follow their request in the app straight away. */}
+        <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-white/10 bg-ink p-5 text-left">
+          <p className="font-semibold text-paper">Create your account</p>
+          <p className="mt-1 text-sm text-paper/70">
+            Message us in the app, see when your meet &amp; greet is booked, and get updates — just add a password.
+          </p>
+          <Link
+            href={createAccountHref}
+            onClick={handOffDogs}
+            className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-accent px-6 text-sm font-semibold text-accent-ink transition-opacity hover:opacity-90"
+          >
+            Create account
+          </Link>
+        </div>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <Link href="/" className="glass inline-flex min-h-[44px] items-center rounded-full px-6 text-sm font-semibold text-paper">
+            Back to Home
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const dogNames = [data.dogName, ...extraDogs.map((d) => d.name)].filter((n) => n?.trim());
+  const pc = checkPostcode(data.postcode);
 
   return (
-    <div ref={topRef} tabIndex={-1} className="scroll-mt-24 outline-none">
-      <WizardHeading title={steps[step]} step={step} total={steps.length} saved={saved} />
-      <div className="mt-5">
-        <WizardProgress steps={steps} current={step} onJump={status === "submitting" ? undefined : jump} />
-      </div>
-
+    <div ref={topRef} className="scroll-mt-28">
+      <WizardProgress steps={STEPS} current={step} onJump={(i) => setStep(i)} />
       {restored && <DraftRestored onStartOver={startOver} />}
 
-      {/* Honeypot */}
-      <div className="hidden" aria-hidden="true">
-        <label>
-          Company
-          <input
-            tabIndex={-1}
-            autoComplete="off"
-            value={data.company}
-            onChange={(e) => set("company")(e.target.value)}
-          />
-        </label>
-      </div>
-
       <StepCard key={step}>
+        <WizardHeading kicker="Free meet & greet" title={STEPS[step]} step={step} total={STEPS.length} saved={saved} />
+
+        {/* Honeypot: hidden from people, filled in by bots. */}
+        <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+          <label htmlFor="company">Leave this empty</label>
+          <input id="company" tabIndex={-1} autoComplete="off" value={data.company} onChange={(e) => set("company")(e.target.value)} />
+        </div>
+
         {step === 0 && (
-          <div className="grid gap-5">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="First name" name="firstName" required value={data.firstName} onChange={set("firstName")} error={errors.firstName} />
-              <Field label="Last name" name="lastName" required value={data.lastName} onChange={set("lastName")} error={errors.lastName} />
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Email" name="email" type="email" inputMode="email" required value={data.email} onChange={set("email")} error={errors.email} placeholder="you@example.com" />
-              <Field label="Phone" name="phone" type="tel" inputMode="tel" required value={data.phone} onChange={set("phone")} error={errors.phone} placeholder="07123 456789" />
-            </div>
-            <Field label="Address & postcode" name="address" required value={data.address} onChange={set("address")} error={errors.address} placeholder="Street, town, postcode" />
+          <div className="mt-6 grid gap-6">
+            {data.dogs.map((dog, i) => (
+              <div key={i} className={i > 0 ? "grid gap-5 border-t border-white/10 pt-6" : "grid gap-5"}>
+                {data.dogs.length > 1 && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-paper">Dog {i + 1}</p>
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setData((d) => ({ ...d, dogs: d.dogs.filter((_, j) => j !== i) }))}
+                        className="text-sm text-paper-dim underline underline-offset-2 hover:text-paper"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                )}
+                <Field label="Dog's name" name={`dog${i}_name`} required value={dog.name} onChange={setDog(i, "name")} error={errors[`dog${i}_name`]} />
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Breed" name={`dog${i}_breed`} required value={dog.breed} onChange={setDog(i, "breed")} error={errors[`dog${i}_breed`]} placeholder="e.g. Cocker Spaniel" />
+                  <Field label="Age" name={`dog${i}_age`} required value={dog.age} onChange={setDog(i, "age")} error={errors[`dog${i}_age`]} placeholder="e.g. 18 months" />
+                </div>
+              </div>
+            ))}
+            {data.dogs.length < 4 && (
+              <button
+                type="button"
+                onClick={() => setData((d) => ({ ...d, dogs: [...d.dogs, blankDog()] }))}
+                className="glass inline-flex items-center justify-center gap-2 self-start rounded-full px-4 py-2 text-sm font-medium text-paper"
+              >
+                <PlusIcon width={16} height={16} />
+                Add another dog
+              </button>
+            )}
           </div>
         )}
 
         {step === 1 && (
-          <div>
-            <p className="mb-2 block text-sm text-paper-dim">
-              Service type <span className="text-paper-dim/70">*</span>
-            </p>
+          <div className="mt-6">
+            <p className="mb-4 text-paper/70">What are you interested in for {names}?</p>
             <SelectCards
-              ariaLabel="Service type"
-              options={booking.services.map((s) => ({ value: s.value, label: s.label, desc: s.desc, icon: s.icon }))}
+              ariaLabel="What you're interested in"
+              columns={3}
+              options={meetGreet.services.map((s) => ({ value: s.value, label: s.label, desc: s.desc, icon: s.icon }))}
               value={data.service}
-              onChange={setService}
+              onChange={set("service")}
             />
-            {errors.service && <p className="mt-1.5 text-sm text-red-400">{errors.service}</p>}
+            {errors.service && <p className="mt-2 text-sm text-red-400">{errors.service}</p>}
           </div>
         )}
 
         {step === 2 && (
-          <div className="grid gap-6">
-            {service && (
-              <div>
-                <p className="mb-2 block text-sm text-paper-dim">
-                  Booking type <span className="text-paper-dim/70">*</span>
-                </p>
-                <SelectCards
-                  ariaLabel="Booking type"
-                  options={service.bookingTypes.map((b) => ({
-                    value: b.value,
-                    label: b.label,
-                    desc: b.desc,
-                    price: `£${b.base} per ${b.unit}`,
-                  }))}
-                  value={data.bookingType}
-                  onChange={set("bookingType")}
-                />
-                {errors.bookingType && <p className="mt-1.5 text-sm text-red-400">{errors.bookingType}</p>}
-              </div>
-            )}
-
-            <div>
-              <Field label="How many dogs?" name="dogs" required value={data.dogs} onChange={onDogsChange} error={errors.dogs} options={booking.dogCounts} />
-              <p className="mt-2 text-sm text-paper-dim">{booking.copy.dogsNote}</p>
-              {dogsNum > 1 && (
-                <p className="mt-1 text-sm text-accent">
-                  You&apos;ll add {dogsNum === 2 ? "your second dog’s" : `your other ${dogsNum - 1} dogs’`}{" "}
-                  details on their own step{dogsNum === 2 ? "" : "s"} after your first.
-                </p>
-              )}
+          <div className="mt-6">
+            <p className="mb-4 text-paper/70">What would you like help with? Pick as many as you like.</p>
+            <div role="group" aria-label="What you'd like help with" className="grid grid-cols-2 gap-3">
+              {meetGreet.help.map((h) => {
+                const on = data.help.includes(h.value);
+                return (
+                  <button
+                    key={h.value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleHelp(h.value)}
+                    className={`relative flex min-h-[72px] items-center justify-center rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-colors ${
+                      on ? "border-accent bg-accent text-accent-ink" : "border-white/10 bg-ink text-paper hover:border-white/30"
+                    }`}
+                  >
+                    {on && <CheckIcon width={16} height={16} className="absolute right-3 top-3" />}
+                    {h.label}
+                  </button>
+                );
+              })}
             </div>
-
-            {price && (
-              <div className="rounded-lg border border-white/10 bg-ink p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Estimated price</p>
-                <p className="display-heading mt-2 text-3xl text-paper">
-                  £{price.total}{" "}
-                  <span className="text-base font-normal text-paper/60">per {price.unit}</span>
-                </p>
-                {dogsNum > 1 && (
-                  <p className="mt-1 text-sm text-paper-dim">
-                    {dogsNum} dogs · £{price.base} first dog, £{price.base - booking.secondDogDiscount} each additional
-                  </p>
-                )}
+            {errors.help && <p className="mt-2 text-sm text-red-400">{errors.help}</p>}
+            {data.help.includes("other") && (
+              <div className="mt-5">
+                <Field
+                  label="Tell us a little more"
+                  name="helpOther"
+                  required
+                  textarea
+                  rows={3}
+                  value={data.helpOther}
+                  onChange={set("helpOther")}
+                  error={errors.helpOther}
+                  placeholder="e.g. barking at the door, recall, nervous with visitors…"
+                />
               </div>
             )}
           </div>
         )}
 
         {step === 3 && (
-          <div className="grid gap-5">
-            {dogsNum > 1 && (
-              <p className="rounded-lg border border-white/10 bg-ink px-4 py-2.5 text-sm text-paper/80">
-                This is your <b className="text-paper">first dog</b>. You&apos;ll add your
-                other {dogsNum === 2 ? "dog" : `${dogsNum - 1} dogs`} on the next step
-                {dogsNum === 2 ? "" : "s"} — same questions each time.
-              </p>
-            )}
-            {/* Optional dog photo — becomes their account picture. */}
+          <div className="mt-6 grid gap-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="First name" name="firstName" required value={data.firstName} onChange={set("firstName")} error={errors.firstName} />
+              <Field label="Last name" name="lastName" required value={data.lastName} onChange={set("lastName")} error={errors.lastName} />
+            </div>
+            <Field label="Email" name="email" type="email" inputMode="email" required value={data.email} onChange={set("email")} error={errors.email} placeholder="you@example.com" />
+            <Field label="Phone" name="phone" type="tel" inputMode="tel" required value={data.phone} onChange={set("phone")} error={errors.phone} placeholder="07123 456789" />
             <div>
-              <AvatarUpload value={photo} onSelect={setPhoto} size={104} />
-              <p className="mt-2 text-center text-sm text-paper-dim">
-                Add a photo of {dogsNum > 1 ? "your first dog" : "your dog"}{" "}
-                <span className="text-paper/50">(optional)</span>
-              </p>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Dog's name" name="dogName" required value={data.dogName} onChange={set("dogName")} error={errors.dogName} />
-              <Field label="Breed" name="breed" required value={data.breed} onChange={set("breed")} error={errors.breed} />
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <p className="mb-2 block text-sm text-paper-dim">
-                  Gender <span className="text-paper-dim/70">*</span>
+              <Field label="Postcode" name="postcode" required value={data.postcode} onChange={set("postcode")} error={errors.postcode} placeholder="e.g. NE30 4AA" />
+              {/* Live check: can we get to them? Never blocks the request. */}
+              {pc.status === "covered" && (
+                <p className="mt-2 flex items-center gap-2 text-sm text-emerald-300">
+                  <MapPinIcon width={16} height={16} />
+                  Great — we cover {pc.area}.
                 </p>
-                <SelectCards ariaLabel="Gender" options={booking.genders} value={data.gender} onChange={set("gender")} />
-                {errors.gender && <p className="mt-1.5 text-sm text-red-400">{errors.gender}</p>}
-              </div>
-              <Field label="Age" name="age" required value={data.age} onChange={set("age")} error={errors.age} placeholder="e.g. 2 years" />
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="grid gap-5">
-            <p className="text-paper/70">{booking.copy.dogIntro}</p>
-            <Field label="How are they with other dogs?" name="withDogs" required textarea rows={2} value={data.withDogs} onChange={set("withDogs")} error={errors.withDogs} placeholder={booking.placeholders.withDogs} />
-            <Field label="How are they with other people?" name="withPeople" required textarea rows={2} value={data.withPeople} onChange={set("withPeople")} error={errors.withPeople} placeholder={booking.placeholders.withPeople} />
-            <Field label="What do you need help with?" name="needHelp" required textarea rows={2} value={data.needHelp} onChange={set("needHelp")} error={errors.needHelp} placeholder={booking.placeholders.needHelp} />
-          </div>
-        )}
-
-        {step === 5 && (
-          <div className="grid gap-5">
-            <Field label="Any allergies?" name="allergies" required value={data.allergies} onChange={set("allergies")} error={errors.allergies} placeholder={booking.placeholders.allergies} />
-            <Field label="What lead / tools do you use during walks?" name="tools" required value={data.tools} onChange={set("tools")} error={errors.tools} placeholder={booking.placeholders.tools} />
-            <div className="rounded-lg border border-white/10 bg-ink p-4 text-sm text-paper/70">
-              {booking.copy.toolsNote}
-            </div>
-            <div>
-              <p className="mb-2 block text-sm text-paper-dim">
-                {booking.copy.trustQuestion} <span className="text-paper-dim/70">*</span>
-              </p>
-              <SelectCards ariaLabel="Trust our guidance" options={booking.yesNo} value={data.trust} onChange={set("trust")} />
-              {errors.trust && <p className="mt-1.5 text-sm text-red-400">{errors.trust}</p>}
-            </div>
-          </div>
-        )}
-
-        {isExtraStep(step) && (() => {
-          const idx = extraIndex(step);
-          const dog = extraDogs[idx] ?? blankDog();
-          const err = (k: string) => errors[`d${idx}_${k}`];
-          return (
-            <div className="grid gap-5">
-              <p className="text-paper/70">
-                Dog {idx + 2} — the same details as your first, for their own profile.
-              </p>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Dog's name" name={`d${idx}_name`} required value={dog.name} onChange={setExtra(idx, "name")} error={err("name")} />
-                <Field label="Breed" name={`d${idx}_breed`} required value={dog.breed} onChange={setExtra(idx, "breed")} error={err("breed")} />
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <p className="mb-2 block text-sm text-paper-dim">
-                    Gender <span className="text-paper-dim/70">*</span>
-                  </p>
-                  <SelectCards ariaLabel={`Gender (dog ${idx + 2})`} options={booking.genders} value={dog.gender} onChange={setExtra(idx, "gender")} />
-                  {err("gender") && <p className="mt-1.5 text-sm text-red-400">{err("gender")}</p>}
-                </div>
-                <Field label="Age" name={`d${idx}_age`} required value={dog.age} onChange={setExtra(idx, "age")} error={err("age")} placeholder="e.g. 2 years" />
-              </div>
-              <Field label="How are they with other dogs?" name={`d${idx}_withDogs`} required textarea rows={2} value={dog.withDogs} onChange={setExtra(idx, "withDogs")} error={err("withDogs")} placeholder={booking.placeholders.withDogs} />
-              <Field label="How are they with other people?" name={`d${idx}_withPeople`} required textarea rows={2} value={dog.withPeople} onChange={setExtra(idx, "withPeople")} error={err("withPeople")} placeholder={booking.placeholders.withPeople} />
-              <Field label="What do you need help with?" name={`d${idx}_needHelp`} required textarea rows={2} value={dog.needHelp} onChange={setExtra(idx, "needHelp")} error={err("needHelp")} placeholder={booking.placeholders.needHelp} />
-              <Field label="Any allergies?" name={`d${idx}_allergies`} required value={dog.allergies} onChange={setExtra(idx, "allergies")} error={err("allergies")} placeholder={booking.placeholders.allergies} />
-              <Field label="What lead / tools do you use during walks?" name={`d${idx}_tools`} required value={dog.tools} onChange={setExtra(idx, "tools")} error={err("tools")} placeholder={booking.placeholders.tools} />
-              <div>
-                <p className="mb-2 block text-sm text-paper-dim">
-                  {booking.copy.trustQuestion} <span className="text-paper-dim/70">*</span>
+              )}
+              {pc.status === "outside" && (
+                <p className="mt-2 flex items-start gap-2 text-sm text-amber-300">
+                  <MapPinIcon width={16} height={16} className="mt-0.5 shrink-0" />
+                  We don&apos;t usually travel to {pc.outward}, but send your request and we&apos;ll let you know if we can.
                 </p>
-                <SelectCards ariaLabel={`Trust our guidance (dog ${idx + 2})`} options={booking.yesNo} value={dog.trust} onChange={setExtra(idx, "trust")} />
-                {err("trust") && <p className="mt-1.5 text-sm text-red-400">{err("trust")}</p>}
-              </div>
+              )}
             </div>
-          );
-        })()}
-
-        {step === meetStep && (
-          <div className="grid gap-4 text-paper/75">
-            {booking.copy.meetGreet.map((p, i) => (
-              <p key={i}>{p}</p>
-            ))}
-            <div className="rounded-lg border border-white/10 bg-ink p-4 text-sm">
-              <p className="font-semibold text-paper/90">Your request</p>
-              <p className="mt-1 text-paper/70">
-                {service?.label}
-                {data.bookingType && service ? ` · ${service.bookingTypes.find((b) => b.value === data.bookingType)?.label}` : ""}
-                {price ? ` · £${price.total} per ${price.unit}` : ""}
-                {dogNames.length ? ` · ${dogNames.join(", ")}` : ""}
-              </p>
-            </div>
+            <p className="text-xs text-paper-dim">
+              We&apos;ll only use these to arrange your meet &amp; greet. See our{" "}
+              <Link href="/privacy" className="underline underline-offset-2 hover:text-paper">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </div>
         )}
 
-        {Object.values(errors).some(Boolean) && (
-          <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
-            Please check the highlighted {Object.values(errors).filter(Boolean).length === 1 ? "field" : "fields"} above.
-          </p>
-        )}
         {submitError && (
           <p role="alert" className="mt-6 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
             {submitError}
@@ -564,8 +409,8 @@ export function BookingForm() {
 
         <WizardNav
           onBack={step > 0 ? back : undefined}
-          onNext={step < steps.length - 1 ? next : submit}
-          nextLabel={step < steps.length - 1 ? "Next" : "Submit request"}
+          onNext={step < STEPS.length - 1 ? next : submit}
+          nextLabel={step < STEPS.length - 1 ? "Next" : "Send request"}
           busy={status === "submitting"}
           busyLabel="Sending…"
         />

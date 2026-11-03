@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { ProfileView } from "@/components/ProfileView";
+import { MeetGreetCard } from "@/components/profile/MeetGreetCard";
 import { getDogProfile } from "@/lib/reports/data";
 import { getSessionWeather } from "@/lib/weather/data";
 import { dayIdFromISO, nextDateForDay, formatSessionDate } from "@/lib/schedule/sessions";
@@ -34,6 +35,7 @@ export default async function ProfilePage() {
       <main id="main" className="flex-1">
         <section className="bg-ink pb-24 pt-28 sm:pt-32">
           <div className="mx-auto max-w-md px-4 sm:px-6">
+            <MeetGreetCard />
             <ProfileView
               profile={profile}
               weather={weather}

@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps, ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
-import { colors, pressedBg } from "@/theme";
+import { Pressable } from "@/components/pressable";
+import { colors } from "@/theme";
 
 /** A tappable settings-style row: icon, title, optional description and badge. */
 export function NavRow({
@@ -45,7 +46,7 @@ export function NavRow({
 
   if (!onPress) return <View style={rowStyle}>{content}</View>;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [rowStyle, pressed && { backgroundColor: pressedBg }]}>
+    <Pressable onPress={onPress} style={rowStyle}>
       {content}
       <Text style={{ color: colors.muted }}>{"→"}</Text>
     </Pressable>

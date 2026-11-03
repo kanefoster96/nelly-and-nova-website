@@ -1,36 +1,30 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, type ComponentProps } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Linking, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { ChatThread } from "@/components/chat/chat-thread";
+import { GlassButton } from "@/components/glass-button";
 import { LoadingState } from "@/components/ui";
 import { getConversation, setConversationStatus } from "@/data/inbox";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { useAsync } from "@/lib/useAsync";
-import { colors, glass } from "@/theme";
+import { colors } from "@/theme";
 
 function IconButton({ icon, label, onPress, disabled }: { icon: ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={6}
-      accessibilityLabel={label}
-      style={({ pressed }) => [
-        { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", ...glass, opacity: disabled ? 0.5 : 1 },
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      <Ionicons name={icon} size={20} color={colors.foreground} />
-    </Pressable>
+    <GlassButton onPress={onPress} disabled={disabled} hitSlop={6} accessibilityRole="button" accessibilityLabel={label}>
+      <Ionicons name={icon} size={22} color={colors.foreground} />
+    </GlassButton>
   );
 }
 
 /**
  * Trainer: one conversation, messenger-style — back, avatar and name, a
- * status line, call, and a tick/undo for Mark complete / Reopen.
+ * status line, call, and a tick/undo for Mark complete / Reopen — round
+ * glass buttons, as at the top of every page.
  */
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,6 +38,9 @@ export default function ConversationScreen() {
     try {
       await setConversationStatus(id, status);
       setData((c) => (c ? { ...c, status } : c));
+      hapticSuccess();
+    } catch {
+      hapticError();
     } finally {
       setPending(false);
     }
@@ -56,10 +53,10 @@ export default function ConversationScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ paddingTop: insets.top, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 8, paddingVertical: 8 }}>
-          <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 4 }} accessibilityLabel="Back">
-            <Ionicons name="chevron-back" size={26} color={colors.foreground} />
-          </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8 }}>
+          <GlassButton onPress={() => (router.canGoBack() ? router.back() : router.replace("/chat"))} hitSlop={8} accessibilityRole="button" accessibilityLabel="Back">
+            <Ionicons name="chevron-back" size={24} color={colors.foreground} style={{ marginRight: 2 }} />
+          </GlassButton>
           <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4, paddingRight: 6 }}>
             <AvatarCircle name={name} avatarUrl={conversation?.avatarUrl} size={40} />
             <View style={{ flex: 1, minWidth: 0 }}>

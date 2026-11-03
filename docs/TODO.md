@@ -4,6 +4,20 @@ Last updated 3 November 2026. Tick things off as they're done.
 
 ## For you to do
 
+- [ ] **Supabase secret key → Vercel** (needed for the app's log in, the
+      register reminders and creating accounts): Supabase → Project Settings
+      → API Keys → copy the **secret** (service_role) key and send it to
+      Claude, who'll add it to Vercel as `SUPABASE_SERVICE_ROLE_KEY`
+      (Production only)
+- [ ] **Apple Team ID** (developer.apple.com → Membership details, 10
+      letters/numbers) → send to Claude, so the "Set up my account" email
+      button opens the app directly (`APPLE_TEAM_ID` on Vercel)
+- [ ] **First TestFlight build** (see the steps Claude gave you; after this
+      one, Claude can update the app over the air)
+- [ ] **GoCardless webhook**: GoCardless → Developers → Create → Webhook
+      endpoint → URL `https://nelly-and-nova-website.vercel.app/api/webhooks/gocardless`
+      → copy the secret it shows → send to Claude (`GOCARDLESS_WEBHOOK_SECRET`)
+
 - [ ] **Google reviews: create an API key** (about 10 min, on a computer)
   - If the Credentials page keeps reloading: use **Chrome in an incognito
     window**, signed in with **only** the Nelly & Nova Google account. Or try

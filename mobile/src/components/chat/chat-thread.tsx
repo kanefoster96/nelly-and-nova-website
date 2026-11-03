@@ -1,12 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
-import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, FlatList, Keyboard, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, FlatList, Keyboard, Platform, Text, TextInput, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { AttachmentContent } from "@/components/chat/attachment-content";
+import { Pressable } from "@/components/pressable";
 import {
   chatHeartbeat,
   getMessages,
@@ -18,8 +18,10 @@ import {
   type Attachment,
   type Message,
 } from "@/data/inbox";
+import { useBarScrollTarget } from "@/lib/floating-bar";
+import { hapticError, hapticTap } from "@/lib/haptics";
 import { useAsync } from "@/lib/useAsync";
-import { colors, glass } from "@/theme";
+import { colors, glass, GLASS_BORDER } from "@/theme";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DIVIDER_GAP_MS = 5 * 60 * 1000;
@@ -84,6 +86,7 @@ export function ChatThread({
   locked = false,
   lockedMessage,
   emptyLabel = "No messages yet — say hello!",
+  bottomInset = 0,
 }: {
   conversationId: string;
   viewerIsStaff: boolean;
@@ -91,7 +94,15 @@ export function ChatThread({
   locked?: boolean;
   lockedMessage?: string | null;
   emptyLabel?: string;
+  /**
+   * Room kept at the bottom while the keyboard is down — the floating bar's
+   * on the Chat tab (lib/floating-bar.tsx). The bar hides for the keyboard,
+   * so with it up the keyboard's own measure rules.
+   */
+  bottomInset?: number;
 }) {
+  // Tapping Chat again in the bar: back to the newest messages.
+  const barScrollTarget = useBarScrollTarget();
   const { data: loaded } = useAsync(() => getMessages(conversationId), [conversationId]);
   const [messages, setMessages] = useState<Message[]>([]);
   useEffect(() => {
@@ -145,13 +156,20 @@ export function ChatThread({
   // thread really ends on screen — right whether the tab bar is under it or not.
   const rootRef = useRef<View>(null);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [keyboardUp, setKeyboardUp] = useState(false);
   useEffect(() => {
     const onFrame = (e: { endCoordinates: { screenY: number } }) => {
       const keyboardTop = e.endCoordinates.screenY;
       rootRef.current?.measureInWindow((_x, y, _w, h) => setKeyboardInset(Math.max(0, Math.round(y + h - keyboardTop))));
     };
-    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillChangeFrame" : "keyboardDidShow", onFrame);
-    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => setKeyboardInset(0));
+    const show = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillChangeFrame" : "keyboardDidShow", (e) => {
+      setKeyboardUp(true);
+      onFrame(e);
+    });
+    const hide = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide", () => {
+      setKeyboardUp(false);
+      setKeyboardInset(0);
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -171,7 +189,7 @@ export function ChatThread({
     setDraft("");
     setError(null);
     setSending(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticTap();
     try {
       const saved = await sendMessage(conversationId, body, viewerIsStaff, attachment);
       // Realtime may already have delivered it — then just drop the temp copy.
@@ -179,6 +197,7 @@ export function ChatThread({
         prev.some((m) => m.id === saved.id) ? prev.filter((m) => m.id !== tempId) : prev.map((m) => (m.id === tempId ? saved : m))
       );
     } catch {
+      hapticError();
       setError("Could not send that — please try again.");
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setDraft(body);
@@ -232,8 +251,9 @@ export function ChatThread({
         width: 150,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: colors.border,
+        ...GLASS_BORDER,
         backgroundColor: "rgba(26,26,26,0.96)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
         paddingVertical: 4,
         zIndex: 10,
       }}
@@ -276,8 +296,9 @@ export function ChatThread({
   );
 
   return (
-    <View ref={rootRef} style={{ flex: 1, paddingBottom: keyboardInset, backgroundColor: colors.background }}>
+    <View ref={rootRef} style={{ flex: 1, paddingBottom: keyboardUp ? keyboardInset : bottomInset, backgroundColor: colors.background }}>
       <FlatList
+        ref={barScrollTarget}
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, flexGrow: 1, justifyContent: rows.length === 0 ? "center" : undefined }}
         data={[...rows].reverse()}
@@ -316,7 +337,7 @@ export function ChatThread({
                       paddingVertical: message.attachment ? 6 : 9,
                       backgroundColor: isMine ? colors.accent : colors.surface,
                       borderWidth: isMine ? 0 : 1,
-                      borderColor: colors.border,
+                      ...GLASS_BORDER,
                       gap: 6,
                       opacity: message.pending ? 0.7 : 1,
                     }}
@@ -342,7 +363,7 @@ export function ChatThread({
       ) : !viewerIsStaff ? (
         // A member's composer: one tidy row — the text field, attach, Send.
         <View style={{ borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 12, paddingVertical: 8 }}>
-          {textInput(16, { flex: 1, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 22 })}
+          {textInput(16, { flex: 1, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, borderRadius: 22 })}
           <View>
             <Pressable
               onPress={() => setAttachMenuOpen((v) => !v)}
@@ -358,10 +379,7 @@ export function ChatThread({
             onPress={handleSend}
             disabled={sending || !draft.trim()}
             accessibilityLabel="Send"
-            style={({ pressed }) => [
-              { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: sending || !draft.trim() ? 0.45 : 1 },
-              pressed && { opacity: 0.8 },
-            ]}
+            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: sending || !draft.trim() ? 0.45 : 1 }}
           >
             {sending ? <ActivityIndicator color={colors.accentForeground} size="small" /> : <Ionicons name="arrow-up" size={22} color={colors.accentForeground} />}
           </Pressable>
@@ -386,10 +404,7 @@ export function ChatThread({
             <Pressable
               onPress={handleSend}
               disabled={sending || !draft.trim()}
-              style={({ pressed }) => [
-                { height: 38, borderRadius: 19, paddingHorizontal: 18, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: sending || !draft.trim() ? 0.45 : 1 },
-                pressed && { opacity: 0.8 },
-              ]}
+              style={{ height: 38, borderRadius: 19, paddingHorizontal: 18, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: sending || !draft.trim() ? 0.45 : 1 }}
             >
               {sending ? <ActivityIndicator color={colors.accentForeground} size="small" /> : <Text style={{ color: colors.accentForeground, fontSize: 15, fontWeight: "700" }}>Send</Text>}
             </Pressable>

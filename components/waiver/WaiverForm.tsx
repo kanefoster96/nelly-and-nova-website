@@ -27,6 +27,7 @@ import {
   yesNo,
 } from "@/config/waiver";
 import { SignaturePad } from "./SignaturePad";
+import { safeNext } from "@/lib/nav/next";
 
 // Kept short so each screen fits a phone without scrolling — long sections are
 // split into parts (e.g. dog details across basics / vaccinations / health / vet).
@@ -48,6 +49,14 @@ export function WaiverForm() {
   const [data, setData] = useState<WaiverData>(emptyWaiver);
   const [submitError, setSubmitError] = useState("");
   const [savedDogId, setSavedDogId] = useState("");
+  // "/waiver?next=/join/…" — where to send them back to (their checklist),
+  // and this page's own address for log in to return to.
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [here, setHere] = useState("/waiver");
+  useEffect(() => {
+    setReturnTo(safeNext(new URLSearchParams(window.location.search).get("next")));
+    setHere(window.location.pathname + window.location.search);
+  }, []);
   const [vaccUploading, setVaccUploading] = useState(false);
   const [step, setStep] = useState(0);
   const [completed, setCompleted] = useState<number[]>([]);
@@ -303,6 +312,11 @@ export function WaiverForm() {
           to confirm your place.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {returnTo && (
+            <Button href={returnTo} radius="xl">
+              Back to your checklist
+            </Button>
+          )}
           {savedDogId && (
             <Button href={`/profile/dogs/${savedDogId}`} radius="xl">
               View {data.dogName || "your dog"}&apos;s record
@@ -330,8 +344,8 @@ export function WaiverForm() {
           in (or create an account) first.{restored ? " Your progress so far is saved on this device." : ""}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Button href="/login" radius="xl">Log in</Button>
-          <Button href="/create-account" variant="secondary" radius="xl">Create an account</Button>
+          <Button href={`/login?next=${encodeURIComponent(here)}`} radius="xl">Log in</Button>
+          <Button href={`/create-account?next=${encodeURIComponent(here)}`} variant="secondary" radius="xl">Create an account</Button>
         </div>
       </div>
     );

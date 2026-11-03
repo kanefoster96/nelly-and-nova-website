@@ -50,23 +50,26 @@ export function bookingConfirmation(d: {
   serviceLabel?: string;
 }): EmailMessage {
   const name = d.firstName || "there";
-  const svc = d.serviceLabel ? ` for ${d.serviceLabel}` : "";
-  const html = layout("We've got your request", `
+  const dog = d.dogName || "your dog";
+  const html = layout("We'll be in touch", `
     <p>Hi ${escape(name)},</p>
-    <p>Thanks for your booking request${escape(svc)} with ${escape(d.dogName || "your dog")}. We've received it and we'll be in touch shortly to arrange your free meet &amp; greet.</p>
-    <p>There's nothing more you need to do for now — we'll email you the next steps.</p>
+    <p>Thanks for your free meet &amp; greet request for ${escape(dog)}${d.serviceLabel && d.serviceLabel !== "Not sure yet" ? ` (${escape(d.serviceLabel)})` : ""}. We've got everything you sent us.</p>
+    <p>We'll read through it, give you a call or message with a few questions, and book a day that suits you to meet ${escape(dog)} — completely free.</p>
+    <p>There's nothing else you need to do for now. Usually we're back in touch within a day or two.</p>
     <p style="margin-top:20px;">Speak soon,<br/>The ${escape(BRAND)} team</p>
   `);
   const text = [
     `Hi ${name},`,
     "",
-    `Thanks for your booking request${svc} with ${d.dogName || "your dog"}. We've received it and we'll be in touch shortly to arrange your free meet & greet.`,
+    `Thanks for your free meet & greet request for ${dog}. We've got everything you sent us.`,
     "",
-    "There's nothing more you need to do for now — we'll email you the next steps.",
+    `We'll read through it, give you a call or message with a few questions, and book a day that suits you to meet ${dog} — completely free.`,
+    "",
+    "There's nothing else you need to do for now. Usually we're back in touch within a day or two.",
     "",
     `Speak soon, The ${BRAND} team`,
   ].join("\n");
-  return { to: d.email, subject: `We've got your request — ${BRAND}`, html, text, replyTo: undefined };
+  return { to: d.email, subject: `We'll be in touch — ${BRAND}`, html, text, replyTo: undefined };
 }
 
 // --- Team: new booking request --------------------------------------------
@@ -80,13 +83,13 @@ export function bookingOwnerNotification(d: {
   to: string;
 }): EmailMessage {
   const who = `${d.firstName} ${d.lastName}`.trim();
-  const html = layout("New booking request", `
-    <p>${escape(who)} sent a meet &amp; greet request${d.serviceLabel ? ` for ${escape(d.serviceLabel)}` : ""}.</p>
+  const html = layout("New meet & greet request", `
+    <p>${escape(who)} sent a meet &amp; greet request${d.serviceLabel ? ` (${escape(d.serviceLabel)})` : ""}. It's in your Onboarding list.</p>
     <pre style="white-space:pre-wrap;font-family:inherit;background:#1a1a1a;padding:14px;border-radius:10px;color:#d4d4d4;">${escape(d.detailsText)}</pre>
   `);
   return {
     to: d.to,
-    subject: `New booking request — ${who} (${d.serviceLabel ?? "enquiry"})`,
+    subject: `New meet & greet request — ${who} (${d.serviceLabel ?? "enquiry"})`,
     html,
     text: d.detailsText,
     replyTo: d.email,
@@ -297,15 +300,12 @@ export function meetGreetBooked(d: {
   email: string;
   whenLabel: string; // e.g. "Thursday 2 October at 10:30"
   notes?: string;
-  createAccountUrl: string;
 }): EmailMessage {
   const first = d.name.split(" ")[0] || "there";
   const html = layout("Your meet & greet is booked", `
     <p>Hi ${escape(first)},</p>
     <p>Lovely to hear from you. We've booked your free meet &amp; greet for <b style="color:#ffffff;">${escape(d.whenLabel)}</b>.</p>
     ${d.notes ? `<p>${escape(d.notes).replace(/\n/g, "<br/>")}</p>` : ""}
-    <p>If you haven't already, you can create your account now so you're ready to go afterwards:</p>
-    <p><a href="${escape(d.createAccountUrl)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:10px 18px;border-radius:999px;text-decoration:none;font-weight:600;">Create your account</a></p>
     <p>Need to change the time? Just reply to this email.</p>
     <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
   `);
@@ -315,11 +315,104 @@ export function meetGreetBooked(d: {
     `We've booked your free meet & greet for ${d.whenLabel}.`,
     ...(d.notes ? ["", d.notes] : []),
     "",
-    `Create your account so you're ready afterwards: ${d.createAccountUrl}`,
-    "",
     "Need to change the time? Just reply to this email.",
     "",
     `See you soon, The ${BRAND} team`,
   ].join("\n");
   return { to: d.email, subject: `Your meet & greet with ${BRAND}`, html, text };
+}
+
+// --- Customer: onboarding started (after the meet & greet) -----------------
+
+export function onboardingStarted(d: {
+  name: string;
+  email: string;
+  dogNames: string;
+  joinUrl: string;
+}): EmailMessage {
+  const first = d.name.split(" ")[0] || "there";
+  const dog = d.dogNames || "your dog";
+  const html = layout("Let's get you set up", `
+    <p>Hi ${escape(first)},</p>
+    <p>It was lovely meeting ${escape(dog)} — we're really looking forward to working together!</p>
+    <p>There are three quick things to do before your first session, all from one page:</p>
+    <ol style="padding-left:20px;margin:12px 0;">
+      <li style="margin:6px 0;"><b style="color:#ffffff;">Set up your Direct Debit</b> with GoCardless (it's their secure page — we never see your bank details)</li>
+      <li style="margin:6px 0;"><b style="color:#ffffff;">Create your account</b>, if you haven't already</li>
+      <li style="margin:6px 0;"><b style="color:#ffffff;">Register ${escape(dog)}</b> — their health and vet details, and the consent &amp; waiver</li>
+    </ol>
+    <p><a href="${escape(d.joinUrl)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;">Get started</a></p>
+    <p>We'll confirm your training day with you directly. Any questions, just reply to this email.</p>
+    <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${first},`,
+    "",
+    `It was lovely meeting ${dog} — we're really looking forward to working together!`,
+    "",
+    "Three quick things to do before your first session, all from one page:",
+    "1. Set up your Direct Debit with GoCardless (their secure page — we never see your bank details)",
+    "2. Create your account, if you haven't already",
+    `3. Register ${dog} — their health and vet details, and the consent & waiver`,
+    "",
+    `Get started: ${d.joinUrl}`,
+    "",
+    "We'll confirm your training day with you directly. Any questions, just reply to this email.",
+    "",
+    `See you soon, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Next steps for ${dog} — ${BRAND}`, html, text };
+}
+
+// --- App log in: set up account / reset password ---------------------------
+
+export function appSetupLink(d: { email: string; url: string; isNew: boolean }): EmailMessage {
+  const button = d.isNew ? "Set Up My Account" : "Reset My Password";
+  const html = layout(d.isNew ? "Set up your account" : "Reset your password", `
+    <p>${d.isNew ? "Tap below on your phone to choose a password and set up your Nelly &amp; Nova account." : "Tap below on your phone to choose a new password."}</p>
+    <p><a href="${escape(d.url)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;">${button}</a></p>
+    <p style="color:#8c8c8c;font-size:13px;">This button works for an hour. Didn't ask for it? You can ignore this email.</p>
+  `);
+  const text = [
+    d.isNew ? "Set up your Nelly & Nova account:" : "Reset your Nelly & Nova password:",
+    d.url,
+    "",
+    "This link works for an hour. Didn't ask for it? You can ignore this email.",
+  ].join("\n");
+  return { to: d.email, subject: d.isNew ? `Set up your ${BRAND} account` : `Reset your ${BRAND} password`, html, text };
+}
+
+// --- Customer: register your dog before the first session -------------------
+
+export function registerReminder(d: {
+  name: string;
+  email: string;
+  dogNames: string;
+  firstSessionLabel: string; // "Thursday 13 November"
+  daysToGo: number;
+  joinUrl: string;
+}): EmailMessage {
+  const first = d.name.split(" ")[0] || "there";
+  const dog = d.dogNames || "your dog";
+  const when = d.daysToGo <= 0 ? "today" : d.daysToGo === 1 ? "tomorrow" : `on ${d.firstSessionLabel}`;
+  const html = layout(`Register ${dog} before ${d.daysToGo <= 1 ? "tomorrow" : "their first session"}`, `
+    <p>Hi ${escape(first)},</p>
+    <p>${escape(dog)}'s first session is ${escape(when)} — we can't wait! Before we can collect them, we need them registered: their health and vet details, emergency contacts, and the consent &amp; waiver.</p>
+    <p>It only takes a few minutes:</p>
+    <p><a href="${escape(d.joinUrl)}" style="display:inline-block;background:${ACCENT};color:#000000;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:600;">Register ${escape(dog)}</a></p>
+    <p>If it isn't done before the session, we won't be able to pick ${escape(dog)} up. Any questions, just reply to this email.</p>
+    <p style="margin-top:20px;">See you soon,<br/>The ${escape(BRAND)} team</p>
+  `);
+  const text = [
+    `Hi ${first},`,
+    "",
+    `${dog}'s first session is ${when} — we can't wait! Before we can collect them, we need them registered: their health and vet details, emergency contacts, and the consent & waiver.`,
+    "",
+    `Register ${dog}: ${d.joinUrl}`,
+    "",
+    `If it isn't done before the session, we won't be able to pick ${dog} up. Any questions, just reply to this email.`,
+    "",
+    `See you soon, The ${BRAND} team`,
+  ].join("\n");
+  return { to: d.email, subject: `Register ${dog} before ${d.daysToGo <= 1 ? "tomorrow" : "their first session"} — ${BRAND}`, html, text };
 }

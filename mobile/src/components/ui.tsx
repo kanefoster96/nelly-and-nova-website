@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,14 @@ import {
   type TextInputProps,
 } from "react-native";
 
-import { colors } from "@/theme";
+import { Pressable } from "@/components/pressable";
+import { colors, GLASS_BORDER } from "@/theme";
+
+/**
+ * A card, as the Kanvas app draws them: the surface colour, rounded, with a
+ * glass edge (GLASS_BORDER). Spread into a View's style.
+ */
+export const CARD = { borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, borderRadius: 18, padding: 16 } as const;
 
 export function ScreenContainer({ children }: { children: ReactNode }) {
   return <View style={styles.screen}>{children}</View>;

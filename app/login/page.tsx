@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { LoginForm } from "@/components/LoginForm";
@@ -41,7 +42,9 @@ export default async function LoginPage({
             )}
 
             <div className="mt-8">
-              <LoginForm />
+              <Suspense fallback={null}>
+                <LoginForm />
+              </Suspense>
             </div>
           </div>
         </section>

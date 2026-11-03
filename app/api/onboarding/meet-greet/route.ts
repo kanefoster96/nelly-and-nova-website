@@ -1,6 +1,8 @@
 import { sendEmail } from "@/lib/email/resend";
 import { meetGreetBooked } from "@/lib/email/templates";
 import { requireTrainer } from "@/lib/records/server";
+import { createClient } from "@/lib/supabase/server";
+import { pushToAccount } from "@/lib/push/send";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -25,16 +27,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Missing email or time." }, { status: 400 });
   }
 
-  const origin = new URL(request.url).origin;
-  const params = new URLSearchParams({ name: String(d.name ?? "").split(" ")[0] ?? "", email });
   const sent = await sendEmail(
     meetGreetBooked({
       name: String(d.name ?? "").trim(),
       email,
       whenLabel,
       notes: String(d.notes ?? "").trim() || undefined,
-      createAccountUrl: `${origin}/create-account?${params.toString()}`,
     })
   );
+  // In the app too, if they have an account with this email.
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles").select("id").ilike("email", email).maybeSingle();
+  if (profile?.id) {
+    await pushToAccount(supabase, profile.id, {
+      title: "📅 Your meet & greet is booked",
+      body: `${whenLabel} — we're looking forward to meeting you.`,
+      path: "/schedule",
+    });
+  }
   return Response.json({ ok: true, sent });
 }
