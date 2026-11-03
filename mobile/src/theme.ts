@@ -17,3 +17,14 @@ export const colors = {
 
 /** Row highlight while pressed. */
 export const pressedBg = "rgba(245,245,242,0.05)";
+
+/**
+ * Glass — the grey buttons: see-through with a hairline edge. (The website
+ * also blurs what's behind; the app would need expo-blur, a native module,
+ * for that — so here it's the tint and edge only.)
+ */
+export const glass = {
+  backgroundColor: "rgba(255,255,255,0.08)",
+  borderWidth: 1,
+  borderColor: "rgba(255,255,255,0.16)",
+} as const;

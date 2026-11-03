@@ -2,13 +2,7 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
 import { InboxApp } from "@/components/inbox/InboxApp";
 import { ChatBadge } from "@/components/inbox/ChatBadge";
-import {
-  getConversations,
-  getMessages,
-  getNotifications,
-  getRequests,
-  getUnreadCounts,
-} from "@/lib/inbox/data";
+import { getNotifications, getRequests, getUnreadCounts } from "@/lib/inbox/data";
 
 export const metadata: Metadata = {
   title: "Inbox",
@@ -16,16 +10,11 @@ export const metadata: Metadata = {
 };
 
 export default async function InboxPage() {
-  const [conversations, notifications, requests, counts] = await Promise.all([
-    getConversations(),
+  const [notifications, requests, counts] = await Promise.all([
     getNotifications(),
     getRequests(),
     getUnreadCounts(),
   ]);
-  const entries = await Promise.all(
-    conversations.map(async (c) => [c.id, await getMessages(c.id)] as const)
-  );
-  const messagesByConversation = Object.fromEntries(entries);
 
   return (
     <>
@@ -40,15 +29,12 @@ export default async function InboxPage() {
               <ChatBadge counts={counts} />
             </div>
             <div className="mt-4 rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-paper/75">
-              <strong className="text-paper">Scaffold</strong> — sample data.
-              Wire a backend behind <code>lib/inbox/data.ts</code> and add auth
-              before going live (see <code>lib/inbox/schema.sql</code>).
+              <strong className="text-paper">Live chat is connected.</strong>{" "}
+              Notifications and requests below are still sample data.
             </div>
 
             <div className="mt-6">
               <InboxApp
-                conversations={conversations}
-                messagesByConversation={messagesByConversation}
                 notifications={notifications}
                 requests={requests}
               />

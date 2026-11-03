@@ -9,7 +9,7 @@ import { ChatThread } from "@/components/chat/chat-thread";
 import { LoadingState } from "@/components/ui";
 import { getConversation, setConversationStatus } from "@/data/inbox";
 import { useAsync } from "@/lib/useAsync";
-import { colors } from "@/theme";
+import { colors, glass } from "@/theme";
 
 function IconButton({ icon, label, onPress, disabled }: { icon: ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void; disabled?: boolean }) {
   return (
@@ -19,7 +19,7 @@ function IconButton({ icon, label, onPress, disabled }: { icon: ComponentProps<t
       hitSlop={6}
       accessibilityLabel={label}
       style={({ pressed }) => [
-        { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface, opacity: disabled ? 0.5 : 1 },
+        { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", ...glass, opacity: disabled ? 0.5 : 1 },
         pressed && { opacity: 0.7 },
       ]}
     >
