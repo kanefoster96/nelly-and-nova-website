@@ -40,7 +40,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "update:preview": "npx eas-cli@latest update --channel preview --environment preview",
-    "update:production": "npx eas-cli@latest update --channel production --environment production --platform ios",
+    "update:production": "npx eas-cli@latest update --channel production --environment production",
     "build:dev": "npx eas-cli@latest build --profile development --platform ios",
     "testflight": "npx eas-cli@latest build --profile production --platform ios --auto-submit"
   },
