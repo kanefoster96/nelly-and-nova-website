@@ -41,7 +41,7 @@ export function emojiOnBody<T extends { title: string; body: string }>(n: T): T 
 }
 
 /** App paths a notification may open. Anything else isn't offered as a tap. */
-const APP_PATHS = ["/chat", "/schedule", "/homework", "/community", "/profile", "/notifications", "/registers", "/requests", "/conversation/", "/requests/"];
+const APP_PATHS = ["/chat", "/schedule", "/homework", "/community", "/profile", "/notifications", "/registers", "/requests", "/dog", "/today", "/onboarding", "/conversation/", "/requests/"];
 function appHref(href: string | null): string | undefined {
   if (!href) return undefined;
   const path = href.split(/[?#]/)[0];

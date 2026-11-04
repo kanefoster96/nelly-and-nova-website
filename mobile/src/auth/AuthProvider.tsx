@@ -1,5 +1,5 @@
 import type { Session } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type PropsWithChildren } from "react";
 
 import { isSupabaseConfigured } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
@@ -19,9 +19,11 @@ type AuthState = {
   /** True until the stored session (and its profile) has been read. */
   loading: boolean;
   isTrainer: boolean;
+  /** Read the profile again after it's edited (My Info: name, photo), so the avatar and name update everywhere. */
+  refreshProfile: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthState>({ session: null, profile: null, loading: true, isTrainer: false });
+const AuthContext = createContext<AuthState>({ session: null, profile: null, loading: true, isTrainer: false, refreshProfile: async () => {} });
 
 async function loadProfile(session: Session): Promise<Profile> {
   const { data } = await supabase.from("profiles").select("id, role, owner_name, avatar_url").eq("id", session.user.id).maybeSingle();
@@ -62,8 +64,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+    const next = await loadProfile(data.session).catch(() => null);
+    if (next) setProfile(next);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ session, profile, loading, isTrainer: profile?.role === "admin" }}>
+    <AuthContext.Provider value={{ session, profile, loading, isTrainer: profile?.role === "admin", refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

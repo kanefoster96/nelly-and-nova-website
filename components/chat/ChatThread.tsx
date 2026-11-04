@@ -7,6 +7,7 @@ import {
   chatSupabase,
   findOpenEnquiry,
   getAttachmentUrl,
+  HOMEWORK_VIDEO_PREFIX,
   getMessages,
   getMessagesSince,
   getTeam,
@@ -176,7 +177,11 @@ function AttachmentContent({
   if (!message.attachmentUrl) {
     return (
       <div className="flex h-32 w-48 items-center justify-center rounded-lg bg-white/5 text-xs text-paper-dim">
-        {message.attachmentUrl === null ? "Couldn't load this file" : "Loading…"}
+        {message.attachmentUrl === null
+          ? message.attachmentPath.startsWith(HOMEWORK_VIDEO_PREFIX)
+            ? "Video removed — homework completed"
+            : "Couldn't load this file"
+          : "Loading…"}
       </div>
     );
   }

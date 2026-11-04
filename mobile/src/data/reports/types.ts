@@ -18,6 +18,8 @@ export type HomeworkDrill = {
   /** The library drill it was picked from (opens /drill/[id]). */
   ref?: string | null;
   pillar?: string | null;
+  /** The trainer's note on this drill. */
+  note?: string | null;
 };
 
 /**

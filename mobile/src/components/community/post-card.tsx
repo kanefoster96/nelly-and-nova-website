@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Platform, Text, TextInput, View } from "react-native";
 
@@ -24,7 +24,6 @@ import {
   type ReportReason,
   type Viewer,
 } from "@/data/community";
-import { config } from "@/lib/config";
 import { hapticError, hapticSelection, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { animateListChange } from "@/lib/layout-animation";
 import { colors } from "@/theme";
@@ -181,7 +180,7 @@ export function GuidelinesAgreement({ checked, onToggle }: { checked: boolean; o
         I agree to the{" "}
         <Text
           style={{ color: colors.foreground, textDecorationLine: "underline" }}
-          onPress={() => WebBrowser.openBrowserAsync(new URL("/community-guidelines", config.siteUrl).toString())}
+          onPress={() => router.push("/guidelines")}
         >
           Community Guidelines
         </Text>

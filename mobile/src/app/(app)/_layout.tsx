@@ -18,13 +18,24 @@ export default function AppLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="conversation/[id]" />
       <Stack.Screen name="drill/[id]" />
-      {/* Trainer pages: the Calendar, a day on it, adding a dog to a day, a dog, and Menu's moved pages. */}
+      {/* Owner pages: registering a dog, My Info, a dog's record, adding a dog, one homework. */}
+      <Stack.Screen name="register/index" />
+      <Stack.Screen name="register/[dogId]" />
+      <Stack.Screen name="my-info" />
+      <Stack.Screen name="my-dogs/[id]" />
+      <Stack.Screen name="my-dogs/new" />
+      <Stack.Screen name="homework-detail/[id]" />
+      {/* Trainer pages: the Calendar, a day on it, adding a dog to a day, a dog, a report card, and Menu's pages. */}
       <Stack.Screen name="calendar" />
       <Stack.Screen name="day/[date]" />
       <Stack.Screen name="add-dog" />
       <Stack.Screen name="dog/[id]" />
       <Stack.Screen name="library" />
-      <Stack.Screen name="trainer-schedule" />
+      <Stack.Screen name="report-card" />
+      <Stack.Screen name="onboarding" />
+      <Stack.Screen name="onboarding/[id]" />
+      <Stack.Screen name="team" />
+      <Stack.Screen name="guidelines" />
       <Stack.Screen name="send-notification" />
       <Stack.Screen name="delete-account" />
     </Stack>

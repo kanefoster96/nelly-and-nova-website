@@ -1,6 +1,5 @@
 import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import * as WebBrowser from "expo-web-browser";
 import { ScrollView, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
@@ -8,17 +7,17 @@ import { Appear } from "@/components/appear";
 import { BuildInfo } from "@/components/build-info";
 import { PageTitle } from "@/components/page-title";
 import { GroupHeading, MenuCard } from "@/components/trainer/cards";
+import { countNewEnquiries } from "@/data/onboarding-board";
 import { countPendingRequests, countUnpaid } from "@/data/sessions";
-import { config } from "@/lib/config";
 import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
 import { colors } from "@/theme";
 
 /**
  * The trainer's toolkit, as the Kanvas coach's Menu tab lays it out: each
  * page a card (icon, name, what it's for), in groups. Everything that runs
- * the club but doesn't warrant a tab: the Calendar, the two-week schedule
- * and the Homework library (both tabs before), Onboarding on the website,
- * and Profile.
+ * the club but doesn't warrant a tab: Requests, the Calendar, the Homework
+ * library, Onboarding (meet & greet requests to sign-up), Messages,
+ * notifications and Profile. The day's dogs are on the Today tab.
  */
 export default function TrainerMenuScreen() {
   const { isTrainer } = useAuth();
@@ -26,14 +25,14 @@ export default function TrainerMenuScreen() {
   const barInset = useBarInset();
   const barScroll = useBarScroll();
   const topInset = useTopBarInset();
-  const [counts, setCounts] = useState({ requests: 0, unpaid: 0 });
+  const [counts, setCounts] = useState({ requests: 0, unpaid: 0, enquiries: 0 });
 
   useFocusEffect(
     useCallback(() => {
       if (!isTrainer) return;
       let live = true;
-      Promise.all([countPendingRequests(), countUnpaid()])
-        .then(([requests, unpaid]) => live && setCounts({ requests, unpaid }))
+      Promise.all([countPendingRequests(), countUnpaid(), countNewEnquiries().catch(() => 0)])
+        .then(([requests, unpaid, enquiries]) => live && setCounts({ requests, unpaid, enquiries }))
         .catch(() => undefined);
       return () => {
         live = false;
@@ -68,12 +67,6 @@ export default function TrainerMenuScreen() {
             onPress={() => router.push("/calendar")}
           />
           <MenuCard
-            icon="paw-outline"
-            title="Schedule"
-            description="Full Day Training for the next two weeks and the dogs booked on each day."
-            onPress={() => router.push("/trainer-schedule")}
-          />
-          <MenuCard
             icon="school-outline"
             title="Homework"
             description="The drill library: pillars, categories, levels and how-tos."
@@ -88,8 +81,9 @@ export default function TrainerMenuScreen() {
           <MenuCard
             icon="person-add-outline"
             title="Onboarding"
-            description="Meet & greet requests, join links and Direct Debit set-ups, on the website."
-            onPress={() => WebBrowser.openBrowserAsync(new URL("/admin/onboarding", config.siteUrl).toString())}
+            description="Meet & greet requests, booking them in, join links and Direct Debit set-ups."
+            count={counts.enquiries}
+            onPress={() => router.push("/onboarding")}
           />
           <MenuCard
             icon="chatbubble-ellipses-outline"
@@ -109,6 +103,7 @@ export default function TrainerMenuScreen() {
       <Appear index={2}>
         <GroupHeading>You</GroupHeading>
         <View style={{ gap: 10 }}>
+          <MenuCard icon="people-outline" title="Team" description="Each trainer's name and photo, as owners see them." onPress={() => router.push("/team")} />
           <MenuCard icon="person-circle-outline" title="Profile" description="Your account, password and signing out." onPress={() => router.push("/profile")} />
           <MenuCard icon="notifications-outline" title="Notifications" description="Everything the app has told you." onPress={() => router.push("/notifications")} />
         </View>

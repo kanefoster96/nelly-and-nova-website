@@ -10,7 +10,8 @@
  *     homework_completions keeps it to one row per drill per day),
  *   - the limit is per card, so someone with two cards can log a day on each
  *     on the same date,
- *   - only on a published card, within 14 days of it (Row Level Security).
+ *   - only on a published card, and it never expires: a card stays to do
+ *     until it reaches 3 days (nn_homework_complete_day enforces all this).
  */
 import { useReports, logHomeworkDay } from "./client";
 

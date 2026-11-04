@@ -113,8 +113,14 @@ export async function getTeam(): Promise<Record<string, { name: string; avatarUr
   return team;
 }
 
+/** A homework video sent with "Complete today" lives in its own bucket ("homework-videos/<path>"), deleted once the homework is complete. */
+export const HOMEWORK_VIDEO_PREFIX = "homework-videos/";
+
 export async function getAttachmentUrl(path: string): Promise<string | null> {
-  const { data } = await chatSupabase().storage.from(CHAT_BUCKET).createSignedUrl(path, 60 * 60);
+  const homework = path.startsWith(HOMEWORK_VIDEO_PREFIX);
+  const { data } = await chatSupabase()
+    .storage.from(homework ? "homework-videos" : CHAT_BUCKET)
+    .createSignedUrl(homework ? path.slice(HOMEWORK_VIDEO_PREFIX.length) : path, 60 * 60);
   return data?.signedUrl ?? null;
 }
 

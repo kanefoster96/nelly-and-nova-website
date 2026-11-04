@@ -357,6 +357,25 @@ export async function signWaiver(w: {
   if (dogErr) fail("Couldn't update the dog", dogErr);
 }
 
+/**
+ * After signing: a notification for every trainer that this dog is
+ * registered (nn_waiver_notify_trainers, once per signed form), pushed to
+ * their phones by app/api/sessions/push. Best-effort: never throws.
+ */
+export async function notifyTrainersRegistered(dogId: string): Promise<void> {
+  try {
+    const { data: notices } = await sb().rpc("nn_waiver_notify_trainers", { p_dog_id: dogId });
+    if (!Array.isArray(notices) || notices.length === 0) return;
+    await fetch("/api/sessions/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notices }),
+    });
+  } catch {
+    // The rows are saved either way; only the push is missed.
+  }
+}
+
 /** The signed-in user's id (throws if signed out). */
 export async function myAccountId(): Promise<string> {
   return currentUserId();

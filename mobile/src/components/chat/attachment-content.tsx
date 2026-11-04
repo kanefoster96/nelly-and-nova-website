@@ -10,6 +10,16 @@ import { colors } from "@/theme";
 
 /** A photo, video or file inside a chat bubble. */
 export function AttachmentContent({ attachment, mine }: { attachment: Attachment; mine: boolean }) {
+  // Gone: a homework video deleted once the homework was completed, or a file that's missing.
+  if (attachment.removed || !attachment.url) {
+    const color = mine ? colors.accentForeground : colors.muted;
+    return (
+      <View style={{ width: 208, minHeight: 72, borderRadius: 12, backgroundColor: "rgba(127,127,127,0.15)", alignItems: "center", justifyContent: "center", gap: 6, padding: 12 }}>
+        <Ionicons name={attachment.type === "video" ? "videocam-off-outline" : "document-outline"} size={20} color={color} />
+        <Text style={{ color, fontSize: 13, textAlign: "center" }}>{attachment.removed ? "Video removed — homework completed" : "This file isn't available"}</Text>
+      </View>
+    );
+  }
   if (attachment.type === "image") {
     return <Image source={attachment.url} style={{ width: 208, height: 208, borderRadius: 12 }} contentFit="cover" transition={150} />;
   }

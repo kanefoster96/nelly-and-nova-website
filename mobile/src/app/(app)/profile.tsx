@@ -1,16 +1,20 @@
-import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
 import * as WebBrowser from "expo-web-browser";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Share, Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { Appear } from "@/components/appear";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { BuildInfo } from "@/components/build-info";
 import { NavDivider, NavList, NavRow } from "@/components/nav-row";
+import { Pressable } from "@/components/pressable";
 import { ScreenHeader } from "@/components/screen-header";
 import { SignOutButton } from "@/components/sign-out-button";
 import { Tag } from "@/components/ui";
 import { getMyDogs } from "@/data/dogs";
+import { exportMyData } from "@/data/my-records";
 import { DogProgressCard } from "@/components/homework/dog-progress";
 import { getDogProgress } from "@/data/reports";
 import { config } from "@/lib/config";
@@ -27,14 +31,15 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-/** A page of the website, in the in-app browser (signed in there with the same account). */
-function openSite(path: string) {
-  void WebBrowser.openBrowserAsync(new URL(path, config.siteUrl).toString());
-}
-
 /** Member: their dogs (live) and training progress. */
 function MemberSections({ userId }: { userId: string }) {
-  const { data: dogs, error } = useAsync(() => getMyDogs(userId), [userId]);
+  const router = useRouter();
+  const { data: dogs, error, reload } = useAsync(() => getMyDogs(userId), [userId]);
+  useFocusEffect(
+    useCallback(() => {
+      void reload();
+    }, [reload]),
+  );
   // Each dog's live skills & levels (the trainer ticks them off).
   const { data: progress } = useAsync(
     async () => (dogs ? Promise.all(dogs.map(async (d) => ({ dog: d, progress: await getDogProgress(d.id) }))) : null),
@@ -55,14 +60,14 @@ function MemberSections({ userId }: { userId: string }) {
               title={d.name}
               description="Details, health, vet and consent form."
               leading={<AvatarCircle name={d.name} avatarUrl={d.photoUrl} size={34} />}
-              onPress={() => openSite(`/profile/dogs/${d.id}`)}
+              onPress={() => router.push({ pathname: "/my-dogs/[id]", params: { id: d.id } } as never)}
             />
           </View>
         ))}
         {dogs && (
           <>
             {dogs.length > 0 && <NavDivider />}
-            <NavRow icon="add" title="Add a Dog" onPress={() => openSite("/profile/dogs/new")} />
+            <NavRow icon="add" title="Add a Dog" onPress={() => router.push("/my-dogs/new" as never)} />
           </>
         )}
       </NavList>
@@ -82,8 +87,10 @@ function MemberSections({ userId }: { userId: string }) {
 /**
  * Reached by tapping the avatar in the top bar — laid out like Kanvas's
  * Profile: who you are, your dogs, then Account (your info, password, your
- * data, guidelines, delete) and Sign Out. Editing your details and a dog's
- * record open those pages of the website, as Kanvas's Payments does.
+ * data, guidelines, delete) and Sign Out. Everything here is in the app:
+ * My Info (photo, name, phone, address, emergency contacts — trainers
+ * too), a dog's record and Add a Dog are native screens. Only the
+ * "Website" row leaves the app, to the public website itself.
  */
 export default function ProfileScreen() {
   const router = useRouter();
@@ -96,7 +103,13 @@ export default function ProfileScreen() {
       <ScreenHeader title="Profile" />
       <ScrollView contentContainerStyle={{ paddingTop: 20, paddingBottom: 48 }}>
         <Appear style={{ alignItems: "center", marginTop: 8, marginBottom: 8, gap: 8 }}>
-          <AvatarCircle name={name} avatarUrl={profile?.avatarUrl} size={72} />
+          {/* Tap the photo to change it (and your name) in My Info. */}
+          <Pressable onPress={() => router.push("/my-info" as never)} accessibilityRole="button" accessibilityLabel="Edit your photo and name">
+            <AvatarCircle name={name} avatarUrl={profile?.avatarUrl} size={72} />
+            <View style={{ position: "absolute", right: -2, bottom: -2, width: 26, height: 26, borderRadius: 13, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.background }}>
+              <Ionicons name="pencil" size={12} color={colors.accentForeground} />
+            </View>
+          </Pressable>
           <Text style={{ color: colors.foreground, fontSize: 18, fontWeight: "600", marginTop: 4 }}>{name}</Text>
           {email && <Text style={{ color: colors.muted, fontSize: 13 }}>{email}</Text>}
           <Tag label={isTrainer ? "Trainer" : "Member"} solid={isTrainer} />
@@ -114,8 +127,8 @@ export default function ProfileScreen() {
             <NavRow
               icon="person-outline"
               title="My Info"
-              description="Your name, phone, address and emergency contacts."
-              onPress={() => openSite("/profile/account/edit")}
+              description={isTrainer ? "Your photo, display name and phone." : "Your photo, name, phone, address and emergency contacts."}
+              onPress={() => router.push("/my-info" as never)}
             />
             <NavDivider />
             <NavRow
@@ -139,7 +152,15 @@ export default function ProfileScreen() {
               icon="download-outline"
               title="Download Your Data"
               description="A copy of everything we hold about you and your dogs."
-              onPress={() => openSite("/account/your-data")}
+              onPress={async () => {
+                try {
+                  const json = await exportMyData();
+                  await Share.share({ title: "Nelly & Nova — your data", message: json });
+                } catch (err) {
+                  hapticError();
+                  Alert.alert("Couldn't get your data", err instanceof Error ? err.message : "Please try again.");
+                }
+              }}
             />
             <NavDivider />
             <NavRow
@@ -158,7 +179,7 @@ export default function ProfileScreen() {
               icon="shield-checkmark-outline"
               title="Community Guidelines"
               description="How we keep the community friendly and safe."
-              onPress={() => openSite("/community-guidelines")}
+              onPress={() => router.push("/guidelines" as never)}
             />
             <NavDivider />
             <NavRow icon="globe-outline" title="Website" description="nellyandnova.co.uk" onPress={() => void WebBrowser.openBrowserAsync("https://www.nellyandnova.co.uk")} />

@@ -9,7 +9,6 @@ import { markReportsSeen } from "@/lib/reports/seen";
 import { useReports, byDateDesc, addComment } from "@/lib/reports/client";
 import { saveCardHomework } from "@/lib/reports/homework";
 import { markHomeworkDay, daysFor, HOMEWORK_TARGET_DAYS } from "@/lib/reports/progress";
-import { isWindowOpen, HOMEWORK_WINDOW_DAYS } from "@/lib/reports/completion";
 import { useLibrary, findLibraryDrill, findLibraryDrillByName } from "@/lib/homework-library/store";
 import { HomeworkEditModal } from "@/components/reports/HomeworkEditor";
 import { DrillBlocks } from "@/components/profile/DrillPage";
@@ -133,7 +132,6 @@ function CardView({
   const doneToday = days.includes(today);
   const complete = days.length >= HOMEWORK_TARGET_DAYS;
   const daysLeft = HOMEWORK_TARGET_DAYS - days.length;
-  const windowOpen = isWindowOpen(card.date, today);
   const drillCount = card.homework.reduce((n, c) => n + c.drills.length, 0);
 
   async function practised() {
@@ -232,18 +230,16 @@ function CardView({
               {!isStaff &&
                 (complete ? (
                   <p className="mt-4 text-sm font-medium text-emerald-300">Homework complete, great work! 🐾</p>
-                ) : !windowOpen ? (
-                  <p className="mt-4 text-sm text-paper-dim">The {HOMEWORK_WINDOW_DAYS}-day window to log this homework has closed.</p>
                 ) : (
                   <>
                     <button type="button" onClick={practised} disabled={doneToday || saving} className={`${PRIMARY} mt-4 w-full`}>
                       {doneToday ? (
-                        "Practised today ✓"
+                        "Done today ✓ · come back tomorrow"
                       ) : saving ? (
                         "Saving…"
                       ) : (
                         <>
-                          <CheckIcon width={16} height={16} /> I practised today
+                          <CheckIcon width={16} height={16} /> Complete today
                         </>
                       )}
                     </button>

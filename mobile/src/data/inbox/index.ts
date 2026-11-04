@@ -51,11 +51,24 @@ function getTeam(): Promise<Team> {
   return teamCache;
 }
 
+/**
+ * A homework video sent with "Complete today" is kept in its own bucket
+ * (the attachment reads "homework-videos/<path>") and deleted once the
+ * homework is complete: supabase/migrations/20261104080000_owner_onboarding.sql.
+ */
+export const HOMEWORK_VIDEO_PREFIX = "homework-videos/";
+
 async function signedUrls(paths: string[]): Promise<Record<string, string>> {
   if (paths.length === 0) return {};
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrls(paths, 60 * 60);
+  const chat = paths.filter((p) => !p.startsWith(HOMEWORK_VIDEO_PREFIX));
+  const homework = paths.filter((p) => p.startsWith(HOMEWORK_VIDEO_PREFIX)).map((p) => p.slice(HOMEWORK_VIDEO_PREFIX.length));
+  const [chatRes, homeworkRes] = await Promise.all([
+    chat.length ? supabase.storage.from(BUCKET).createSignedUrls(chat, 60 * 60) : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
+    homework.length ? supabase.storage.from("homework-videos").createSignedUrls(homework, 60 * 60) : Promise.resolve({ data: [] as { path: string | null; signedUrl: string }[] }),
+  ]);
   const urls: Record<string, string> = {};
-  for (const item of data ?? []) if (item.path && item.signedUrl) urls[item.path] = item.signedUrl;
+  for (const item of chatRes.data ?? []) if (item.path && item.signedUrl) urls[item.path] = item.signedUrl;
+  for (const item of homeworkRes.data ?? []) if (item.path && item.signedUrl) urls[`${HOMEWORK_VIDEO_PREFIX}${item.path}`] = item.signedUrl;
   return urls;
 }
 
@@ -78,7 +91,12 @@ export async function toMessages(rows: MessageRow[]): Promise<Message[]> {
       createdAt: r.created_at,
       attachment:
         r.attachment_path && r.attachment_type
-          ? { type: r.attachment_type, name: r.attachment_name ?? "File", url: urls[r.attachment_path] ?? "" }
+          ? {
+              type: r.attachment_type,
+              name: r.attachment_name ?? "File",
+              url: urls[r.attachment_path] ?? "",
+              removed: r.attachment_path.startsWith(HOMEWORK_VIDEO_PREFIX) && !urls[r.attachment_path],
+            }
           : undefined,
     };
   });
