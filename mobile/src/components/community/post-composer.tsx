@@ -12,6 +12,9 @@ import { hapticError, hapticSelection, hapticSuccess, hapticWarning } from "@/li
 import { animateListChange } from "@/lib/layout-animation";
 import { colors, GLASS_BORDER } from "@/theme";
 
+/** The longest video a community post takes. */
+const MAX_POST_VIDEO_SECONDS = 60;
+
 /**
  * The Kanvas Student Home composer. Collapsed: a "What's on your mind?" pill
  * with a camera button. Tapped: a card with title, words, photos/videos,
@@ -57,12 +60,24 @@ export function PostComposer({
       setError("Photo library access is needed to attach media.");
       return;
     }
+    // Shrunk on the phone before upload, like Instagram: photos re-saved as
+    // JPEG at 0.7, videos re-encoded to 1080p H.264 (a 4K clip goes from
+    // hundreds of MB to a few). Videos are kept to a minute.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: kind === "image" ? ["images"] : ["videos"],
       allowsMultipleSelection: true,
-      quality: 0.8,
+      quality: 0.7,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080,
+      videoMaxDuration: MAX_POST_VIDEO_SECONDS,
     });
     if (result.canceled) return;
+    const tooLong = result.assets.filter((a) => a.type === "video" && (a.duration ?? 0) > MAX_POST_VIDEO_SECONDS * 1000);
+    if (tooLong.length) {
+      hapticWarning();
+      setError(`Videos can be up to ${MAX_POST_VIDEO_SECONDS} seconds — please trim it in Photos and try again.`);
+      result.assets = result.assets.filter((a) => !tooLong.includes(a));
+      if (!result.assets.length) return;
+    }
     setAssets((prev) => [
       ...prev,
       ...result.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType ?? (kind === "image" ? "image/jpeg" : "video/mp4"), kind })),
