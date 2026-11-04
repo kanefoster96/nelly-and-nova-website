@@ -17,24 +17,19 @@ export async function getDogProfile(): Promise<DogProfile> {
   return sampleDog;
 }
 
-/** Homework counts as done once practised on this many separate days… */
+/**
+ * Homework is complete once done on this many different days (UK dates, once
+ * a day). It never expires: it stays to do until then (enforced by
+ * nn_homework_complete_day, supabase/migrations/20261104080000_owner_onboarding.sql).
+ */
 export const HOMEWORK_TARGET_DAYS = 3;
-/** …within this many days of the card. */
-export const HOMEWORK_WINDOW_DAYS = 14;
 
 /** Today in the UK (YYYY-MM-DD), the day "I practised today" is logged for. */
 export function todayUK(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" });
 }
 
-/** Still inside the 14 days to log homework? */
-export function windowOpen(card: ReportCard, today = todayUK()): boolean {
-  const end = new Date(`${card.date.slice(0, 10)}T12:00:00Z`);
-  end.setUTCDate(end.getUTCDate() + HOMEWORK_WINDOW_DAYS);
-  return today <= end.toISOString().slice(0, 10);
-}
-
-type ItemRow = { id: string; pillar: string | null; category: string | null; drill_name: string; drill_ref: string | null; sort_order: number };
+type ItemRow = { id: string; pillar: string | null; category: string | null; drill_name: string; drill_ref: string | null; note?: string | null; sort_order: number };
 type CardRow = {
   id: string;
   dog_id: string;
@@ -60,7 +55,7 @@ function toHomework(items: ItemRow[]): HomeworkCategory[] {
       byName.set(name.toLowerCase(), cat);
       out.push(cat);
     }
-    cat.drills.push({ id: it.id, name: it.drill_name, ref: it.drill_ref, pillar: it.pillar });
+    cat.drills.push({ id: it.id, name: it.drill_name, ref: it.drill_ref, pillar: it.pillar, note: it.note?.trim() || null });
   }
   return out;
 }
@@ -92,7 +87,7 @@ export async function getReportCards(): Promise<ReportBundle> {
     supabase
       .from("report_cards")
       .select(
-        "id, dog_id, session_date, title, summary, wins, created_at, seen_at, dogs(name, photo_url), report_card_items(id, pillar, category, drill_name, drill_ref, sort_order), report_card_comments(id, author_role, author_name, body, created_at)"
+        "id, dog_id, session_date, title, summary, wins, created_at, seen_at, dogs(name, photo_url), report_card_items(id, pillar, category, drill_name, drill_ref, note, sort_order), report_card_comments(id, author_role, author_name, body, created_at)"
       )
       .eq("status", "published")
       .order("session_date", { ascending: false, nullsFirst: false })

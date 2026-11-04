@@ -5,8 +5,9 @@ import { config } from "@/lib/config";
  * +native-intent). The "Set up my account" / "Reset my password" email's
  * button — https://<site>/app-setup?e=…&t=…&a=… as a Universal Link, or
  * nellyandnova://app-setup?… from the website's /app-setup page — becomes
- * the "Create a password" screen with its one-use ticket. Everything else
- * passes through untouched. Never throws: the app would fail to open.
+ * the "Create a password" screen with its one-use ticket. A set-up link
+ * (/join/<token>) opens the Profile tab's checklist and /waiver?dog=<id>
+ * the register form. Everything else passes through untouched. Never throws: the app would fail to open.
  */
 const SITE_HOST = (() => {
   try {
@@ -40,6 +41,12 @@ export function redirectSystemPath({ path }: { path: string | null; initial: boo
       query = i === -1 ? "" : path.slice(i);
     } else {
       return path;
+    }
+    // The website's set-up checklist and consent form have app versions.
+    if (/^\/join\/[^/]+\/?$/.test(pathname)) return "/dog";
+    if (pathname.replace(/\/$/, "") === "/waiver") {
+      const dog = readParams(query).get("dog") ?? "";
+      return /^[0-9a-f-]{36}$/i.test(dog) ? `/register/${dog}` : "/register";
     }
     if (pathname.replace(/\/$/, "") === "/app-setup") {
       const q = readParams(query);

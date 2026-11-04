@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import * as Linking from "expo-linking";
 import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
@@ -8,7 +7,8 @@ import { ScrollView, Text, View } from "react-native";
 import { useAuth } from "@/auth/AuthProvider";
 import { Appear } from "@/components/appear";
 import { DogProgressCard } from "@/components/homework/dog-progress";
-import { MeetGreetCard } from "@/components/meet-greet-card";
+import { DogSwitcher } from "@/components/dog-switcher";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { PageTitle } from "@/components/page-title";
 import { Pressable } from "@/components/pressable";
 import { RefreshControl } from "@/components/refresh-control";
@@ -17,7 +17,7 @@ import { OptionPill, SessionSheet, type SheetMode } from "@/components/sessions/
 import { CARD, LoadingState, Tag } from "@/components/ui";
 import { ageFrom, getHomeworkDays, getMyDogDetails, getTrainerHighlights, type DogDetails } from "@/data/dog-profile";
 import { formatDate } from "@/data/inbox";
-import { getDogProgress, getReportCards, type DogProgress, type ReportCard } from "@/data/reports";
+import { getDogProgress, getReportCards, HOMEWORK_TARGET_DAYS, type DogProgress, type ReportCard } from "@/data/reports";
 import {
   getDogSessions,
   getPlacements,
@@ -32,10 +32,7 @@ import {
   type Placement,
   type SessionRequest,
 } from "@/data/sessions";
-import { config } from "@/lib/config";
 import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
-import { hapticSelection } from "@/lib/haptics";
-import { animateListChange } from "@/lib/layout-animation";
 import { mediaUrl } from "@/lib/media";
 import { colors, GLASS_BORDER } from "@/theme";
 
@@ -47,6 +44,8 @@ type DogPage = {
   highlights: { strength: string | null; toImprove: string | null; date: string | null };
   homework: { total: number; thisWeek: number };
   latestCard: ReportCard | null;
+  /** Homework not yet done on 3 days. */
+  toDo: number;
 };
 
 const BOX = { marginTop: 16, width: "100%", borderRadius: 16, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, padding: 16 } as const;
@@ -70,38 +69,11 @@ function serviceLine(placements: Placement[], sessions: DogSession[]): string {
   return "No regular day yet";
 }
 
-/** The dog switcher at the top, as Kanvas switches dancers. */
-function DogSwitcher({ dogs, selected, onSelect }: { dogs: DogDetails[]; selected: string; onSelect: (id: string) => void }) {
-  return (
-    <View accessibilityRole="tablist" style={{ flexDirection: "row", borderRadius: 999, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, padding: 4, marginBottom: 20 }}>
-      {dogs.map((d) => {
-        const on = d.id === selected;
-        return (
-          <Pressable
-            key={d.id}
-            onPress={() => {
-              if (on) return;
-              hapticSelection();
-              animateListChange();
-              onSelect(d.id);
-            }}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 6, borderRadius: 999, alignItems: "center", backgroundColor: on ? colors.foreground : "transparent" }}
-          >
-            <Text numberOfLines={1} style={{ color: on ? colors.background : colors.muted, fontSize: 14, fontWeight: on ? "700" : "600" }}>
-              {d.name}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
 /** Kanvas's register-dancer card, for a dog without its registration (waiver) done. */
 function RegisterDogCard({ dog }: { dog: DogDetails }) {
-  const go = () => Linking.openURL(new URL(`/waiver?dog=${encodeURIComponent(dog.id)}`, config.siteUrl).toString());
+  const router = useRouter();
+  // The consent & waiver form, in the app (app/(app)/register/[dogId].tsx).
+  const go = () => router.push({ pathname: "/register/[dogId]", params: { dogId: dog.id } } as never);
   return (
     <Pressable
       onPress={go}
@@ -166,7 +138,10 @@ export default function DogProfileScreen() {
             getTrainerHighlights(dog.id),
             getHomeworkDays(dog.id),
           ]);
-          return { dog, sessions, placements, progress, highlights, homework, latestCard: bundle?.cards.find((c) => c.dogId === dog.id) ?? null };
+          const toDo = (bundle?.cards ?? []).filter(
+            (c) => c.dogId === dog.id && c.homework.some((cat) => cat.drills.length > 0) && (bundle?.progress[c.id]?.length ?? 0) < HOMEWORK_TARGET_DAYS,
+          ).length;
+          return { dog, sessions, placements, progress, highlights, homework, latestCard: bundle?.cards.find((c) => c.dogId === dog.id) ?? null, toDo };
         }),
       );
       setPages(next);
@@ -215,14 +190,21 @@ export default function DogProfileScreen() {
         </View>
       )}
 
+      {/* The set-up checklist (meet & greet → Direct Debit → account → register → training day), until it's all done. */}
       <View style={{ marginBottom: 20 }}>
-        <MeetGreetCard />
+        <OnboardingChecklist onChanged={load} />
       </View>
 
       {!page ? (
         <View style={[CARD, { alignItems: "center", paddingVertical: 28 }]}>
           <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700" }}>No dog on your account yet</Text>
-          <Text style={{ color: colors.muted, fontSize: 14, marginTop: 6, textAlign: "center" }}>Once your dog is on your account, their profile appears here.</Text>
+          <Text style={{ color: colors.muted, fontSize: 14, marginTop: 6, textAlign: "center" }}>Register your dog and their profile appears here.</Text>
+          <Pressable
+            onPress={() => router.push({ pathname: "/register/[dogId]", params: { dogId: "new" } } as never)}
+            style={{ marginTop: 16, backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 }}
+          >
+            <Text style={{ color: colors.accentForeground, fontSize: 14, fontWeight: "700" }}>Register your dog</Text>
+          </Pressable>
         </View>
       ) : (
         <DogPageView
@@ -283,7 +265,7 @@ function DogPageView({
   onChanged: (message?: string) => void;
   onOpen: (path: string) => void;
 }) {
-  const { dog, sessions, placements, progress, highlights, homework, latestCard } = page;
+  const { dog, sessions, placements, progress, highlights, homework, latestCard, toDo } = page;
   const photo = mediaUrl(dog.photoUrl);
   const age = ageFrom(dog.dateOfBirth);
   const attended = sessions.filter((s) => !s.cancelled && s.date < today).length;
@@ -371,7 +353,12 @@ function DogPageView({
 
       <Appear index={i++} style={{ marginTop: 28, gap: 10 }}>
         <Text style={{ color: colors.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Homework</Text>
-        <OptionPill icon="school-outline" label="This week's homework" hint="Report cards, drills and “I practised today”" onPress={() => onOpen("/homework")} />
+        <OptionPill
+          icon="school-outline"
+          label={toDo > 0 ? `Homework: ${toDo} to do` : "Homework: all done"}
+          hint={toDo > 0 ? "Complete each one on 3 different days" : "Every homework, and a search through them"}
+          onPress={() => onOpen("/homework")}
+        />
       </Appear>
 
       <Appear index={i++} style={{ marginTop: 28, gap: 10 }}>

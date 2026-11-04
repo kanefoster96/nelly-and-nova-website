@@ -1,5 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, FlatList, Keyboard, Platform, Text, TextInput, View } from "react-native";
 
@@ -23,6 +22,7 @@ import {
   type Message,
 } from "@/data/inbox";
 import { parseChatBody } from "@/lib/chat-links";
+import { openLink } from "@/lib/site-links";
 import { config } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 import { useBarScrollTarget } from "@/lib/floating-bar";
@@ -49,14 +49,19 @@ function presenceSummary(others: ChatPresence[], viewerIsStaff: boolean): string
   return `${join(here)} ${here.length === 1 ? "is" : "are"} in this chat`;
 }
 
-/** A trainer's message can carry links ([text](https://…) or pasted); an owner's is always plain text. */
+/**
+ * A trainer's message can carry links ([text](https://…) or pasted); an
+ * owner's is always plain text. A link to one of our own pages opens its
+ * screen in the app where there is one (lib/site-links.ts).
+ */
 function MessageBody({ body, linkify, color, paddingHorizontal }: { body: string; linkify: boolean; color: string; paddingHorizontal: number }) {
+  const { isTrainer } = useAuth();
   if (!linkify) return <Text style={{ color, fontSize: 14, paddingHorizontal }}>{body}</Text>;
   return (
     <Text style={{ color, fontSize: 14, paddingHorizontal }}>
       {parseChatBody(body).map((part, i) =>
         part.type === "link" ? (
-          <Text key={i} style={{ color, fontWeight: "600", textDecorationLine: "underline" }} onPress={() => WebBrowser.openBrowserAsync(part.href)}>
+          <Text key={i} style={{ color, fontWeight: "600", textDecorationLine: "underline" }} onPress={() => openLink(part.href, isTrainer)}>
             {part.text}
           </Text>
         ) : (

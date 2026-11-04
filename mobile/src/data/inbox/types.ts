@@ -37,6 +37,8 @@ export type Attachment = {
   type: "image" | "video" | "file";
   /** A signed URL for a sent file, or the local file:// URI while sending. */
   url: string;
+  /** A homework video ("homework-videos/…") deleted once the homework was completed. */
+  removed?: boolean;
   /** Set when picking a file to send (used for the upload). */
   mimeType?: string;
 };

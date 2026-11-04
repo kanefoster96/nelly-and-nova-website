@@ -5,12 +5,15 @@
  * owner's address and emergency contacts are saved on their account, the
  * signature (PNG) and vaccination record go into the private dog-documents
  * bucket, and a `waivers` row is written (which marks the dog as signed).
+ * Then the trainers are told (the app's register form does the same:
+ * mobile/src/data/register.ts).
  */
 import type { WaiverData } from "./draft";
 import {
   attachDocument,
   createDog,
   myAccountId,
+  notifyTrainersRegistered,
   saveDog,
   saveProfile,
   signWaiver,
@@ -89,6 +92,7 @@ export async function submitWaiver(data: WaiverData): Promise<string> {
       agreedTo: "Training Consent & Waiver",
     },
   });
+  await notifyTrainersRegistered(dogId);
 
   return dogId;
 }

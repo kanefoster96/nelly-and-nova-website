@@ -212,31 +212,23 @@ export const byDateDesc = (a: ReportCard, b: ReportCard) => (a.date < b.date ? 1
 // --- Owner -------------------------------------------------------------------
 
 /**
- * "I practised today" for a card: one homework_completions row per drill on
- * the card for that day (a unique index keeps it to one a day). Optimistic.
+ * "Complete today" for a card: nn_homework_complete_day records the day (UK
+ * date) — once a day, never past 3 days — and a homework_completions row per
+ * drill, as the app does. Optimistic.
  */
 export async function logHomeworkDay(cardId: string, day: string): Promise<void> {
   const card = state.cards.find((c) => c.id === cardId);
   if (!card?.dogId) return;
   const days = state.progress[cardId] ?? [];
-  if (days.includes(day)) return;
-  const items = card.homework.flatMap((c) => c.drills.map((d) => d.id));
-  if (items.length === 0) return;
+  if (days.includes(day) || days.length >= 3) return;
   const client = sb();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) throw new Error("Please log in first.");
-
   const before = state;
   emit({ ...state, progress: { ...state.progress, [cardId]: [...days, day].sort() } });
-  const { error } = await client.from("homework_completions").upsert(
-    items.map((id) => ({ dog_id: card.dogId, report_card_item_id: id, completed_by: user.id, practised_on: day })),
-    { onConflict: "report_card_item_id,practised_on", ignoreDuplicates: true }
-  );
+  const { error } = await client.rpc("nn_homework_complete_day", { p_card_id: cardId, p_title: card.focus });
   if (error) {
     emit(before);
-    throw friendly("Couldn't save today's practice", error);
+    if (/already done today/i.test(error.message)) return;
+    throw friendly("Couldn't save today's homework", error);
   }
 }
 

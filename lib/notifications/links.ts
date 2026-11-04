@@ -11,11 +11,20 @@ const WEBSITE_FOR_APP: [prefix: string, website: string][] = [
   ["/homework", "/profile/practice"],
   ["/community", "/community"],
   ["/profile", "/profile"],
+  // The owner's Profile tab in the app (pick-up and drop-off notices).
+  ["/dog", "/profile"],
 ];
 
 export function websiteHref(actionHref: string | null | undefined): string | undefined {
   if (!actionHref || !actionHref.startsWith("/") || actionHref.startsWith("//")) return undefined;
   const path = actionHref.split(/[?#]/)[0];
+  // A trainer's page for one dog, and the owner's own dog pages in the app.
+  const dog = /^\/dog\/([0-9a-f-]{36})$/i.exec(path);
+  if (dog) return `/admin/dogs/${dog[1]}`;
+  const myDog = /^\/my-dogs\/([0-9a-f-]{36})$/i.exec(path);
+  if (myDog) return `/profile/dogs/${myDog[1]}`;
+  if (path === "/register" || path.startsWith("/register/")) return "/waiver";
+  if (path === "/my-info") return "/profile/account/edit";
   for (const [prefix, website] of WEBSITE_FOR_APP) {
     if (path === prefix || path.startsWith(`${prefix}/`)) return website;
   }

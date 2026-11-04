@@ -5,22 +5,15 @@ import { CheckIcon, CheckCircleIcon, CloseIcon } from "@/components/ui/Icons";
 import { useReports, byDateDesc } from "@/lib/reports/client";
 import { markHomeworkDay, daysFor, HOMEWORK_TARGET_DAYS } from "@/lib/reports/progress";
 import { resetAtFor } from "@/lib/reports/reset";
-import { isWindowOpen, windowEnd } from "@/lib/reports/completion";
 import { CARD, PRIMARY, shortDate } from "@/components/reports/styles";
 import type { ReportCard } from "@/lib/reports/types";
 
-/** Whole days left in the 14-day logging window (0 = last day). */
-function daysToExpiry(cardDateISO: string, todayISO: string): number {
-  const end = new Date(`${windowEnd(cardDateISO)}T00:00:00Z`).getTime();
-  const today = new Date(`${todayISO}T00:00:00Z`).getTime();
-  return Math.max(0, Math.round((end - today) / 86_400_000));
-}
-
 /**
  * "Complete homework" — a daily guided flow launched from the profile. It lists
- * only homework that's still open: incomplete cards inside their 14-day window
- * (expired and finished cards are left out). The owner works through each one
- * and marks off the day — one day per card per calendar day.
+ * every homework not yet done on 3 different days (it never expires; finished
+ * cards are left out). The owner works through each one and marks off the
+ * day — once per card per day (UK date), enforced by the database
+ * (nn_homework_complete_day, supabase/migrations/20261104080000_owner_onboarding.sql).
  */
 export function CompleteHomework({
   dogId,
@@ -32,7 +25,7 @@ export function CompleteHomework({
   const { cards: all, progress, resets, staff } = useReports();
   const [open, setOpen] = useState(false);
 
-  // Published cards for this dog, still open: not yet done 3 days, inside 14 days.
+  // Published cards for this dog, still to do: not yet done on 3 days.
   const cards = useMemo(() => {
     if (staff) return [];
     const resetAt = resetAtFor(resets, dogId);
@@ -41,11 +34,10 @@ export function CompleteHomework({
       .filter((c) => !dogId || c.dogId === dogId)
       .filter((c) => !resetAt || c.date >= resetAt)
       .filter((c) => {
-        const done = daysFor(progress, c.id).length >= HOMEWORK_TARGET_DAYS;
-        return !done && isWindowOpen(c.date, todayISO);
+        return daysFor(progress, c.id).length < HOMEWORK_TARGET_DAYS;
       })
       .sort(byDateDesc);
-  }, [all, progress, resets, dogId, todayISO, staff]);
+  }, [all, progress, resets, dogId, staff]);
 
   // How many still need a day logged today (drives the button badge).
   const todo = useMemo(
@@ -152,7 +144,6 @@ function HomeworkItem({
 }) {
   const days = daysFor(progress, card.id);
   const doneToday = days.includes(todayISO);
-  const left = daysToExpiry(card.date, todayISO);
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -170,7 +161,7 @@ function HomeworkItem({
           <p className="mt-0.5 font-semibold text-paper">{card.focus}</p>
         </div>
         <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-paper-dim">
-          {left === 0 ? "last day" : `${left} day${left === 1 ? "" : "s"} left`}
+          Day {Math.min(days.length + (doneToday ? 0 : 1), HOMEWORK_TARGET_DAYS)} of {HOMEWORK_TARGET_DAYS}
         </span>
       </div>
 
@@ -193,7 +184,7 @@ function HomeworkItem({
 
       {/* Day progress — 3 separate days, one per calendar day. */}
       <div className="mt-3 flex items-center justify-between text-xs">
-        <span className="text-paper">Days practised</span>
+        <span className="text-paper">Days done</span>
         <span className="text-paper-dim">
           {days.length} of {HOMEWORK_TARGET_DAYS}
         </span>
@@ -216,12 +207,12 @@ function HomeworkItem({
 
       <button type="button" onClick={practised} disabled={doneToday || saving} className={`${PRIMARY} mt-3 w-full`}>
         {doneToday ? (
-          "Practised today ✓"
+          "Done today ✓ · come back tomorrow"
         ) : saving ? (
           "Saving…"
         ) : (
           <>
-            <CheckIcon width={16} height={16} /> I practised today
+            <CheckIcon width={16} height={16} /> Complete today
           </>
         )}
       </button>

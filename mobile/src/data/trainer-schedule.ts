@@ -1,4 +1,4 @@
-import { config } from "@/lib/config";
+import { postToSite } from "@/lib/site-api";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -340,125 +340,35 @@ export async function endRegularPlace(placementId: string, date: string): Promis
 export type OnboardingResult = { joinUrl: string | null; emailed: boolean; messaged: boolean };
 
 /**
- * "Send onboarding" from a day: the website gives the request a join link
- * and a GoCardless set-up, emails it to the owner (and their chat, if they
- * have an account), and holds a regular place on this date's weekday from
- * this date. The held place fills in with their dog once they register, so
- * nothing else is written here.
+ * "Start onboarding" for a meet & greet request (the Onboarding board, or
+ * Send onboarding on a day): the website gives the request a join link and
+ * a GoCardless set-up and emails it to the owner (and their chat, if they
+ * have an account). With `place`, it also holds a regular place, filled in
+ * with their dog once they register. Pressing it again re-sends the link.
+ */
+export async function startOnboarding(enquiryId: string, place?: { day: Weekday; cadence: "weekly" | "alternating"; startOn: string }): Promise<OnboardingResult> {
+  const body = await postToSite<{ joinUrl?: string; emailed?: boolean; messaged?: boolean }>(
+    "/api/onboarding/start",
+    place ? { enquiryId, place } : { enquiryId },
+    "Couldn't send the onboarding link.",
+  );
+  return { joinUrl: body.joinUrl ?? null, emailed: !!body.emailed, messaged: !!body.messaged };
+}
+
+/**
+ * "Send onboarding" from a day: starts onboarding and holds a regular place
+ * on this date's weekday from this date. The held place fills in with their
+ * dog once they register, so nothing else is written here.
  */
 export async function sendOnboarding(enquiryId: string, date: string, cadence: "weekly" | "alternating"): Promise<OnboardingResult> {
   const day = weekdayOf(date);
   if (!day) throw new Error("Full Day Training runs Monday to Friday.");
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error("Please sign in again.");
-  let res: Response;
-  try {
-    res = await fetch(new URL("/api/onboarding/start", config.siteUrl).toString(), {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ enquiryId, place: { day, cadence, startOn: date } }),
-    });
-  } catch {
-    throw new Error("Couldn't reach the website. Check your connection and try again.");
-  }
-  const body = (await res.json().catch(() => ({}))) as { ok?: boolean; joinUrl?: string; emailed?: boolean; messaged?: boolean; error?: string };
-  if (!res.ok || body.error) throw new Error(body.error || "Couldn't send the onboarding link.");
-  return { joinUrl: body.joinUrl ?? null, emailed: !!body.emailed, messaged: !!body.messaged };
+  return startOnboarding(enquiryId, { day, cadence, startOn: date });
 }
 
 // ---------------------------------------------------------------------------
-// A dog's page
+// A dog's page (the record itself: data/trainer-dog.ts)
 // ---------------------------------------------------------------------------
-
-export type DogDetail = {
-  id: string;
-  name: string;
-  breed: string | null;
-  sex: string | null;
-  dateOfBirth: string | null;
-  photoUrl: string | null;
-  waiverSignedAt: string | null;
-  medicalConditions: string | null;
-  allergies: string | null;
-  notes: string | null;
-  vetName: string | null;
-  vetPhone: string | null;
-  owner: { id: string; name: string | null; email: string | null; phone: string | null; avatarUrl: string | null } | null;
-  /** Regular places still running. */
-  places: { id: string; day: Weekday; cadence: "weekly" | "alternating"; startOn: string; endOn: string | null }[];
-  /** One-off days and 1-1s from today on. */
-  bookings: { id: string; kind: "full_day" | "one_to_one"; date: string; startTime: string | null }[];
-};
-
-export async function getDogDetail(dogId: string): Promise<DogDetail | null> {
-  const { data: dog, error } = await supabase
-    .from("dogs")
-    .select("id, name, breed, sex, date_of_birth, photo_url, waiver_signed_at, medical_conditions, allergies, notes, vet_name, vet_phone, account_id")
-    .eq("id", dogId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!dog) return null;
-  const d = dog as {
-    id: string;
-    name: string;
-    breed: string | null;
-    sex: string | null;
-    date_of_birth: string | null;
-    photo_url: string | null;
-    waiver_signed_at: string | null;
-    medical_conditions: string | null;
-    allergies: string | null;
-    notes: string | null;
-    vet_name: string | null;
-    vet_phone: string | null;
-    account_id: string | null;
-  };
-  const today = todayISO();
-  const [owner, places, bookings] = await Promise.all([
-    d.account_id
-      ? supabase.from("profiles").select("id, owner_name, email, phone, avatar_url").eq("id", d.account_id).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    supabase.from("placements").select("id, day, cadence, start_on, end_on").eq("dog_id", dogId).or(`end_on.is.null,end_on.gte.${today}`).order("start_on"),
-    supabase
-      .from("bookings")
-      .select("id, kind, on_date, start_time")
-      .eq("dog_id", dogId)
-      .is("cancelled_at", null)
-      .gte("on_date", today)
-      .order("on_date")
-      .limit(20),
-  ]);
-  const o = owner.data as { id: string; owner_name: string | null; email: string | null; phone: string | null; avatar_url: string | null } | null;
-  return {
-    id: d.id,
-    name: d.name,
-    breed: d.breed,
-    sex: d.sex,
-    dateOfBirth: d.date_of_birth,
-    photoUrl: d.photo_url,
-    waiverSignedAt: d.waiver_signed_at,
-    medicalConditions: d.medical_conditions,
-    allergies: d.allergies,
-    notes: d.notes,
-    vetName: d.vet_name,
-    vetPhone: d.vet_phone,
-    owner: o ? { id: o.id, name: o.owner_name, email: o.email, phone: o.phone, avatarUrl: o.avatar_url } : null,
-    places: ((places.data ?? []) as { id: string; day: Weekday; cadence: "weekly" | "alternating"; start_on: string; end_on: string | null }[]).map((p) => ({
-      id: p.id,
-      day: p.day,
-      cadence: p.cadence,
-      startOn: p.start_on,
-      endOn: p.end_on,
-    })),
-    bookings: ((bookings.data ?? []) as { id: string; kind: "full_day" | "one_to_one"; on_date: string; start_time: string | null }[]).map((b) => ({
-      id: b.id,
-      kind: b.kind,
-      date: b.on_date,
-      startTime: b.start_time,
-    })),
-  };
-}
 
 /** The owner's chat (made if it doesn't exist yet), for Message on a dog's page. */
 export async function conversationForAccount(accountId: string): Promise<string> {

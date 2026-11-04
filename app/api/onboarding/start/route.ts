@@ -134,7 +134,8 @@ export async function POST(request: Request) {
     await notifyAccount(supabase, e.account_id, {
       title: `🐾 Next steps for ${dogNames || "your dog"}`,
       body: "Set up your Direct Debit and register them before your first session.",
-      path: "/chat",
+      // The app's Profile tab, where their set-up checklist is.
+      path: "/dog",
       kind: "onboarding",
     });
   }

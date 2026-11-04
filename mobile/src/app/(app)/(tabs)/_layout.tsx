@@ -16,23 +16,26 @@ function TabIcon({ name, focused, color }: { name: IoniconName; focused: boolean
   return <Ionicons name={focused ? name : (`${name}-outline` as IoniconName)} size={24} color={color} />;
 }
 
-type TabKey = "community" | "dog" | "homework" | "schedule" | "chat" | "registers" | "menu";
+type TabKey = "community" | "dog" | "homework" | "schedule" | "chat" | "today" | "registers" | "menu";
 type TabDef = { key: TabKey; label: string; icon: IoniconName };
 
+/** Owners: Profile sits on the right, where Kanvas has the Class Pass. */
 const MEMBER_TABS: TabDef[] = [
   { key: "community", label: "Community", icon: "home" },
-  { key: "dog", label: "Profile", icon: "paw" },
+  { key: "homework", label: "Homework", icon: "school" },
   { key: "schedule", label: "Schedule", icon: "calendar" },
   { key: "chat", label: "Chat", icon: "chatbubble-ellipses" },
+  { key: "dog", label: "Profile", icon: "paw" },
 ];
 
 /**
- * A trainer's tabs mirror the Kanvas coach's (Home, Registers, Chat, Menu).
- * The trainer's Homework library and two-week schedule moved into Menu,
- * with the Calendar, Onboarding and Profile.
+ * A trainer's tabs mirror the Kanvas coach's (Home, Registers, Chat, Menu),
+ * with Today second: the day's dogs, pick-ups and drop-offs. The Homework
+ * library moved into Menu, with the Calendar, Onboarding and Profile.
  */
 const TRAINER_TABS: TabDef[] = [
   { key: "community", label: "Community", icon: "home" },
+  { key: "today", label: "Today", icon: "sunny" },
   { key: "registers", label: "Registers", icon: "clipboard" },
   { key: "chat", label: "Chat", icon: "chatbubble-ellipses" },
   { key: "menu", label: "Menu", icon: "grid" },
@@ -40,11 +43,8 @@ const TRAINER_TABS: TabDef[] = [
 
 /**
  * Every screen in the navigator: each side's bar shows only its own.
- * Members' Homework is no longer a tab of its own: it opens from the
- * Profile tab (and from notifications and links), and the bar keeps
- * Profile lit while it's showing.
  */
-const ALL_KEYS: TabKey[] = ["community", "dog", "homework", "schedule", "registers", "chat", "menu"];
+const ALL_KEYS: TabKey[] = ["community", "dog", "homework", "schedule", "today", "registers", "chat", "menu"];
 const TITLES: Partial<Record<TabKey, string>> = { homework: "Homework" };
 
 /** A count on a tab's icon (the trainer's Menu: requests waiting and unpaid sessions). */
@@ -76,7 +76,7 @@ export default function TabsLayout() {
   const segments = useSegments() as string[];
   // ["(app)", "(tabs)", "schedule"]
   const shownKey = segments[2] ?? "community";
-  const activeKey = !isTrainer && shownKey === "homework" ? "dog" : shownKey;
+  const activeKey = shownKey;
 
   // Trainers: requests waiting for them (and unpaid sessions) on Menu, refreshed as they move between tabs.
   const [menuCount, setMenuCount] = useState(0);

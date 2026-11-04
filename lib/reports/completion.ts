@@ -1,27 +1,13 @@
 /**
  * Homework completion maths (pure).
  * ---------------------------------
- * A report card's homework must be done on 3 separate days, and only within 14
- * days of the card. A dog's all-time completion is the share of its report
- * cards that reached 3 days — counting only cards dated on/after any reset.
+ * A report card's homework is complete once done on 3 different days (UK
+ * dates, once a day). It never expires: it stays to do until then. A dog's
+ * all-time completion is the share of its report cards that reached 3 days —
+ * counting only cards dated on/after any reset.
  */
 import type { ReportCard } from "./types";
 import { HOMEWORK_TARGET_DAYS } from "./progress";
-
-/** How long after a report card the owner can still log homework. */
-export const HOMEWORK_WINDOW_DAYS = 14;
-
-/** The last day (YYYY-MM-DD) homework can be logged for a card. */
-export function windowEnd(cardDateISO: string): string {
-  const d = new Date(cardDateISO);
-  d.setUTCDate(d.getUTCDate() + HOMEWORK_WINDOW_DAYS);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Is the card still inside its 14-day logging window on `todayISO` (YYYY-MM-DD)? */
-export function isWindowOpen(cardDateISO: string, todayISO: string): boolean {
-  return todayISO <= windowEnd(cardDateISO);
-}
 
 /** The date `months` before `todayISO` (YYYY-MM-DD) — e.g. a 6-month window. */
 export function monthsAgoISO(todayISO: string, months: number): string {

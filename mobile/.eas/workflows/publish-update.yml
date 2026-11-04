@@ -1,0 +1,16 @@
+# Publishes the app's latest screens and logic to every installed copy over
+# the air (EAS Update), with no App Store build. Run it from expo.dev, with
+# `eas workflow:run publish-update.yml`, or ask Claude (Expo connector).
+# A change to native code, app.json or the Expo SDK still needs a new build.
+name: Publish update
+on:
+  workflow_dispatch: {}
+jobs:
+  publish:
+    name: Publish to production (iOS)
+    type: update
+    environment: production
+    params:
+      channel: production
+      platform: ios
+      message: "Update from ${{ github.ref_name }} @ ${{ github.sha }}"

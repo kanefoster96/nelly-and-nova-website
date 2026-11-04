@@ -1,9 +1,7 @@
-import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
 
 import { Pressable } from "@/components/pressable";
-import { config } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 import { useAsync } from "@/lib/useAsync";
 import { colors, glass, GLASS_BORDER } from "@/theme";
@@ -25,7 +23,8 @@ async function loadMeetGreet(): Promise<MeetGreet> {
 /**
  * Their free meet & greet, at the top of the Schedule tab — the Nelly & Nova
  * version of Kanvas's free trial card: requested → booked (day and time) →
- * onboarding (open their set-up checklist). Hidden when there's nothing open.
+ * onboarding (their set-up checklist, on the Profile tab). Hidden when
+ * there's nothing open.
  */
 export function MeetGreetCard() {
   const router = useRouter();
@@ -56,7 +55,8 @@ export function MeetGreetCard() {
       <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
         {mg.status === "onboarding" && mg.joinToken && (
           <Pressable
-            onPress={() => Linking.openURL(new URL(`/join/${mg.joinToken}`, config.siteUrl).toString())}
+            // The set-up checklist, in the app on the Profile tab.
+            onPress={() => router.push("/dog")}
             style={{ height: 40, borderRadius: 20, paddingHorizontal: 18, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" }}
           >
             <Text style={{ color: colors.accentForeground, fontWeight: "700" }}>Continue set-up</Text>
