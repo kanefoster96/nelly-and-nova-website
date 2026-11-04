@@ -37,10 +37,11 @@ const MEMBER_TABS: TabDef[] = [
  */
 const TRAINER_TABS: TabDef[] = [
   { key: "community", label: "Community", icon: "home" },
-  { key: "today", label: "Today", icon: "sunny" },
   { key: "registers", label: "Week", icon: "calendar-number" },
   { key: "chat", label: "Chat", icon: "chatbubble-ellipses" },
   { key: "menu", label: "Menu", icon: "grid" },
+  // On the right, where Kanvas coaches have Registers and owners have Profile.
+  { key: "today", label: "Today", icon: "sunny" },
 ];
 
 /**
