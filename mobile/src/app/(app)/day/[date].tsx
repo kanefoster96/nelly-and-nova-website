@@ -36,10 +36,11 @@ function Section({ children }: { children: React.ReactNode }) {
 
 /**
  * Trainer: one day on the calendar — the dogs in for Full Day Training
- * (regular and one-off), its 1-1s and meet & greets — with Add new dog
- * (a registered dog, or Send onboarding for a meet & greet request) and Add
- * a 1-1. The × on a row takes it off: a one-off or a 1-1 is cancelled; a
- * regular place ends the day before, after a confirm.
+ * (regular and one-off), its 1-1s and meet & greets — with Add new dog,
+ * Add a 1-1 and Add a meet & greet (add-dog.tsx: each picks a customer and
+ * their dog, a request, or someone new, so it shows in their app too). The
+ * × on a row takes it off: a one-off or a 1-1 is cancelled; a regular place
+ * ends the day before, after a confirm.
  */
 export default function DayScreen() {
   const router = useRouter();
@@ -165,6 +166,7 @@ export default function DayScreen() {
               <BigButton icon="add" label="Add new dog" onPress={() => router.push({ pathname: "/add-dog", params: { date, mode: "dog" } })} />
             )}
             <BigButton icon="time-outline" label="Add a 1-1" variant="outline" onPress={() => router.push({ pathname: "/add-dog", params: { date, mode: "one_to_one" } })} />
+            <BigButton icon="hand-left-outline" label="Add a meet & greet" variant="outline" onPress={() => router.push({ pathname: "/add-dog", params: { date, mode: "meet_greet" } })} />
           </Appear>
 
           {weekday && (
@@ -232,6 +234,7 @@ export default function DayScreen() {
                     key={e.refId}
                     entry={e}
                     first={i === 0}
+                    onPress={() => router.push({ pathname: "/onboarding/[id]", params: { id: e.refId } })}
                     trailing={
                       weekday ? (
                         <Pressable

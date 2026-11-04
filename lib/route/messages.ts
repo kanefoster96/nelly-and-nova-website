@@ -20,6 +20,24 @@ export function onRouteMessage(run: RouteRun, dog: string, ownerFirstName: strin
   };
 }
 
+/**
+ * What an owner is told when a trainer taps "Picked up" or "Dropped off"
+ * on the stop (the stop reaching done; app/api/route/notify with
+ * event "done"). Once per stop.
+ */
+export function stopDoneMessage(run: RouteRun, dog: string): { title: string; body: string } {
+  if (run === "pickup") {
+    return {
+      title: `🐾 ${dog}'s with us`,
+      body: `${dog} has been collected and is on the way to training. We'll send updates through the day.`,
+    };
+  }
+  return {
+    title: `🏡 ${dog}'s home`,
+    body: `${dog} is back home. Their report card will follow soon.`,
+  };
+}
+
 /** "Sarah" from "Sarah Jones"; "" when there's no name. */
 export function firstName(full: string | null | undefined): string {
   return (full ?? "").trim().split(/\s+/)[0] ?? "";

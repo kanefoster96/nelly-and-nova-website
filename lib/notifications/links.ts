@@ -25,6 +25,8 @@ export function websiteHref(actionHref: string | null | undefined): string | und
   if (myDog) return `/profile/dogs/${myDog[1]}`;
   if (path === "/register" || path.startsWith("/register/")) return "/waiver";
   if (path === "/my-info") return "/profile/account/edit";
+  // One report card's page in the app (its homework and the trainer's notes).
+  if (path.startsWith("/homework-detail/")) return "/profile/reports";
   for (const [prefix, website] of WEBSITE_FOR_APP) {
     if (path === prefix || path.startsWith(`${prefix}/`)) return website;
   }

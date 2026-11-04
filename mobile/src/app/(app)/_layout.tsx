@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { usePushNotifications } from "@/lib/push";
+import { useWelcomeSeen } from "@/lib/welcome";
 import { colors } from "@/theme";
 
 // Wraps the tab shell — Profile, Notifications, a conversation and a drill
@@ -9,11 +10,16 @@ import { colors } from "@/theme";
 // Kanvas app / Instagram.
 export default function AppLayout() {
   // Signed in: ask for notifications and save this phone's push token.
-  const { session } = useAuth();
-  usePushNotifications(session?.user.id);
+  // Owners are asked only once the welcome has said why (app/(app)/welcome.tsx,
+  // whose "Allow notifications" asks); trainers straight away.
+  const { session, isTrainer } = useAuth();
+  const welcomed = useWelcomeSeen(session?.user.id);
+  usePushNotifications(isTrainer || welcomed ? session?.user.id : undefined);
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" />
+      {/* Owners' first-launch welcome (once per account on this phone). */}
+      <Stack.Screen name="welcome" options={{ animation: "fade", gestureEnabled: false }} />
       <Stack.Screen name="profile" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="conversation/[id]" />
@@ -32,6 +38,7 @@ export default function AppLayout() {
       <Stack.Screen name="dog/[id]" />
       <Stack.Screen name="library" />
       <Stack.Screen name="report-card" />
+      <Stack.Screen name="write-reports" />
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="onboarding/[id]" />
       <Stack.Screen name="team" />

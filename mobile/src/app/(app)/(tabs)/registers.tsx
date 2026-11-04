@@ -9,7 +9,7 @@ import { GlassButton } from "@/components/glass-button";
 import { PageTitle } from "@/components/page-title";
 import { Pressable } from "@/components/pressable";
 import { RefreshControl } from "@/components/refresh-control";
-import { EntryRow } from "@/components/trainer/entry-row";
+import { AvatarCircle } from "@/components/avatar-circle";
 import { Tag } from "@/components/ui";
 import { countPendingRequests, countUnpaid, DAY_CAPACITY, listRequests, requestsForDate, type SessionRequest } from "@/data/sessions";
 import {
@@ -19,6 +19,7 @@ import {
   getTrainerCalendar,
   groupByDate,
   isFullDay,
+  entryTitle,
   isWeekday,
   mondayOf,
   todayISO,
@@ -26,7 +27,6 @@ import {
 } from "@/data/trainer-schedule";
 import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
 import { hapticSelection } from "@/lib/haptics";
-import { animateListChange } from "@/lib/layout-animation";
 import { colors, GLASS_BORDER } from "@/theme";
 
 /** This week's Monday, or next week's at the weekend (the week coming up is the one to see). */
@@ -34,24 +34,49 @@ function startingMonday(today: string): string {
   return isWeekday(today) ? mondayOf(today) : mondayOf(addDays(today, 2));
 }
 
-function dogCountLine(entries: CalendarEntry[]): string {
+function dogCountLine(entries: CalendarEntry[], requests: number): string {
   const dogs = entries.filter(isFullDay);
   const oneOffs = dogs.filter((e) => e.kind === "full_day_one_off").length;
   const held = dogs.filter((e) => !e.dogId).length;
   const ones = entries.filter((e) => e.kind === "one_to_one").length;
+  const meets = entries.filter((e) => e.kind === "meet_greet").length;
   const parts = [dogs.length === 0 ? "No dogs booked" : `${dogs.length} dog${dogs.length === 1 ? "" : "s"}`];
   if (oneOffs) parts.push(`${oneOffs} one-off`);
   if (held) parts.push(`${held} awaiting registration`);
   if (ones) parts.push(`${ones} 1-1${ones === 1 ? "" : "s"}`);
+  if (meets) parts.push(`${meets} meet & greet${meets === 1 ? "" : "s"}`);
+  if (requests) parts.push(`${requests} request${requests === 1 ? "" : "s"}`);
   return parts.join(" · ");
 }
 
+/** The day's Full Day dogs as a row of overlapping photos, then their names. */
+function DogFaces({ entries }: { entries: CalendarEntry[] }) {
+  if (entries.length === 0) return null;
+  const shown = entries.slice(0, 6);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
+      <View style={{ flexDirection: "row" }}>
+        {shown.map((e, i) => (
+          <View key={`${e.kind}-${e.refId}`} style={{ marginLeft: i === 0 ? 0 : -8, borderRadius: 15, borderWidth: 2, borderColor: colors.surface }}>
+            <AvatarCircle name={entryTitle(e)} avatarUrl={e.dogPhoto} size={26} />
+          </View>
+        ))}
+      </View>
+      <Text style={{ color: colors.muted, fontSize: 12, flex: 1 }} numberOfLines={1}>
+        {entries.map(entryTitle).join(", ")}
+      </Text>
+    </View>
+  );
+}
+
 /**
- * Trainer: Full Day Training, Monday to Friday, as Kanvas's Registers tab
- * lists a coach's week. One card per day with how many dogs are in (regular
- * places and one-offs); today's is open with each dog — photo, name, owner —
- * and a tap opens the dog. Any other day opens with a tap; the arrows move
- * a week at a time. "Open day" goes to the day's page to add or remove dogs.
+ * Trainer: the Week tab (the file keeps its old name, so /registers links
+ * still land here). Full Day Training, Monday to Friday, as Kanvas's
+ * Registers tab lists a coach's week: one card per day with how many dogs
+ * are in (regular places and one-offs), their faces and names, and what
+ * else is on (1-1s, meet & greets, requests). A tap opens the day's page to
+ * add or remove; the arrows move a week at a time. The day itself — runs,
+ * the register, reports — is on Today.
  */
 export default function RegistersScreen() {
   const { isTrainer } = useAuth();
@@ -63,7 +88,6 @@ export default function RegistersScreen() {
   const today = todayISO();
   const thisMonday = startingMonday(today);
   const [monday, setMonday] = useState(thisMonday);
-  const [open, setOpen] = useState<Set<string>>(() => new Set([isWeekday(today) ? today : thisMonday]));
   const [entries, setEntries] = useState<Map<string, CalendarEntry[]> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,19 +129,6 @@ export default function RegistersScreen() {
     const next = addDays(monday, by * 7);
     setEntries(null);
     setMonday(next);
-    // Today opens again on its own week; other weeks start closed.
-    setOpen(new Set(next === thisMonday ? [isWeekday(today) ? today : thisMonday] : []));
-  }
-
-  function toggle(date: string) {
-    hapticSelection();
-    animateListChange();
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(date)) next.delete(date);
-      else next.add(date);
-      return next;
-    });
   }
 
   const days = [0, 1, 2, 3, 4].map((i) => addDays(monday, i));
@@ -140,7 +151,7 @@ export default function RegistersScreen() {
           />
         }
       >
-        <PageTitle title="Registers" subtitle="Full Day Training this week. Tap a day for its dogs, and a dog for its details." style={{ marginBottom: 14 }} />
+        <PageTitle title="Week" subtitle="Full Day Training, Monday to Friday. Tap a day to open it." style={{ marginBottom: 14 }} />
 
         <Pressable
           onPress={() => router.push("/calendar")}
@@ -212,27 +223,25 @@ export default function RegistersScreen() {
           {days.map((date, i) => {
             const list = entries?.get(date) ?? [];
             const dogs = list.filter(isFullDay);
-            const expanded = open.has(date);
+            const asked = requestsForDate(openRequests, date).length;
             const isToday = date === today;
             return (
               <Appear key={date} index={i}>
-                <View
+                <Pressable
+                  onPress={() => router.push({ pathname: "/day/[date]", params: { date } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${formatDay(date)}: ${entries ? dogCountLine(list, asked) : "loading"}. Open the day`}
                   style={{
                     borderWidth: 1,
                     ...GLASS_BORDER,
                     ...(isToday ? { borderColor: "rgba(34,197,94,0.45)" } : null),
                     backgroundColor: isToday ? "rgba(34,197,94,0.06)" : colors.surface,
                     borderRadius: 20,
-                    overflow: "hidden",
+                    padding: 16,
                     opacity: date < today ? 0.75 : 1,
                   }}
                 >
-                  <Pressable
-                    onPress={() => toggle(date)}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded }}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16 }}
-                  >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                     {/* The count, big, like Kanvas's class times. */}
                     <View
                       style={{
@@ -257,56 +266,14 @@ export default function RegistersScreen() {
                         <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700" }}>{formatDay(date)}</Text>
                         {isToday && <Tag label="Today" tone={colors.success} />}
                       </View>
-                      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }} numberOfLines={1}>
-                        {entries ? dogCountLine(list) : "Loading…"}
+                      <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }} numberOfLines={2}>
+                        {entries ? dogCountLine(list, asked) : "Loading…"}
                       </Text>
                     </View>
-                    <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={20} color={colors.muted} />
-                  </Pressable>
-
-                  {expanded && entries && (
-                    <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 16, paddingBottom: 8 }}>
-                      {dogs.length === 0 && <Text style={{ color: colors.muted, fontSize: 14, paddingVertical: 14 }}>No dogs booked in for Full Day Training.</Text>}
-                      {dogs.map((e, j) => (
-                        <EntryRow
-                          key={`${e.kind}-${e.refId}`}
-                          entry={e}
-                          first={j === 0}
-                          onPress={e.dogId ? () => router.push({ pathname: "/dog/[id]", params: { id: e.dogId! } }) : undefined}
-                        />
-                      ))}
-                      {requestsForDate(openRequests, date).map((r) => (
-                        <Pressable
-                          key={r.id}
-                          onPress={() => router.push({ pathname: "/requests/[id]", params: { id: r.id } })}
-                          style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border, opacity: 0.6 }}
-                        >
-                          <Ionicons name="time-outline" size={18} color={colors.warning} />
-                          <Text style={{ color: colors.foreground, fontSize: 14, flex: 1 }} numberOfLines={1}>
-                            {r.dogName} · {r.status === "offered" ? "offered" : "asked for"} {r.fromDate === date && r.requestedDate !== date ? "a move from here" : "this day"}
-                          </Text>
-                          <Tag label={r.status === "offered" ? "Offered" : "Pending"} tone={colors.warning} />
-                        </Pressable>
-                      ))}
-                      {list
-                        .filter((e) => !isFullDay(e))
-                        .map((e) => (
-                          <EntryRow
-                            key={`${e.kind}-${e.refId}`}
-                            entry={e}
-                            onPress={e.dogId ? () => router.push({ pathname: "/dog/[id]", params: { id: e.dogId! } }) : undefined}
-                          />
-                        ))}
-                      <Pressable
-                        onPress={() => router.push({ pathname: "/day/[date]", params: { date } })}
-                        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border }}
-                      >
-                        <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600" }}>Open day · add or remove dogs</Text>
-                        <Ionicons name="chevron-forward" size={14} color={colors.muted} />
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                  </View>
+                  {entries && <DogFaces entries={dogs} />}
+                </Pressable>
               </Appear>
             );
           })}

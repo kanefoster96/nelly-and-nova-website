@@ -8,7 +8,8 @@ import { supabase } from "@/lib/supabase";
  * each stop is (waiting → on_route → done). Dogs without a row go at the
  * end in the day's own order; the drop-off run copies the pick-up order
  * until it's rearranged. "On route" tells the owner through the website
- * (app/api/route/notify, wording in lib/route/messages.ts there).
+ * (app/api/route/notify, wording in lib/route/messages.ts there), and so
+ * does a stop reaching done ("Picked up" / "Dropped off", notifyStopDone).
  */
 
 export type RouteRun = "pickup" | "dropoff";
@@ -81,7 +82,26 @@ export async function setStopStatus(date: string, run: RouteRun, order: string[]
     .single();
   if (error || !data) throw new Error("Couldn't update that stop.");
   const r = data as { id: string; dog_id: string; position: number; status: StopStatus; notified_at: string | null };
+  // Picked up / dropped off: the owner hears about it ("🐾 Bella's with us", "🏡 Bella's home").
+  if (status === "done") void notifyStopDone(r.id);
   return { id: r.id, dogId: r.dog_id, position: r.position, status: r.status, notifiedAt: r.notified_at };
+}
+
+/**
+ * Tell the owner their dog has been picked up or dropped off (a
+ * notification and a push, wording in the website's lib/route/messages.ts).
+ * The website sends it once per stop, and only for a stop that's done, so
+ * an Undo and a second tap don't repeat it. Best-effort: never throws, and
+ * the trainer isn't held up waiting for it.
+ */
+export async function notifyStopDone(stopId: string | null | undefined): Promise<boolean> {
+  if (!stopId) return false;
+  try {
+    const res = await postToSite<{ notified?: boolean }>("/api/route/notify", { stopId, event: "done" }, "Couldn't notify the owner.");
+    return !!res.notified;
+  } catch {
+    return false;
+  }
 }
 
 /**

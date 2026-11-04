@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
+import { ChatBadge } from "@/components/chat/chat-badge";
 import { FloatingBar, type BarTab } from "@/components/floating-bar";
 import { TopBar } from "@/components/top-bar";
 import { countPendingRequests, countUnpaid } from "@/data/sessions";
@@ -30,13 +31,14 @@ const MEMBER_TABS: TabDef[] = [
 
 /**
  * A trainer's tabs mirror the Kanvas coach's (Home, Registers, Chat, Menu),
- * with Today second: the day's dogs, pick-ups and drop-offs. The Homework
+ * with Today second: the day's dogs, pick-ups and drop-offs, and its
+ * register. Week (the "registers" screen) is Monday to Friday. The Homework
  * library moved into Menu, with the Calendar, Onboarding and Profile.
  */
 const TRAINER_TABS: TabDef[] = [
   { key: "community", label: "Community", icon: "home" },
   { key: "today", label: "Today", icon: "sunny" },
-  { key: "registers", label: "Registers", icon: "clipboard" },
+  { key: "registers", label: "Week", icon: "calendar-number" },
   { key: "chat", label: "Chat", icon: "chatbubble-ellipses" },
   { key: "menu", label: "Menu", icon: "grid" },
 ];
@@ -98,6 +100,7 @@ export default function TabsLayout() {
       <View>
         <TabIcon name={t.icon} focused={focused} color={color} />
         {t.key === "menu" && <Badge count={menuCount} />}
+        {t.key === "chat" && <ChatBadge />}
       </View>
     ),
     onPress: () => router.navigate(`/${t.key}`),

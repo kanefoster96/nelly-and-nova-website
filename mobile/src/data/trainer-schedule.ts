@@ -264,53 +264,153 @@ async function myId(): Promise<string | null> {
   return data.session?.user.id ?? null;
 }
 
-/** A registered dog for just this day. */
-export async function addOneOffDay(date: string, dog: Pick<RegisteredDog, "id" | "accountId">): Promise<void> {
-  const { error } = await supabase.from("bookings").insert({
-    kind: "full_day",
-    on_date: date,
-    account_id: dog.accountId,
-    dog_id: dog.id,
-    created_by: await myId(),
-  });
-  if (error) throw new Error(error.message);
+/**
+ * Who a booking or a place is for: a customer's account and dog (the dog
+ * may be still to come: it fills in once they register one), or a request
+ * (held under their name until they sign up and register).
+ */
+export type BookingTarget = {
+  accountId: string | null;
+  dogId: string | null;
+  enquiryId?: string | null;
+  /** "Sam Taylor — Biscuit": shown until there's a dog. */
+  holderName?: string | null;
+};
+
+function targetColumns(t: BookingTarget) {
+  return {
+    account_id: t.accountId,
+    dog_id: t.dogId,
+    enquiry_id: t.enquiryId ?? null,
+    holder_name: t.dogId ? null : t.holderName?.trim() || null,
+  };
 }
 
-/** A registered dog's regular place on this date's weekday, from this date. */
-export async function addRegularPlace(date: string, cadence: "weekly" | "alternating", dog: Pick<RegisteredDog, "id" | "accountId">): Promise<void> {
+/** A dog (or a held place) for just this day. Returns the booking's id. */
+export async function addOneOffDay(date: string, target: BookingTarget): Promise<string> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert({ kind: "full_day", on_date: date, ...targetColumns(target), created_by: await myId() })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Couldn't add the day.");
+  return (data as { id: string }).id;
+}
+
+/** A regular place on this date's weekday, from this date. Returns the place's id. */
+export async function addRegularPlace(date: string, cadence: "weekly" | "alternating", target: BookingTarget): Promise<string> {
   const day = weekdayOf(date);
   if (!day) throw new Error("Full Day Training runs Monday to Friday.");
-  const { error } = await supabase.from("placements").insert({
-    day,
-    cadence,
-    start_on: date,
-    account_id: dog.accountId,
-    dog_id: dog.id,
-    created_by: await myId(),
-  });
-  if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from("placements")
+    .insert({ day, cadence, start_on: date, ...targetColumns(target), created_by: await myId() })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Couldn't add the place.");
+  return (data as { id: string }).id;
 }
 
-/** A 1-1 at a time: for a registered dog, or a name for someone not signed up yet. */
+/** How long a 1-1 can run, in minutes. */
+export const ONE_TO_ONE_MINUTES = [30, 45, 60, 90, 120];
+
+/** "1 hr", "45 min", "1 hr 30". */
+export function formatMinutes(min: number): string {
+  if (min < 60) return `${min} min`;
+  return `${Math.floor(min / 60)} hr${min % 60 ? ` ${min % 60}` : ""}`;
+}
+
+/** A 1-1 at a time, for a customer (and their dog) or a request. Returns the booking's id. */
 export async function addOneToOne(input: {
   date: string;
   /** "HH:MM". */
   time: string;
-  dog?: Pick<RegisteredDog, "id" | "accountId"> | null;
-  holderName?: string | null;
+  durationMin?: number | null;
+  target: BookingTarget;
   notes?: string | null;
-}): Promise<void> {
-  const { error } = await supabase.from("bookings").insert({
+}): Promise<string> {
+  const row: Record<string, unknown> = {
     kind: "one_to_one",
     on_date: input.date,
     start_time: input.time,
-    account_id: input.dog?.accountId ?? null,
-    dog_id: input.dog?.id ?? null,
-    holder_name: input.dog ? null : input.holderName?.trim() || null,
+    ...targetColumns(input.target),
     notes: input.notes?.trim() || null,
     created_by: await myId(),
+  };
+  if (input.durationMin) row.duration_min = input.durationMin;
+  let { data, error } = await supabase.from("bookings").insert(row).select("id").single();
+  if (error && /duration_min/.test(error.message)) {
+    // Before the duration column is there: book it without.
+    delete row.duration_min;
+    ({ data, error } = await supabase.from("bookings").insert(row).select("id").single());
+  }
+  if (error || !data) throw new Error(error?.message ?? "Couldn't add the 1-1.");
+  return (data as { id: string }).id;
+}
+
+/** "YYYY-MM-DD" + "HH:MM" in London, as an ISO timestamp. */
+export function londonISO(date: string, time: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, h, min);
+  // London's offset at that moment (0 in winter, +1 in summer).
+  let offset = 0;
+  try {
+    const f = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(guess));
+    const lh = Number(f.find((p) => p.type === "hour")?.value ?? h);
+    const lm = Number(f.find((p) => p.type === "minute")?.value ?? min);
+    offset = ((lh * 60 + lm - (h * 60 + min) + 1440 + 720) % 1440) - 720;
+  } catch {
+    offset = -new Date(guess).getTimezoneOffset();
+  }
+  return new Date(guess - offset * 60_000).toISOString();
+}
+
+/**
+ * Book (or move) a meet & greet from a day: on a request, or for a
+ * customer (their open request, else a new one on their account), with
+ * where it is and a note (nn_trainer_book_meet_greet). Returns the
+ * request's id: the meet & greet shows on the calendar, on Today, and in
+ * the owner's app.
+ */
+export async function bookDayMeetGreet(input: {
+  date: string;
+  time: string;
+  enquiryId?: string | null;
+  accountId?: string | null;
+  dogId?: string | null;
+  address: string;
+  notes: string;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc("nn_trainer_book_meet_greet", {
+    p_at: londonISO(input.date, input.time),
+    p_enquiry_id: input.enquiryId ?? null,
+    p_account_id: input.enquiryId ? null : (input.accountId ?? null),
+    p_dog_id: input.dogId ?? null,
+    p_address: input.address.trim() || null,
+    p_notes: input.notes.trim() || null,
   });
-  if (error) throw new Error(error.message);
+  if (error || !data) throw new Error(error?.message ?? "Couldn't book the meet & greet.");
+  return data as string;
+}
+
+export type BookedKind = "one_to_one" | "full_day_one_off" | "full_day" | "meet_greet";
+
+/**
+ * Tell the owner what's been booked (a notification and a push, through
+ * the website: app/api/schedule/booked). For a meet & greet, `email` also
+ * emails them the day and time. Never throws: the booking's already made.
+ */
+export async function notifyBooked(kind: BookedKind, id: string, opts: { email?: boolean; notify?: boolean } = {}): Promise<{ notified: boolean; emailed: boolean }> {
+  try {
+    const res = await postToSite<{ notified?: boolean; emailed?: boolean }>(
+      "/api/schedule/booked",
+      { kind, id, email: !!opts.email, notify: opts.notify !== false },
+      "Couldn't let them know.",
+    );
+    return { notified: !!res.notified, emailed: !!res.emailed };
+  } catch {
+    return { notified: false, emailed: false };
+  }
 }
 
 /** Cancel a one-off day or a 1-1. */

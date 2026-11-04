@@ -20,6 +20,28 @@ export const CONTACT_HREF = "/contact";
  */
 export const sessionPrices = { fullDay: 8000, fullDayMember: 6000, oneToOne: 9000 } as const;
 
+/**
+ * When Full Day Training dogs are collected and brought home (as "How it
+ * works" says). Used by the evening-before reminder (lib/reminders/evening.ts).
+ */
+export const fullDayTimes = { collect: "between 7:30 and 9:00am", home: "between 4:00 and 5:30pm" } as const;
+
+/**
+ * Where the app is installed from: the /app page (the link and QR code a
+ * trainer shares at the meet & greet, from the app's onboarding page).
+ * Fill in `appStoreUrl` once the app is on the App Store: iPhones opening
+ * /app then go straight there. Until then the page explains TestFlight,
+ * using `testFlightUrl` (TestFlight → the build → Public Link) when it's set.
+ */
+export const appLinks = {
+  /** e.g. "https://apps.apple.com/gb/app/nelly-nova/id0000000000". Empty until it's live. */
+  appStoreUrl: "",
+  /** e.g. "https://testflight.apple.com/join/AbCdEfGh". Empty until there's a public link. */
+  testFlightUrl: "",
+  /** Apple's own TestFlight app. */
+  testFlightAppUrl: "https://apps.apple.com/gb/app/testflight/id899247664",
+} as const;
+
 /** "We understand" pain points. `icon` maps to painIcons in components/ui/Icons.tsx. */
 export type PainPoint = {
   icon: "paw" | "help" | "cross";

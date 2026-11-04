@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
+import { AddDayPhoto } from "@/components/day-photos/add-day-photo";
 import { DogProgressCard } from "@/components/homework/dog-progress";
 import { Pressable } from "@/components/pressable";
 import { RefreshControl } from "@/components/refresh-control";
@@ -165,6 +166,7 @@ export default function DogScreen() {
             {dog.vaccinationsConfirmed === false && <Tag label="Vaccinations not confirmed" tone={colors.warning} />}
           </View>
         </DetailCard>
+        <AddDayPhoto dogId={dog.id} dogName={dog.name} />
 
         {medical.length > 0 && (
           <DetailCard index={1} title="Medical info" icon="alert-circle" tone="danger">

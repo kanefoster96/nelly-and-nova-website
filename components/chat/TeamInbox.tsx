@@ -253,7 +253,13 @@ export function TeamInbox({
                     {c.dogNames && <span className="block truncate text-xs text-paper-dim">{c.dogNames}</span>}
                   </span>
                   {c.unread ? (
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-400" aria-label="Unread" />
+                    // How many are waiting, in amber, so a busy chat stands out at a glance.
+                    <span
+                      className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[11px] font-extrabold text-ink"
+                      aria-label={`${c.unreadCount || 1} unread`}
+                    >
+                      {(c.unreadCount || 1) > 99 ? "99+" : c.unreadCount || 1}
+                    </span>
                   ) : c.completed ? (
                     <span className="shrink-0 text-sm text-paper-dim" aria-label="Done">✓</span>
                   ) : null}

@@ -21,13 +21,23 @@ import { colors, GLASS_BORDER } from "@/theme";
  * system photo picker does that job here.)
  */
 
+/** Chat videos are kept short, as the community composer's are: easier to send and to watch. */
+const MAX_VIDEO_SECONDS = 60;
+const TOO_LONG = "Videos can be up to 60 seconds — please trim it in Photos and try again.";
+/** Compressed before upload, the same as the community composer. */
+const COMPRESS = { quality: 0.7, videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080 } as const;
+
+function isVideoAsset(asset: ImagePicker.ImagePickerAsset): boolean {
+  return asset.type === "video" || asset.type === "pairedVideo" || !!asset.mimeType?.startsWith("video/");
+}
+
 function stagedKey(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /** A photo or video from the system picker or the camera, ready for the tray. */
 function stageFromPicker(asset: ImagePicker.ImagePickerAsset): StagedAttachment {
-  const isVideo = asset.type === "video" || asset.type === "pairedVideo" || !!asset.mimeType?.startsWith("video/");
+  const isVideo = isVideoAsset(asset);
   return {
     key: stagedKey(),
     uri: asset.uri,
@@ -105,7 +115,7 @@ export function AttachSheet({
         return;
       }
       setBusy(true);
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images", "videos"], quality: 0.8 });
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images", "videos"], ...COMPRESS, videoMaxDuration: MAX_VIDEO_SECONDS });
       setBusy(false);
       if (result.canceled || result.assets.length === 0) return;
       add([stageFromPicker(result.assets[0])], session);
@@ -128,11 +138,22 @@ export function AttachSheet({
         allowsMultipleSelection: true,
         selectionLimit: Math.max(1, limit),
         orderedSelection: true,
-        quality: 0.8,
+        ...COMPRESS,
       });
       setBusy(false);
       if (result.canceled || result.assets.length === 0) return;
-      add(result.assets.map(stageFromPicker), session);
+      // asset.duration is in milliseconds.
+      const fits = result.assets.filter((a) => !isVideoAsset(a) || (a.duration ?? 0) <= MAX_VIDEO_SECONDS * 1000);
+      if (fits.length < result.assets.length) {
+        hapticError();
+        // All too long: say so in the sheet. Some: the rest go in the tray (the sheet closes), so say it in an alert.
+        if (fits.length === 0) {
+          setMessage(TOO_LONG);
+          return;
+        }
+        Alert.alert("That video is too long", TOO_LONG);
+      }
+      add(fits.map(stageFromPicker), session);
     } catch {
       setBusy(false);
       hapticError();

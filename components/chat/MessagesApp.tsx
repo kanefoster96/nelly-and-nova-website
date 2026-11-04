@@ -74,6 +74,9 @@ export function MessagesApp({
   );
 }
 
+/** One clear channel for owners: this chat, with a notification when we reply. */
+const ONE_CHANNEL = "Message us here for anything — we reply in the app, and you'll get a notification when we do.";
+
 function OwnerMessages({
   userId,
   name,
@@ -103,13 +106,16 @@ function OwnerMessages({
       </div>
     </div>
   ) : conversationId ? (
-    <ChatThread
-      conversationId={conversationId}
-      viewerId={userId}
-      viewerRole="member"
-      presenceName={name}
-      emptyLabel="Send us a message about your dog and the team will get back to you here."
-    />
+    <>
+      <p className="mx-4 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[13px] leading-snug text-paper-dim">{ONE_CHANNEL}</p>
+      <ChatThread
+        conversationId={conversationId}
+        viewerId={userId}
+        viewerRole="member"
+        presenceName={name}
+        emptyLabel="Say hello! Questions about sessions, homework, pick-ups or anything else: the team will reply right here."
+      />
+    </>
   ) : (
     <p className="mt-10 text-center text-sm text-paper-dim">Connecting…</p>
   );

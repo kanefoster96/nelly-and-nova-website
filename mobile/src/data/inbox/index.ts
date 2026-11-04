@@ -1,9 +1,11 @@
 import { config } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 
+import { getUnreadCounts, toCard } from "./cards";
 import type { Attachment, Conversation, Message } from "./types";
 
 export type { Attachment, Conversation, Message } from "./types";
+export type { ChatCard, RequestStatus } from "./cards";
 export { formatDate, formatTime } from "./format";
 
 /**
@@ -15,8 +17,9 @@ export { formatDate, formatTime } from "./format";
  */
 
 const BUCKET = "chat-attachments";
-const MESSAGE_COLUMNS =
-  "id, conversation_id, sender_id, sender_is_staff, sender_name, body, attachment_path, attachment_type, attachment_name, created_at";
+// Every column, so a card's kind and meta come too where the database has them,
+// and nothing breaks where it doesn't yet (supabase/migrations/20261104120000_chat_cards.sql).
+const MESSAGE_COLUMNS = "*";
 
 export type MessageRow = {
   id: string;
@@ -29,6 +32,8 @@ export type MessageRow = {
   attachment_type: Attachment["type"] | null;
   attachment_name: string | null;
   created_at: string;
+  kind?: string | null;
+  meta?: unknown;
 };
 
 type Team = Record<string, { name: string | null; avatarUrl: string | null }>;
@@ -98,6 +103,7 @@ export async function toMessages(rows: MessageRow[]): Promise<Message[]> {
               removed: r.attachment_path.startsWith(HOMEWORK_VIDEO_PREFIX) && !urls[r.attachment_path],
             }
           : undefined,
+      card: toCard(r.kind, r.meta),
     };
   });
 }
@@ -129,7 +135,7 @@ type InboxRow = {
 
 /** Trainer inbox: every conversation, most recent first. */
 export async function getConversations(): Promise<Conversation[]> {
-  const { data, error } = await supabase.rpc("nn_chat_inbox");
+  const [{ data, error }, unread] = await Promise.all([supabase.rpc("nn_chat_inbox"), getUnreadCounts()]);
   if (error) throw new Error(error.message);
   return ((data ?? []) as InboxRow[]).map((r) => {
     const owner = r.owner_name || r.email || "Owner";
@@ -142,6 +148,7 @@ export async function getConversations(): Promise<Conversation[]> {
       lastMessageAt: r.last_message_at,
       lastMessagePreview: previewFor(r.last_body, r.last_attachment_type),
       unread: r.unread,
+      unreadCount: r.unread ? Math.max(1, unread[r.id] ?? 0) : 0,
       status: r.completed_at ? "closed" : "active",
       avatarUrl: r.avatar_url,
       lastMessageFromStaff: !!r.last_from_staff,

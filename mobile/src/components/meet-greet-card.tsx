@@ -12,6 +12,8 @@ type MeetGreet = {
   dogNames: string | null;
   meetGreetAt: string | null;
   meetGreetNotes: string | null;
+  /** Where it is, when the trainer booked it from a day. */
+  meetGreetAddress?: string | null;
   joinToken: string | null;
 } | null;
 
@@ -24,7 +26,8 @@ async function loadMeetGreet(): Promise<MeetGreet> {
  * Their free meet & greet, at the top of the Schedule tab — the Nelly & Nova
  * version of Kanvas's free trial card: requested → booked (day and time) →
  * onboarding (their set-up checklist, on the Profile tab). Hidden when
- * there's nothing open.
+ * there's nothing open. A meet & greet the trainer booked from a day shows
+ * its day, time (London) and where.
  */
 export function MeetGreetCard() {
   const router = useRouter();
@@ -33,7 +36,7 @@ export function MeetGreetCard() {
 
   const dog = (mg.dogNames ?? "your dog").replace(/, ([^,]*)$/, " & $1");
   const when = mg.meetGreetAt
-    ? new Date(mg.meetGreetAt).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+    ? new Date(mg.meetGreetAt).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })
     : null;
   // Only Full Day Training starts with a meet & greet; 1-1 and Online go straight to a chat.
   const isDayTraining = mg.service === "Full Day Training";
@@ -44,7 +47,7 @@ export function MeetGreetCard() {
         ? `We'll be in touch to ask a few questions and book a day to meet ${dog}.`
         : `We'll be in touch to chat about ${dog} and get you started.`
       : mg.status === "meet_greet_booked"
-        ? `We're looking forward to meeting ${dog}.${mg.meetGreetNotes ? `\n\n${mg.meetGreetNotes}` : ""}`
+        ? `We're looking forward to meeting ${dog}.${mg.meetGreetAddress ? `\n\nWhere: ${mg.meetGreetAddress}` : ""}${mg.meetGreetNotes ? `\n\n${mg.meetGreetNotes}` : ""}`
         : `Set up your Direct Debit and register ${dog} before your first session.`;
 
   return (

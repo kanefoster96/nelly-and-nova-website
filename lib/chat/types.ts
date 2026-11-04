@@ -1,3 +1,5 @@
+import type { ChatCard } from "./cards";
+
 /**
  * Live chat types (see supabase/migrations/20261103000000_chat.sql).
  * One running conversation per member with the team; any trainer can reply.
@@ -21,6 +23,8 @@ export type ChatMessage = {
   /** Signed URL, resolved on demand (undefined = not resolved yet). */
   attachmentUrl?: string | null;
   createdAt: string;
+  /** A request, cancellation, homework day or report card, shown as a card (lib/chat/cards.ts). */
+  card?: ChatCard;
 };
 
 /** Raw row from messages (Realtime payloads and selects). */
@@ -35,6 +39,8 @@ export type ChatMessageRow = {
   attachment_type: ChatAttachmentType | null;
   attachment_name: string | null;
   created_at: string;
+  kind?: string | null;
+  meta?: unknown;
 };
 
 /** "Kane is typing…" — who else has this conversation open right now. */
@@ -57,6 +63,8 @@ export type InboxConversation = {
   lastMessagePreview: string;
   lastFromStaff: boolean;
   unread: boolean;
+  /** How many of the owner's messages the team hasn't read. */
+  unreadCount: number;
   completed: boolean;
   /** The owner's chat was last open (heartbeat), for "In the chat now". */
   memberLastActiveAt: string | null;

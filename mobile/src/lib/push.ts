@@ -25,7 +25,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
-async function registerToken(userId: string): Promise<void> {
+/** Ask for permission (if it can still be asked) and save this phone's token. The owners' welcome calls it from "Allow notifications". */
+export async function registerToken(userId: string): Promise<void> {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "Nelly & Nova",

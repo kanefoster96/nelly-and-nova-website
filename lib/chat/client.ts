@@ -7,6 +7,7 @@
  * is the conversation's member or a trainer. The app uses the same functions.
  */
 import { createClient } from "@/lib/supabase/client";
+import { DEFAULT_QUICK_REPLIES, toCard, type RequestStatus } from "./cards";
 import type {
   ChatMessage,
   ChatMessageRow,
@@ -21,8 +22,9 @@ export function chatSupabase() {
 }
 
 export const CHAT_BUCKET = "chat-attachments";
-const MESSAGE_COLUMNS =
-  "id, conversation_id, sender_id, sender_is_staff, sender_name, body, attachment_path, attachment_type, attachment_name, created_at";
+// Every column, so a card's kind and meta come too where the database has them,
+// and nothing breaks where it doesn't yet (supabase/migrations/20261104120000_chat_cards.sql).
+const MESSAGE_COLUMNS = "*";
 
 export function toChatMessage(row: ChatMessageRow): ChatMessage {
   return {
@@ -36,6 +38,7 @@ export function toChatMessage(row: ChatMessageRow): ChatMessage {
     attachmentType: row.attachment_type,
     attachmentName: row.attachment_name,
     createdAt: row.created_at,
+    card: toCard(row.kind, row.meta),
   };
 }
 
@@ -165,8 +168,20 @@ export function previewFor(body: string | null, attachmentType: string | null): 
   return "";
 }
 
+/** Trainer: unread messages per conversation (only those with any). Empty if it can't load. */
+export async function getUnreadCounts(): Promise<Record<string, number>> {
+  const { data, error } = await chatSupabase().rpc("nn_chat_unread_counts");
+  if (error) return {};
+  const out: Record<string, number> = {};
+  for (const row of (data ?? []) as { conversation_id: string; unread: number }[]) out[row.conversation_id] = row.unread;
+  return out;
+}
+
 export async function getInbox(): Promise<InboxConversation[]> {
-  const { data, error } = await chatSupabase().rpc("nn_chat_inbox");
+  const [{ data, error }, unread] = await Promise.all([
+    chatSupabase().rpc("nn_chat_inbox"),
+    getUnreadCounts().catch(() => ({}) as Record<string, number>),
+  ]);
   if (error) throw new Error(error.message);
   return ((data ?? []) as InboxRow[]).map((r) => ({
     id: r.id,
@@ -180,6 +195,7 @@ export async function getInbox(): Promise<InboxConversation[]> {
     lastMessagePreview: previewFor(r.last_body, r.last_attachment_type),
     lastFromStaff: !!r.last_from_staff,
     unread: r.unread,
+    unreadCount: r.unread ? Math.max(1, unread[r.id] ?? 0) : 0,
     completed: !!r.completed_at,
     memberLastActiveAt: r.member_last_active_at,
   }));
@@ -255,4 +271,29 @@ export async function sendOnboardingLink(enquiryId: string): Promise<{ ok: true 
   } catch {
     return { ok: false, error: "Couldn't send the onboarding link." };
   }
+}
+
+// --- cards and quick replies (supabase/migrations/20261104120000_chat_cards.sql) ---
+
+/** Live status of the requests on screen, so an old card doesn't offer Accept on a decided request. */
+export async function getRequestStatuses(ids: string[]): Promise<Record<string, RequestStatus>> {
+  if (ids.length === 0) return {};
+  const { data, error } = await chatSupabase().from("session_requests").select("id, status").in("id", ids);
+  if (error) throw new Error(error.message);
+  const out: Record<string, RequestStatus> = {};
+  for (const row of (data ?? []) as { id: string; status: RequestStatus }[]) out[row.id] = row.status;
+  return out;
+}
+
+/** Trainer: their quick replies (the defaults until they change them, or if they can't load). */
+export async function getQuickReplies(): Promise<string[]> {
+  const { data, error } = await chatSupabase().rpc("nn_chat_quick_replies");
+  if (error || !Array.isArray(data)) return DEFAULT_QUICK_REPLIES;
+  return data as string[];
+}
+
+/** Trainer: the date of the owner's next session after today ("2026-11-05"), or null. */
+export async function getNextSession(accountId: string): Promise<string | null> {
+  const { data } = await chatSupabase().rpc("nn_chat_next_session", { p_account: accountId });
+  return typeof data === "string" ? data : null;
 }

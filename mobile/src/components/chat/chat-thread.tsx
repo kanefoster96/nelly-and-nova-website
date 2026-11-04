@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, AppState, FlatList, Keyboard, Platform, Text, TextInput, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, AppState, FlatList, Keyboard, Platform, ScrollView, Text, TextInput, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { AvatarCircle } from "@/components/avatar-circle";
 import { AttachSheet, type ShareRow } from "@/components/chat/attach-sheet";
 import { AttachmentContent } from "@/components/chat/attachment-content";
+import { MessageCard } from "@/components/chat/message-card";
 import { MAX_STAGED, StagedAttachments, type StagedAttachment } from "@/components/chat/staged-attachments";
 import { Pressable } from "@/components/pressable";
 import {
@@ -20,13 +22,15 @@ import {
   toMessages,
   type Attachment,
   type Message,
+  type RequestStatus,
 } from "@/data/inbox";
+import { fillQuickReply, getNextSession, getQuickReplies, getRequestStatuses } from "@/data/inbox/cards";
 import { parseChatBody } from "@/lib/chat-links";
 import { openLink } from "@/lib/site-links";
 import { config } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 import { useBarScrollTarget } from "@/lib/floating-bar";
-import { hapticError, hapticSuccess, hapticTap, hapticWarning } from "@/lib/haptics";
+import { hapticError, hapticSelection, hapticSuccess, hapticTap, hapticWarning } from "@/lib/haptics";
 import { animateListChange } from "@/lib/layout-animation";
 import { useAsync } from "@/lib/useAsync";
 import { colors, GLASS_BORDER } from "@/theme";
@@ -282,6 +286,55 @@ export function ChatThread({
     };
   }, [viewerIsStaff, ownerAccountId, ownerEmail]);
 
+  // Request cards: their status now, so an old card doesn't offer Accept on a
+  // request that's been decided since. Looked up again as new cards arrive.
+  const requestIds = useMemo(
+    () => [...new Set(messages.flatMap((m) => (m.card?.kind === "request" ? [m.card.requestId] : [])))].sort().join(","),
+    [messages]
+  );
+  const [requestStatuses, setRequestStatuses] = useState<Record<string, RequestStatus>>({});
+  useEffect(() => {
+    if (!requestIds) return;
+    let cancelled = false;
+    getRequestStatuses(requestIds.split(","))
+      .then((statuses) => {
+        if (!cancelled) setRequestStatuses(statuses);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [requestIds]);
+
+  // Trainer: quick replies above the composer — their own list (Edit quick
+  // replies, by pressing and holding one), with "{day}" filled from the
+  // owner's next session. Fresh each time the chat comes back into view.
+  const router = useRouter();
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [nextSession, setNextSession] = useState<string | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!viewerIsStaff) return;
+      let cancelled = false;
+      getQuickReplies().then((list) => {
+        if (!cancelled) setQuickReplies(list);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [viewerIsStaff])
+  );
+  useEffect(() => {
+    if (!viewerIsStaff || !ownerAccountId) return;
+    let cancelled = false;
+    getNextSession(ownerAccountId).then((date) => {
+      if (!cancelled) setNextSession(date);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewerIsStaff, ownerAccountId]);
+
   // How far the keyboard overlaps this thread, measured against where the
   // thread really ends on screen — right whether the tab bar is under it or not.
   const rootRef = useRef<View>(null);
@@ -312,6 +365,19 @@ export function ChatThread({
   const [staged, setStaged] = useState<StagedAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [inputHeight, setInputHeight] = useState(COMPOSER_MIN_HEIGHT);
+  const inputRef = useRef<TextInput>(null);
+
+  /** A quick reply or a card's Reply: into the composer (after what's typed), not sent. */
+  function fillDraft(text: string) {
+    hapticSelection();
+    setDraft((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text));
+    inputRef.current?.focus();
+  }
+
+  function editQuickReplies() {
+    hapticTap();
+    router.push("/quick-replies");
+  }
 
   function handleDraftChange(text: string) {
     setDraft(text);
@@ -486,6 +552,7 @@ export function ChatThread({
 
   const textInput = (fontSize: number, extraStyle: object) => (
     <TextInput
+      ref={inputRef}
       value={draft}
       onChangeText={handleDraftChange}
       multiline
@@ -527,6 +594,7 @@ export function ChatThread({
         renderItem={({ item: message }) => {
           const isMine = isMineMessage(message);
           const showAvatarColumn = !isMine && message.fromStaff;
+          const card = message.card;
           return (
             <View style={{ marginBottom: 4 }}>
               {message.showDivider && (
@@ -542,6 +610,18 @@ export function ChatThread({
                   {message.showSenderLabel && (
                     <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "500", marginLeft: 4 }}>{message.senderName ?? "Nelly & Nova"}</Text>
                   )}
+                  {card ? (
+                    // A request, cancellation, homework day or report card: a card in place of its text.
+                    <View style={{ opacity: message.pending ? 0.7 : 1 }}>
+                      <MessageCard
+                        card={card}
+                        viewerIsStaff={viewerIsStaff}
+                        attachment={message.attachment}
+                        liveStatus={card.kind === "request" ? requestStatuses[card.requestId] : undefined}
+                        onReply={viewerIsStaff && !locked ? fillDraft : undefined}
+                      />
+                    </View>
+                  ) : (
                   <View
                     style={{
                       borderRadius: 18,
@@ -564,6 +644,7 @@ export function ChatThread({
                       />
                     )}
                   </View>
+                  )}
                 </View>
               </View>
               {seen?.id === message.id && (
@@ -606,8 +687,39 @@ export function ChatThread({
           </View>
         </View>
       ) : (
-        // Messenger-desk layout for trainers: full-width field on top, toolbar underneath.
+        // Messenger-desk layout for trainers: quick replies, the full-width field, toolbar underneath.
         <View style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            contentContainerStyle={{ gap: 6, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 2 }}
+          >
+            {quickReplies.map((reply, i) => (
+              <Pressable
+                key={`${i}-${reply}`}
+                onPress={() => fillDraft(fillQuickReply(reply, nextSession))}
+                onLongPress={editQuickReplies}
+                delayLongPress={400}
+                accessibilityRole="button"
+                accessibilityHint="Adds it to your message. Press and hold to edit quick replies."
+                style={{ borderRadius: 999, borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 7 }}
+              >
+                <Text numberOfLines={1} style={{ color: colors.foreground, fontSize: 13, fontWeight: "600", maxWidth: 240 }}>
+                  {fillQuickReply(reply, nextSession)}
+                </Text>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={editQuickReplies}
+              accessibilityRole="button"
+              accessibilityLabel="Edit quick replies"
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 7 }}
+            >
+              <Ionicons name="create-outline" size={14} color={colors.muted} />
+              {quickReplies.length === 0 && <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>Quick replies</Text>}
+            </Pressable>
+          </ScrollView>
           <StagedAttachments items={staged} onRemove={removeStaged} />
           {textInput(17, {})}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingBottom: 10, paddingTop: 2 }}>

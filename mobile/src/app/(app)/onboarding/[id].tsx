@@ -5,6 +5,7 @@ import { Alert, Share, Switch, Text, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { Pressable } from "@/components/pressable";
+import { InviteToApp } from "@/components/onboarding/invite-to-app";
 import { ScreenHeader } from "@/components/screen-header";
 import { ChipRow } from "@/components/trainer/chips";
 import { ActionTile, BigButton, ChoiceCard, DetailCard } from "@/components/trainer/cards";
@@ -114,7 +115,8 @@ function londonParts(iso: string): { date: string; time: string } {
  * greet, Start onboarding (the website emails the join link and sets up
  * the Direct Debit), Set training day (holds their place on the
  * calendar), the checklist, Share the join link, Re-send it, Mark set up,
- * Not a fit, Reopen. Each one asks first.
+ * Not a fit, Reopen. Each one asks first. "Invite to the app" (a QR code
+ * and a link to share) for the meet & greet itself.
  */
 export default function OnboardingDetailScreen() {
   const router = useRouter();
@@ -369,6 +371,9 @@ export default function OnboardingDetailScreen() {
             )}
           </DetailCard>
         )}
+
+        {/* At the meet & greet: a QR code and a link to download the app. */}
+        {stage !== "closed" && <InviteToApp index={3} name={enquiry.name} email={enquiry.email || null} dogNames={enquiry.dogNames || null} />}
 
         {/* Onboarding: the checklist and its steps. */}
         {(stage === "onboarding" || stage === "set_up") && (

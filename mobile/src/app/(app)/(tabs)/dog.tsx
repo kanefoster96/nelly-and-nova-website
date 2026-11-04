@@ -6,6 +6,7 @@ import { ScrollView, Text, View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { Appear } from "@/components/appear";
+import { DayPhotos } from "@/components/day-photos/day-photos";
 import { DogProgressCard } from "@/components/homework/dog-progress";
 import { DogSwitcher } from "@/components/dog-switcher";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
@@ -98,7 +99,8 @@ function RegisterDogCard({ dog }: { dog: DogDetails }) {
  * The dog's photo, name, breed and age; their service and regular day; the
  * next session; stats (sessions so far, homework days in all and this
  * week); the trainer's biggest strength and area to improve; the latest
- * report card; Skills & levels; then everything to manage underneath
+ * report card; photos from their days with us (today's, then by date);
+ * Skills & levels; then everything to manage underneath
  * (cancel, a replacement day, an extra session, a regular day, a switch)
  * through the one sheet the Schedule tab uses too, and their requests.
  * Several dogs: a switcher at the top.
@@ -344,6 +346,9 @@ function DogPageView({
           </Pressable>
         )}
       </Appear>
+
+      {/* Photos from their days with us: today's strip, then by date. */}
+      <DayPhotos dogId={dog.id} dogName={dog.name} />
 
       {progress && (
         <Appear index={i++} style={{ marginTop: 16 }}>

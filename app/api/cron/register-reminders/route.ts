@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email/resend";
 import { registerReminder } from "@/lib/email/templates";
 import { notifyAccount } from "@/lib/notifications/send";
 import { sweepCompletedHomeworkVideos } from "@/lib/homework/cleanup";
+import { sweepOldDayPhotos } from "@/lib/day-photos/cleanup";
 
 /**
  * Daily (vercel.json): owners in onboarding whose first session is coming up
@@ -13,7 +14,8 @@ import { sweepCompletedHomeworkVideos } from "@/lib/homework/cleanup";
  *
  * Also the daily safety sweep for homework videos: any homework that's
  * complete (3 of 3) but still has videos (the app's own clean-up call
- * didn't happen) has them deleted (lib/homework/cleanup.ts).
+ * didn't happen) has them deleted (lib/homework/cleanup.ts). And photos
+ * from a dog's day older than 90 days are deleted (lib/day-photos/cleanup.ts).
  */
 const REMIND_AT = [7, 3, 1];
 
@@ -35,6 +37,10 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const videosRemoved = await sweepCompletedHomeworkVideos(admin).catch((err) => {
     console.error("register-reminders: homework video sweep failed", err);
+    return 0;
+  });
+  const photosRemoved = await sweepOldDayPhotos(admin).catch((err) => {
+    console.error("register-reminders: day photo sweep failed", err);
     return 0;
   });
   const today = londonToday();
@@ -78,5 +84,5 @@ export async function GET(request: Request) {
       await admin.from("enquiries").update({ register_reminders_sent: [...already, ...due] }).eq("id", e.id);
     }
   }
-  return Response.json({ ok: true, checked: rows?.length ?? 0, sent, videosRemoved });
+  return Response.json({ ok: true, checked: rows?.length ?? 0, sent, videosRemoved, photosRemoved });
 }

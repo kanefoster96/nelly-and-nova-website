@@ -1,3 +1,5 @@
+import type { ChatCard } from "./cards";
+
 /**
  * Inbox domain types — chat + notifications + requests.
  * These mirror the suggested minimal schema (see lib/inbox/schema.sql) so the
@@ -30,6 +32,8 @@ export type Conversation = {
   dogNames?: string | null;
   /** The owner's chat was last open (its heartbeat), for "In the chat now". */
   memberLastActiveAt?: string | null;
+  /** Trainer inbox: how many of the owner's messages the team hasn't read. */
+  unreadCount?: number;
 };
 
 export type Attachment = {
@@ -57,6 +61,8 @@ export type Message = {
   senderName?: string;
   senderAvatarUrl?: string | null;
   attachment?: Attachment;
+  /** A request, cancellation, homework day or report card, shown as a card (data/inbox/cards.ts). */
+  card?: ChatCard;
 };
 
 /** One-way inbox item. recipientId null = broadcast, set = targeted. */

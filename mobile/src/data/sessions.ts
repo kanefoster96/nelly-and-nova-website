@@ -67,6 +67,8 @@ export type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "waived";
 export type DogSession = {
   date: string;
   kind: "full_day" | "full_day_one_off" | "one_to_one";
+  /** A 1-1's start, "HH:MM:SS". */
+  startTime: string | null;
   placementId: string | null;
   bookingId: string | null;
   cancelled: boolean;
@@ -80,9 +82,10 @@ export type Placement = { id: string; day: Weekday; cadence: "weekly" | "alterna
 export async function getDogSessions(dogId: string, from: string, to: string): Promise<DogSession[]> {
   const { data, error } = await supabase.rpc("nn_dog_sessions", { p_dog_id: dogId, p_from: from, p_to: to });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as { on_date: string; kind: DogSession["kind"]; placement_id: string | null; booking_id: string | null; cancelled: boolean; notes: string | null; payment_status: PaymentStatus | null }[]).map((r) => ({
+  return ((data ?? []) as { on_date: string; kind: DogSession["kind"]; start_time: string | null; placement_id: string | null; booking_id: string | null; cancelled: boolean; notes: string | null; payment_status: PaymentStatus | null }[]).map((r) => ({
     date: String(r.on_date).slice(0, 10),
     kind: r.kind,
+    startTime: r.start_time ?? null,
     placementId: r.placement_id,
     bookingId: r.booking_id,
     cancelled: !!r.cancelled,
@@ -109,8 +112,19 @@ export async function getPlacements(dogId: string): Promise<Placement[]> {
   }));
 }
 
-export function sessionLabel(s: Pick<DogSession, "kind" | "notes">): string {
-  if (s.kind === "one_to_one") return s.notes?.match(/morning|afternoon/i) ? `1-1 · ${s.notes}` : "1-1 Training";
+/** "14:00:00" → "2:00pm". */
+export function clockTime(time: string | null | undefined): string {
+  if (!time) return "";
+  const [h, m] = time.split(":").map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m || 0).padStart(2, "0")}${h < 12 ? "am" : "pm"}`;
+}
+
+/** "1-1 Training · 2:00pm" (its time once the trainer's booked one), "Full Day Training". */
+export function sessionLabel(s: Pick<DogSession, "kind" | "notes"> & { startTime?: string | null }): string {
+  if (s.kind === "one_to_one") {
+    if (s.startTime) return `1-1 Training · ${clockTime(s.startTime)}`;
+    return s.notes?.match(/morning|afternoon/i) ? `1-1 · ${s.notes}` : "1-1 Training";
+  }
   if (s.kind === "full_day_one_off") return s.notes ? `Full Day · ${s.notes}` : "Full Day (one-off)";
   return "Full Day Training";
 }

@@ -46,7 +46,7 @@ function formatActivityDate(iso: string): string {
 /**
  * One inbox row, laid out like Kanvas's (and Instagram's): avatar, the name,
  * the latest message ("You:" when it was ours) with when, then their dogs;
- * a dot for unread, a tick when done, and a green ring while they're in the chat.
+ * how many are unread (amber), a tick when done, and a green ring while they're in the chat.
  */
 function ConversationRow({ c, live, onPress, onLongPress }: { c: Conversation; live: boolean; onPress: () => void; onLongPress: () => void }) {
   const unread = c.unread;
@@ -92,7 +92,15 @@ function ConversationRow({ c, live, onPress, onLongPress }: { c: Conversation; l
         )}
       </View>
       {unread ? (
-        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: UNREAD }} />
+        // How many are waiting, in amber, so a busy chat stands out at a glance.
+        <View
+          accessibilityLabel={`${c.unreadCount || 1} unread`}
+          style={{ minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: "center", justifyContent: "center", backgroundColor: UNREAD }}
+        >
+          <Text allowFontScaling={false} style={{ color: "#0a0a0a", fontSize: 12, fontWeight: "800" }}>
+            {(c.unreadCount || 1) > 99 ? "99+" : c.unreadCount || 1}
+          </Text>
+        </View>
       ) : completed ? (
         <Ionicons name="checkmark-circle" size={18} color={colors.muted} />
       ) : null}

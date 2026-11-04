@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Avatar } from "@/components/community/Avatar";
+import { fillQuickReply, longDay, shortDay, type ChatCard, type RequestStatus } from "@/lib/chat/cards";
 import { parseChatBody } from "@/lib/chat/links";
 import {
   chatSupabase,
@@ -10,6 +12,9 @@ import {
   HOMEWORK_VIDEO_PREFIX,
   getMessages,
   getMessagesSince,
+  getNextSession,
+  getQuickReplies,
+  getRequestStatuses,
   getTeam,
   heartbeat,
   markChatRead,
@@ -208,6 +213,144 @@ function AttachmentContent({
   );
 }
 
+const TONES = {
+  amber: { pill: "bg-amber-500/15 text-amber-300", icon: "bg-amber-500/15 text-amber-300" },
+  green: { pill: "bg-emerald-500/15 text-emerald-300", icon: "bg-emerald-500/15 text-emerald-300" },
+  red: { pill: "bg-red-500/15 text-red-300", icon: "bg-red-500/15 text-red-300" },
+  blue: { pill: "bg-sky-500/15 text-sky-300", icon: "bg-sky-500/15 text-sky-300" },
+  grey: { pill: "bg-white/[0.08] text-paper-dim", icon: "bg-white/[0.08] text-paper-dim" },
+} as const;
+type Tone = keyof typeof TONES;
+
+const REQUEST_STATUS: Record<RequestStatus, { label: string; tone: Tone }> = {
+  pending: { label: "Waiting", tone: "amber" },
+  offered: { label: "Days offered", tone: "blue" },
+  confirmed: { label: "Confirmed", tone: "green" },
+  declined: { label: "Declined", tone: "red" },
+  withdrawn: { label: "Withdrawn", tone: "grey" },
+};
+
+const CalendarCardGlyph = () => <Glyph d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" />;
+const CancelGlyph = () => <Glyph d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM9 9l6 6M15 9l-6 6" />;
+const HomeworkGlyph = () => <Glyph d="m3 9 9-5 9 5-9 5-9-5ZM7 11.5V16c0 1.5 2.2 3 5 3s5-1.5 5-3v-4.5" />;
+const ReportGlyph = () => <Glyph d="M7 3h7l5 5v13H5V3h2ZM14 3v5h5M9 13h6M9 17h6" />;
+
+type CardAction = { key: string; label: string; href?: string; onClick?: () => void; solid?: boolean };
+
+/**
+ * A system line as a compact card — the Kanvas chat's payment and discount
+ * cards, for Nelly & Nova's things: an icon, the title, a details line, a
+ * status pill, and buttons where there's something to do. Requests open the
+ * Session requests page (trainers) or the owner's sessions; a report card
+ * opens the reports; a day of homework shows the owner's note and video,
+ * with Reply for a trainer.
+ */
+function ChatCardView({
+  card,
+  isStaff,
+  liveStatus,
+  media,
+  onReply,
+}: {
+  card: ChatCard;
+  isStaff: boolean;
+  liveStatus?: RequestStatus;
+  media?: React.ReactNode;
+  onReply?: (text: string) => void;
+}) {
+  let glyph: React.ReactNode;
+  let iconTone: Tone;
+  let title: string;
+  let details: string;
+  let pill: { label: string; tone: Tone };
+  let note: string | null = null;
+  let actions: CardAction[] = [];
+
+  if (card.kind === "request") {
+    const status = liveStatus ?? card.status;
+    const href = isStaff ? "/admin/requests" : "/profile/sessions";
+    glyph = <CalendarCardGlyph />;
+    pill = REQUEST_STATUS[status];
+    iconTone = pill.tone;
+    title = card.title;
+    details = [card.dog, card.dates].filter(Boolean).join(" · ");
+    note = card.note;
+    actions = isStaff
+      ? status === "pending"
+        ? [
+            { key: "accept", label: "Accept", href, solid: true },
+            { key: "suggest", label: "Suggest", href },
+            { key: "decline", label: "Decline", href },
+          ]
+        : [{ key: "view", label: "View", href }]
+      : [{ key: "view", label: status === "offered" ? "Pick a day" : "View", href, solid: status === "offered" }];
+  } else if (card.kind === "cancellation") {
+    glyph = <CancelGlyph />;
+    iconTone = "red";
+    title = card.count > 1 ? `${card.count} sessions cancelled` : "Session cancelled";
+    const when = card.count > 1 && card.from && card.to ? `${shortDay(card.from)} to ${shortDay(card.to)}` : card.when || longDay(card.from);
+    details = [card.dog, when].filter(Boolean).join(" · ");
+    pill = { label: "Cancelled", tone: "red" };
+    note = card.reason;
+    actions = isStaff ? [] : [{ key: "view", label: "View sessions", href: "/profile/sessions" }];
+  } else if (card.kind === "homework_day") {
+    const complete = card.day >= card.of;
+    glyph = <HomeworkGlyph />;
+    iconTone = complete ? "green" : "blue";
+    title = `Homework: ${card.title}`;
+    details = [card.dog, `Day ${card.day} of ${card.of}`].filter(Boolean).join(" · ");
+    pill = complete ? { label: "Complete", tone: "green" } : { label: `Day ${card.day} of ${card.of}`, tone: "blue" };
+    note = card.note;
+    actions = isStaff
+      ? onReply
+        ? [{ key: "reply", label: "Reply", onClick: () => onReply(`${card.title}, day ${card.day}: `), solid: true }]
+        : []
+      : [{ key: "view", label: "View homework", href: "/profile/practice" }];
+  } else {
+    glyph = <ReportGlyph />;
+    iconTone = "green";
+    title = `Report card: ${card.title}`;
+    details = [card.dog, longDay(card.date)].filter(Boolean).join(" · ");
+    pill = card.homework > 0 ? { label: "Homework set", tone: "green" } : { label: "Report", tone: "grey" };
+    actions = [{ key: "open", label: "Open report", href: isStaff ? "/admin/reports" : "/profile/reports", solid: true }];
+  }
+
+  const button = (a: CardAction) =>
+    `flex min-h-9 flex-1 items-center justify-center rounded-full px-4 text-sm font-semibold transition-opacity hover:opacity-85 ${
+      a.solid ? "bg-accent text-accent-ink" : "border border-white/15 text-paper"
+    }`;
+
+  return (
+    <div className="flex w-[17rem] max-w-full flex-col gap-2.5 rounded-[1.25rem] border border-white/10 bg-white/[0.06] p-3 text-paper">
+      <div className="flex items-start gap-2.5">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${TONES[iconTone].icon}`}>{glyph}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold leading-snug">{title}</span>
+          {details && <span className="block text-[13px] text-paper-dim">{details}</span>}
+        </span>
+      </div>
+      <span className={`self-start rounded-full px-2.5 py-0.5 text-xs font-bold ${TONES[pill.tone].pill}`}>{pill.label}</span>
+      {note && <p className="whitespace-pre-wrap break-words text-sm">{card.kind === "homework_day" ? note : `“${note}”`}</p>}
+      {media}
+      {actions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {actions.map((a) =>
+            a.href ? (
+              <Link key={a.key} href={a.href} className={button(a)}>
+                {a.label}
+              </Link>
+            ) : (
+              <button key={a.key} type="button" onClick={a.onClick} className={button(a)}>
+                {a.label}
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChatThread({
   conversationId,
   viewerId,
@@ -275,6 +418,54 @@ export function ChatThread({
       cancelled = true;
     };
   }, [isStaff, ownerAccountId, ownerEmail]);
+
+  // Request cards: their status now, so an old card doesn't offer Accept on a
+  // request that's been decided since. Looked up again as new cards arrive.
+  const requestIds = useMemo(
+    () => [...new Set((messages ?? []).flatMap((m) => (m.card?.kind === "request" ? [m.card.requestId] : [])))].sort().join(","),
+    [messages]
+  );
+  const [requestStatuses, setRequestStatuses] = useState<Record<string, RequestStatus>>({});
+  useEffect(() => {
+    if (!requestIds) return;
+    let cancelled = false;
+    getRequestStatuses(requestIds.split(","))
+      .then((statuses) => {
+        if (!cancelled) setRequestStatuses(statuses);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [requestIds]);
+
+  // Trainer: quick replies above the composer ("{day}" from the owner's next session).
+  const [quickReplies, setQuickReplies] = useState<string[]>([]);
+  const [nextSession, setNextSession] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isStaff) return;
+    let cancelled = false;
+    getQuickReplies()
+      .then((list) => {
+        if (!cancelled) setQuickReplies(list);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isStaff]);
+  useEffect(() => {
+    if (!isStaff || !ownerAccountId) return;
+    let cancelled = false;
+    getNextSession(ownerAccountId)
+      .then((date) => {
+        if (!cancelled) setNextSession(date);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isStaff, ownerAccountId]);
 
   // First load: the messages and the team's photos, then mark it read.
   useEffect(() => {
@@ -508,6 +699,12 @@ export function ChatThread({
     }
   }
 
+  /** A quick reply or a card's Reply: into the box (after what's typed), not sent. */
+  function fillDraft(text: string) {
+    setDraft((current) => (current.trim() ? `${current.trimEnd()} ${text}` : text));
+    draftRef.current?.focus();
+  }
+
   /** A link from the + menu, after whatever's already typed, ready to add to before sending. */
   function addToDraft(text: string) {
     setAttachMenuOpen(false);
@@ -587,6 +784,7 @@ export function ChatThread({
               const member = message.senderId ? team[message.senderId] : undefined;
               const senderName = message.senderName ?? member?.name ?? TEAM_FALLBACK_NAME;
               const pending = message.id.startsWith("temp-");
+              const card = message.card;
               return (
                 <div key={message.id}>
                   {hasDivider && (
@@ -600,6 +798,18 @@ export function ChatThread({
                     )}
                     <div className="flex max-w-[80%] flex-col gap-1">
                       {showSender && <span className="px-1 text-xs font-medium text-paper-dim">{senderName}</span>}
+                      {card ? (
+                        // A request, cancellation, homework day or report card: a card in place of its text.
+                        <div className={pending ? "opacity-70" : ""}>
+                          <ChatCardView
+                            card={card}
+                            isStaff={isStaff}
+                            liveStatus={card.kind === "request" ? requestStatuses[card.requestId] : undefined}
+                            media={message.attachmentPath ? <AttachmentContent message={message} resolveUrl={resolveAttachmentUrl} /> : undefined}
+                            onReply={isStaff && !locked ? fillDraft : undefined}
+                          />
+                        </div>
+                      ) : (
                       <div
                         className={`flex flex-col gap-2 rounded-[1.375rem] text-sm ${
                           isMine ? "bg-accent text-accent-ink" : "border border-white/10 bg-white/[0.06] text-paper"
@@ -616,6 +826,7 @@ export function ChatThread({
                           />
                         )}
                       </div>
+                      )}
                     </div>
                   </div>
                   {seen?.id === message.id && (
@@ -642,7 +853,22 @@ export function ChatThread({
         </p>
       ) : (
         <>
-          <form onSubmit={handleSubmit} className="flex items-end gap-2 border-t border-white/10 p-3">
+          {isStaff && quickReplies.length > 0 && (
+            // Quick replies: a tap puts one in the box, ready to change or send.
+            <div className="flex gap-1.5 overflow-x-auto border-t border-white/10 px-3 pt-2 [scrollbar-width:none]">
+              {quickReplies.map((reply, i) => (
+                <button
+                  key={`${i}-${reply}`}
+                  type="button"
+                  onClick={() => fillDraft(fillQuickReply(reply, nextSession))}
+                  className="shrink-0 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-paper transition-colors hover:bg-white/10"
+                >
+                  {fillQuickReply(reply, nextSession)}
+                </button>
+              ))}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className={`flex items-end gap-2 p-3 ${isStaff && quickReplies.length > 0 ? "" : "border-t border-white/10"}`}>
             <div className="relative">
               <button
                 type="button"

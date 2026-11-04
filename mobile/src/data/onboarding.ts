@@ -46,6 +46,23 @@ export async function getMyOnboarding(): Promise<OnboardingStatus | null> {
   return { ...s, dogs: s.dogs ?? [] };
 }
 
+/**
+ * Is there still something to set up? The Profile tab's checklist
+ * (components/onboarding/onboarding-checklist.tsx) shows until the meet &
+ * greet has happened, the Direct Debit is done, every dog is registered
+ * and the training day is set; a dog still to register counts too. Owners
+ * land on Profile after logging in until it's all done (app/index.tsx).
+ */
+export function setUpUnfinished(s: OnboardingStatus | null): boolean {
+  if (!s) return false;
+  if (s.dogs.some((d) => !d.registered)) return true;
+  const e = s.enquiry;
+  if (!e) return false;
+  const met = e.status === "onboarding" || e.onboardingStarted;
+  const allRegistered = s.dogs.length > 0 && s.dogs.every((d) => d.registered);
+  return !(met && DD_DONE.includes(s.directDebit) && allRegistered && !!e.trainingDay);
+}
+
 /** "Rex, Bella" → "Rex & Bella". */
 export function dogList(names: string | null | undefined, fallback = "your dog"): string {
   const n = (names ?? "").trim();

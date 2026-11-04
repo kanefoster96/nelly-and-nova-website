@@ -16,7 +16,7 @@ function dayLabel(iso: string | null): string {
  * A trainer sends report cards to their owners. Marks each draft published,
  * then tells the owner: an email (lib/email/templates.ts reportCardPublished)
  * and a notification with an app push ("📋 New report card for Nova",
- * opening Homework). Only drafts move, so sending twice never notifies twice.
+ * opening that report card in the app). Only drafts move, so sending twice never notifies twice.
  *
  * Signed in by cookie (website) or a Bearer token (the app). Trainers only:
  * the trainer's own Supabase client does the update, so Row Level Security
@@ -67,7 +67,10 @@ export async function POST(request: Request) {
       notifyAccount(supabase, dog.account_id as string, {
         title: `📋 New report card for ${dogName}`,
         body: items > 0 ? `${title}. Your homework is ready to practise.` : `${title}. See how ${dogName} got on.`,
-        path: "/homework",
+        // Opens the report itself in the app: its page (the trainer's notes
+        // and the homework), or the Profile tab's latest report card when
+        // there's no homework on it.
+        path: items > 0 ? `/homework-detail/${card.id}` : "/dog",
       }),
       owner?.email
         ? sendEmail(
@@ -85,6 +88,8 @@ export async function POST(request: Request) {
         : Promise.resolve(false),
     ]);
     if (pushed || saved || emailed) notified++;
+    // And a report card in their chat (kind "report_card", once per card). Best-effort.
+    await supabase.rpc("nn_chat_report_card", { p_card_id: card.id });
   }
 
   return Response.json({ ok: true, published: published?.length ?? 0, notified });

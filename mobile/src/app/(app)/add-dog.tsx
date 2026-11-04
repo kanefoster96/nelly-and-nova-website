@@ -1,368 +1,364 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Text, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { Pressable } from "@/components/pressable";
 import { ScreenHeader } from "@/components/screen-header";
 import { BigButton, ChoiceCard, GroupHeading } from "@/components/trainer/cards";
-import { FormScrollView, Tag, TextField } from "@/components/ui";
+import { ChipRow } from "@/components/trainer/chips";
+import { PersonPicker } from "@/components/trainer/person-picker";
+import { CARD, FormScrollView, Tag, TextField } from "@/components/ui";
+import { holderNameFor, listOpenRequests, pickedAddress, type Picked } from "@/data/people";
 import {
   addOneOffDay,
   addOneToOne,
   addRegularPlace,
+  bookDayMeetGreet,
   formatDay,
+  formatMinutes,
   formatShortDay,
   formatTime,
   getTrainerCalendar,
   isFullDay,
-  listOnboardingRequests,
-  listRegisteredDogs,
+  notifyBooked,
+  ONE_TO_ONE_MINUTES,
   pluralDay,
   sendOnboarding,
   todayISO,
   weekdayOf,
-  type OnboardingRequest,
-  type RegisteredDog,
+  type BookingTarget,
 } from "@/data/trainer-schedule";
+import { firstName } from "@/lib/contact";
 import { hapticError, hapticSelection, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { animateListChange } from "@/lib/layout-animation";
-import { colors, GLASS_BORDER } from "@/theme";
+import { colors } from "@/theme";
 
-type Path = "registered" | "onboard";
+type Mode = "dog" | "one_to_one" | "meet_greet";
 type Plan = "one_off" | "weekly" | "alternating";
 
-/** 8am to 6pm, every half hour: the times a 1-1 can start. */
+/** 8am to 6pm, every half hour: the times a 1-1 or a meet & greet can start. */
 const TIMES = Array.from({ length: 21 }, (_, i) => `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+const TIME_OPTIONS = TIMES.map((t) => ({ value: t, label: formatTime(t) }));
+const MINUTE_OPTIONS = ONE_TO_ONE_MINUTES.map((m) => ({ value: String(m), label: formatMinutes(m) }));
 
-const STATUS_LABEL: Record<OnboardingRequest["status"], string> = {
-  new: "New",
-  meet_greet_booked: "Meet & greet booked",
-  onboarding: "Onboarding",
-};
+const MULTILINE = { minHeight: 80, textAlignVertical: "top", borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: colors.foreground, fontSize: 16, backgroundColor: colors.surface } as const;
 
-function ListBox({ children }: { children: React.ReactNode }) {
-  return <View style={{ borderWidth: 1, ...GLASS_BORDER, backgroundColor: colors.surface, borderRadius: 18, overflow: "hidden" }}>{children}</View>;
-}
+const TITLES: Record<Mode, string> = { dog: "Add new dog", one_to_one: "Add a 1-1", meet_greet: "Add a meet & greet" };
+const SERVICE: Record<Mode, string> = { dog: "Full Day Training", one_to_one: "1-1 Training", meet_greet: "Full Day Training" };
 
-function PickRow({
-  title,
-  subtitle,
-  avatar,
-  selected,
-  disabledNote,
-  onPress,
-  first,
-}: {
-  title: string;
-  subtitle?: string | null;
-  avatar?: { name: string; url: string | null };
-  selected: boolean;
-  disabledNote?: string;
-  onPress: () => void;
-  first: boolean;
-}) {
+/** A tick box on its own line: "Let Sam know in the app". */
+function Toggle({ on, label, note, onChange }: { on: boolean; label: string; note?: string; onChange: (v: boolean) => void }) {
   return (
     <Pressable
-      onPress={onPress}
-      disabled={!!disabledNote}
-      accessibilityRole="button"
-      accessibilityState={{ selected, disabled: !!disabledNote }}
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderTopWidth: first ? 0 : 1,
-        borderTopColor: colors.border,
-        backgroundColor: selected ? "rgba(34,197,94,0.08)" : "transparent",
-        opacity: disabledNote ? 0.45 : 1,
+      onPress={() => {
+        hapticSelection();
+        onChange(!on);
       }}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 }}
     >
-      {avatar && <AvatarCircle name={avatar.name} avatarUrl={avatar.url} size={36} />}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600" }} numberOfLines={1}>
-          {title}
-        </Text>
-        {!!subtitle && (
-          <Text style={{ color: colors.muted, fontSize: 13, marginTop: 1 }} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        )}
+      <Ionicons name={on ? "checkbox" : "square-outline"} size={22} color={on ? colors.success : colors.muted} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "600" }}>{label}</Text>
+        {!!note && <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2, lineHeight: 17 }}>{note}</Text>}
       </View>
-      {disabledNote ? (
-        <Tag label={disabledNote} />
-      ) : (
-        <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={22} color={selected ? colors.success : colors.muted} />
-      )}
     </Pressable>
   );
 }
 
-/** Search the registered dogs and pick one. Dogs already in that day are shown but can't be picked. */
-function DogPicker({ dogs, selected, onSelect, alreadyIn }: { dogs: RegisteredDog[] | null; selected: RegisteredDog | null; onSelect: (d: RegisteredDog) => void; alreadyIn: Set<string> }) {
-  const [query, setQuery] = useState("");
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = (dogs ?? []).filter((d) => !q || d.name.toLowerCase().includes(q) || (d.ownerName ?? "").toLowerCase().includes(q) || (d.breed ?? "").toLowerCase().includes(q));
-    return list.slice(0, 40);
-  }, [dogs, query]);
-
-  if (!dogs) return <ActivityIndicator color={colors.foreground} style={{ marginVertical: 20 }} />;
-  if (dogs.length === 0) return <Text style={{ color: colors.muted, fontSize: 14 }}>No registered dogs yet. A dog counts as registered once its owner has signed the waiver.</Text>;
+/** Who's been chosen, with Change. */
+function PickedCard({ picked, onChange }: { picked: Picked; onChange: () => void }) {
+  const isCustomer = picked.type === "customer";
+  const name = isCustomer ? (picked.dog?.name ?? picked.customer.name) : picked.request.name;
+  const photo = isCustomer ? (picked.dog?.photoUrl ?? null) : null;
+  const sub = isCustomer
+    ? [picked.dog ? picked.customer.name : picked.customer.dogs.length ? "No dog chosen" : "No dogs yet", picked.customer.email].filter(Boolean).join(" · ")
+    : [picked.request.dogNames, picked.isNew ? "New request" : "Request", picked.request.email].filter(Boolean).join(" · ");
   return (
-    <View>
-      <TextField value={query} onChangeText={setQuery} placeholder="Search by dog, owner or breed" autoCapitalize="words" returnKeyType="search" />
-      <ListBox>
-        {shown.length === 0 && <Text style={{ color: colors.muted, fontSize: 14, padding: 14 }}>No dog matches “{query.trim()}”.</Text>}
-        {shown.map((d, i) => (
-          <PickRow
-            key={d.id}
-            first={i === 0}
-            title={d.name}
-            subtitle={[d.breed, d.ownerName].filter(Boolean).join(" · ")}
-            avatar={{ name: d.name, url: d.photoUrl }}
-            selected={selected?.id === d.id}
-            disabledNote={alreadyIn.has(d.id) ? "Already in" : undefined}
-            onPress={() => {
-              hapticSelection();
-              onSelect(d);
-            }}
-          />
-        ))}
-      </ListBox>
-      {(dogs.length > shown.length && !query.trim()) && <Text style={{ color: colors.muted, fontSize: 12, marginTop: 8 }}>Showing the first {shown.length} A–Z. Search to find the rest.</Text>}
+    <View style={[CARD, { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }]}>
+      <AvatarCircle name={name} avatarUrl={photo} size={44} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <Text style={{ color: colors.foreground, fontSize: 16, fontWeight: "700" }} numberOfLines={1}>
+            {name}
+          </Text>
+          {isCustomer && picked.dog && <Tag label={picked.dog.registered ? "Registered" : "Not registered"} tone={picked.dog.registered ? colors.success : colors.warning} />}
+          {!isCustomer && !picked.request.accountId && <Tag label="No app yet" />}
+        </View>
+        <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }} numberOfLines={1}>
+          {sub}
+        </Text>
+      </View>
+      <Pressable onPress={onChange} accessibilityRole="button" accessibilityLabel="Choose someone else" style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}>
+        <Text style={{ color: colors.foreground, fontSize: 12, fontWeight: "700" }}>Change</Text>
+      </Pressable>
     </View>
   );
 }
 
 /**
- * Trainer: add to a day on the calendar (from the day's Add new dog or Add
- * a 1-1).
- *  - mode "dog": either a registered dog (just this day, every week, or
- *    every other week from this date) or Send onboarding for a meet &
- *    greet request — the website emails the join link and holds the place,
- *    and the dog's name fills in once they register. `enquiry` picks a
- *    request ahead (the Onboard button on a day's meet & greet).
- *  - mode "one_to_one": a time and a registered dog, or a name.
+ * Trainer: add to a day on the calendar, from the day's three buttons:
+ *  - mode "dog" (Add new dog): Full Day Training just this day, or a
+ *    regular place every week or every other week from this date.
+ *  - mode "one_to_one" (Add a 1-1): a time and how long.
+ *  - mode "meet_greet" (Add a meet & greet): a time, where (filled in from
+ *    their account or request) and a note.
+ * Each starts with who it's for (components/trainer/person-picker.tsx): a
+ * customer and their dog, an open request, or someone new (saved as a
+ * request). Booked on their account, it shows in their app, and they're
+ * told ("📅 1-1 booked for Tue 10 Nov, 2:00pm") through the website. A
+ * regular place for a request can send their join link at the same time
+ * (Send onboarding: the website emails it and holds the place). `enquiry`
+ * picks a request ahead (the Onboard button on a day's meet & greet).
  */
 export default function AddDogScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ date: string; mode?: string; enquiry?: string }>();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(params.date)) ? String(params.date) : todayISO();
   const weekday = weekdayOf(date);
-  const oneToOne = params.mode === "one_to_one" || !weekday;
+  const mode: Mode = params.mode === "meet_greet" ? "meet_greet" : params.mode === "one_to_one" || !weekday ? "one_to_one" : "dog";
 
-  const [path, setPath] = useState<Path | null>(params.enquiry ? "onboard" : null);
-  const [dogs, setDogs] = useState<RegisteredDog[] | null>(null);
-  const [requests, setRequests] = useState<OnboardingRequest[] | null>(null);
+  const [picked, setPicked] = useState<Picked | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [alreadyIn, setAlreadyIn] = useState<Set<string>>(new Set());
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [dog, setDog] = useState<RegisteredDog | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [request, setRequest] = useState<string | null>(params.enquiry ?? null);
-  const [cadence, setCadence] = useState<"weekly" | "alternating" | null>(null);
+  const [sendLink, setSendLink] = useState(true);
   const [time, setTime] = useState<string | null>(null);
-  const [who, setWho] = useState<"dog" | "name">("dog");
-  const [holderName, setHolderName] = useState("");
+  const [minutes, setMinutes] = useState("60");
+  const [address, setAddress] = useState("");
+  const addressEdited = useRef(false);
   const [notes, setNotes] = useState("");
+  const [notify, setNotify] = useState(true);
+  const [emailThem, setEmailThem] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // The dogs, the day (who's in already), and the open requests.
+  // Straight to choosing who, once the page has slid in (a sheet can't open mid-push on iOS).
   useEffect(() => {
-    listRegisteredDogs()
-      .then(setDogs)
-      .catch((err) => setLoadError(err instanceof Error ? err.message : "Couldn't load the dogs."));
-    getTrainerCalendar(date, date)
-      .then((rows) => setAlreadyIn(new Set(rows.filter((r) => (oneToOne ? r.kind === "one_to_one" : isFullDay(r)) && r.dogId).map((r) => r.dogId!))))
-      .catch(() => {});
-    if (!oneToOne) {
-      listOnboardingRequests()
-        .then(setRequests)
-        .catch((err) => setLoadError(err instanceof Error ? err.message : "Couldn't load the meet & greet requests."));
-    }
-  }, [date, oneToOne]);
+    if (params.enquiry) return;
+    const t = setTimeout(() => setPickerOpen(true), 450);
+    return () => clearTimeout(t);
+  }, [params.enquiry]);
 
-  function choosePath(p: Path) {
-    hapticSelection();
+  // Who's in already (Full Day: those dogs can't be added twice), and a request picked ahead.
+  useEffect(() => {
+    if (mode !== "meet_greet") {
+      getTrainerCalendar(date, date)
+        .then((rows) => setAlreadyIn(new Set(rows.filter((r) => (mode === "one_to_one" ? r.kind === "one_to_one" : isFullDay(r)) && r.dogId).map((r) => r.dogId!))))
+        .catch(() => {});
+    }
+    if (params.enquiry) {
+      listOpenRequests()
+        .then((list) => {
+          const r = list.find((x) => x.id === params.enquiry);
+          if (r) choose({ type: "request", request: r });
+          else setPickerOpen(true);
+        })
+        .catch(() => setPickerOpen(true));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, mode, params.enquiry]);
+
+  function choose(p: Picked) {
     animateListChange();
-    setPath(p);
+    setPicked(p);
+    if (!addressEdited.current) setAddress(pickedAddress(p) ?? "");
+    // A request that's already onboarding has had its link: don't send it again by default.
+    if (p.type === "request") setSendLink(p.request.status !== "onboarding");
+  }
+
+  const isRequest = picked?.type === "request";
+  const accountId = picked ? (picked.type === "customer" ? picked.customer.accountId : picked.request.accountId) : null;
+  const ownerFirst = picked ? firstName(picked.type === "customer" ? picked.customer.name : picked.request.name) || "them" : "them";
+  const email = picked ? (picked.type === "customer" ? picked.customer.email : picked.request.email) : null;
+  const linkSends = mode === "dog" && isRequest && (plan === "weekly" || plan === "alternating") && sendLink;
+
+  function target(): BookingTarget {
+    if (!picked) throw new Error("Choose who it's for.");
+    if (picked.type === "customer") {
+      return { accountId: picked.customer.accountId, dogId: picked.dog?.id ?? null, holderName: picked.dog ? null : picked.customer.name };
+    }
+    return { accountId: picked.request.accountId, dogId: null, enquiryId: picked.request.id, holderName: holderNameFor(picked.request) };
+  }
+
+  /** "Sam's been told in the app." — what happened after the booking. */
+  function toldLine(res: { notified: boolean; emailed: boolean } | null): string {
+    if (!res) return "";
+    const how = [res.notified && "in the app", res.emailed && "by email"].filter(Boolean).join(" and ");
+    if (how) return ` ${ownerFirst.replace(/^./, (c) => c.toUpperCase())} has been told ${how}.`;
+    return accountId ? " The notification didn't go, so let them know yourself." : " They don't have the app yet, so it'll show once they sign up.";
   }
 
   async function save() {
     if (saving) return;
     setSaving(true);
     try {
-      if (oneToOne) {
+      if (!picked) throw new Error("Choose who it's for.");
+      if (mode === "one_to_one") {
         if (!time) throw new Error("Pick a time.");
-        if (who === "dog" && !dog) throw new Error("Pick the dog.");
-        if (who === "name" && !holderName.trim()) throw new Error("Add a name for the 1-1.");
-        await addOneToOne({ date, time, dog: who === "dog" ? dog : null, holderName: who === "name" ? holderName : null, notes });
+        const id = await addOneToOne({ date, time, durationMin: Number(minutes) || null, target: target(), notes });
+        const res = notify && accountId ? await notifyBooked("one_to_one", id) : null;
         hapticSuccess();
-        router.back();
+        Alert.alert("1-1 booked", `${formatDay(date)} at ${formatTime(time)}.${toldLine(res)}`, [{ text: "Done", onPress: () => router.back() }]);
         return;
       }
-      if (path === "registered") {
-        if (!dog) throw new Error("Pick the dog.");
-        if (!plan) throw new Error("Choose just this day, every week or every other week.");
-        if (plan === "one_off") await addOneOffDay(date, dog);
-        else await addRegularPlace(date, plan, dog);
+      if (mode === "meet_greet") {
+        if (!time) throw new Error("Pick a time.");
+        const id = await bookDayMeetGreet({
+          date,
+          time,
+          enquiryId: picked.type === "request" ? picked.request.id : null,
+          accountId: picked.type === "customer" ? picked.customer.accountId : null,
+          dogId: picked.type === "customer" ? (picked.dog?.id ?? null) : null,
+          address,
+          notes,
+        });
+        const sendEmail = emailThem && !!email;
+        const res = (notify && accountId) || sendEmail ? await notifyBooked("meet_greet", id, { email: sendEmail, notify }) : null;
         hapticSuccess();
-        router.back();
+        Alert.alert("Meet & greet booked", `${formatDay(date)} at ${formatTime(time)}.${toldLine(res)}`, [{ text: "Done", onPress: () => router.back() }]);
         return;
       }
-      if (path === "onboard") {
-        const req = requests?.find((r) => r.id === request);
-        if (!request) throw new Error("Pick the meet & greet request.");
-        if (!cadence) throw new Error("Choose every week or every other week.");
-        const result = await sendOnboarding(request, date, cadence);
+      // Full Day Training.
+      if (!plan) throw new Error("Choose just this day, every week or every other week.");
+      if (plan === "one_off") {
+        const id = await addOneOffDay(date, target());
+        const res = notify && accountId ? await notifyBooked("full_day_one_off", id) : null;
         hapticSuccess();
-        const who = req?.name ?? "They";
+        Alert.alert("Added for the day", `${formatDay(date)}.${toldLine(res)}`, [{ text: "Done", onPress: () => router.back() }]);
+        return;
+      }
+      if (linkSends && picked.type === "request") {
+        const result = await sendOnboarding(picked.request.id, date, plan);
+        hapticSuccess();
         const sentBy = [result.emailed ? "by email" : null, result.messaged ? "in their chat" : null].filter(Boolean).join(" and ");
         Alert.alert(
           "Link sent — their place is held",
-          `${sentBy ? `${who} has the join link ${sentBy}.` : `The link didn't go out automatically${result.joinUrl ? `: send them ${result.joinUrl}` : ""}.`} Their ${pluralDay(weekday!)} place is held from ${formatShortDay(date)}${cadence === "alternating" ? ", every other week" : ""}, and ${req?.dogNames || "their dog"} fills in once they register.`,
+          `${sentBy ? `${picked.request.name} has the join link ${sentBy}.` : `The link didn't go out automatically${result.joinUrl ? `: send them ${result.joinUrl}` : ""}.`} Their ${pluralDay(weekday!)} place is held from ${formatShortDay(date)}${plan === "alternating" ? ", every other week" : ""}, and ${picked.request.dogNames || "their dog"} fills in once they register.`,
           [{ text: "Done", onPress: () => router.back() }],
         );
         return;
       }
-      throw new Error("Choose a registered dog or Send onboarding.");
+      const id = await addRegularPlace(date, plan, target());
+      const res = notify && accountId ? await notifyBooked("full_day", id) : null;
+      hapticSuccess();
+      Alert.alert(
+        "Regular place added",
+        `Every ${plan === "alternating" ? "other " : ""}${weekday!.replace(/^./, (c) => c.toUpperCase())} from ${formatShortDay(date)}.${toldLine(res)}`,
+        [{ text: "Done", onPress: () => router.back() }],
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Please try again.";
-      if (/^(Pick|Choose|Add a name)/.test(message)) hapticWarning();
+      const nearly = /^(Pick|Choose)/.test(message);
+      if (nearly) hapticWarning();
       else hapticError();
-      Alert.alert(/^(Pick|Choose|Add a name)/.test(message) ? "Nearly there" : "That didn't go through", message);
+      Alert.alert(nearly ? "Nearly there" : "That didn't go through", message);
     } finally {
       setSaving(false);
     }
   }
 
-  const saveLabel = oneToOne
-    ? "Add 1-1"
-    : path === "onboard"
-      ? "Send onboarding link"
-      : plan === "one_off"
-        ? "Add for this day"
-        : plan
-          ? `Add every ${plan === "alternating" ? "other " : ""}${weekday?.replace(/^./, (c) => c.toUpperCase())}`
-          : "Add dog";
+  const weekdayName = weekday?.replace(/^./, (c) => c.toUpperCase());
+  const saveLabel =
+    mode === "one_to_one"
+      ? "Book 1-1"
+      : mode === "meet_greet"
+        ? "Book meet & greet"
+        : linkSends
+          ? "Send link and hold the place"
+          : plan === "one_off"
+            ? "Add for this day"
+            : plan
+              ? `Add every ${plan === "alternating" ? "other " : ""}${weekdayName}`
+              : "Add dog";
+  const dogIn = picked?.type === "customer" && picked.dog && alreadyIn.has(picked.dog.id);
+  const unregistered = picked?.type === "customer" && picked.dog && !picked.dog.registered;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScreenHeader title={oneToOne ? "Add a 1-1" : "Add new dog"} subtitle={formatDay(date)} />
+      <ScreenHeader title={TITLES[mode]} subtitle={formatDay(date)} />
       <FormScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48 }}>
-        {loadError && <Text style={{ color: colors.danger, marginBottom: 12 }}>{loadError}</Text>}
-
-        {oneToOne ? (
-          <>
-            <GroupHeading style={{ marginTop: 8 }}>Time</GroupHeading>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} keyboardShouldPersistTaps="handled">
-              {TIMES.map((t) => {
-                const on = time === t;
-                return (
-                  <Pressable
-                    key={t}
-                    onPress={() => {
-                      hapticSelection();
-                      setTime(t);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    style={{ borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accent : "transparent" }}
-                  >
-                    <Text style={{ color: on ? colors.accentForeground : colors.foreground, fontSize: 14, fontWeight: "700" }}>{formatTime(t)}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <GroupHeading>Who</GroupHeading>
-            <View style={{ gap: 10, marginBottom: 14 }}>
-              <ChoiceCard icon="paw-outline" title="A registered dog" selected={who === "dog"} onPress={() => (hapticSelection(), setWho("dog"))} />
-              <ChoiceCard icon="create-outline" title="Someone not signed up yet" description="Type their name and their dog's." selected={who === "name"} onPress={() => (hapticSelection(), setWho("name"))} />
-            </View>
-            {who === "dog" ? (
-              <DogPicker dogs={dogs} selected={dog} onSelect={setDog} alreadyIn={alreadyIn} />
-            ) : (
-              <TextField value={holderName} onChangeText={setHolderName} placeholder="e.g. Sam Taylor — Biscuit" autoCapitalize="words" />
-            )}
-
-            <GroupHeading>Notes</GroupHeading>
-            <TextField value={notes} onChangeText={setNotes} placeholder="What it's for (optional)" autoCapitalize="sentences" autoCorrect multiline style={{ minHeight: 80, textAlignVertical: "top", borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: colors.foreground, fontSize: 16, backgroundColor: colors.surface }} />
-          </>
+        <GroupHeading style={{ marginTop: 8 }}>Who</GroupHeading>
+        {picked ? (
+          <PickedCard picked={picked} onChange={() => setPickerOpen(true)} />
         ) : (
+          <BigButton icon="search" label="Choose a customer or request" variant="outline" onPress={() => setPickerOpen(true)} />
+        )}
+        {dogIn && <Text style={{ color: colors.warning, fontSize: 13, marginTop: 8 }}>{picked.type === "customer" && picked.dog?.name} is already in that day.</Text>}
+        {unregistered && mode !== "meet_greet" && (
+          <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 8 }}>
+            {picked.type === "customer" && picked.dog?.name} isn&apos;t registered yet: they&apos;re flagged on Today until the consent & waiver is signed.
+          </Text>
+        )}
+
+        {mode === "dog" && (
           <>
-            <GroupHeading style={{ marginTop: 8 }}>How</GroupHeading>
+            <GroupHeading>When</GroupHeading>
             <View style={{ gap: 10 }}>
-              <ChoiceCard
-                icon="paw-outline"
-                title="Add a registered dog"
-                description="A dog that's signed up: for this day, or a regular place from it."
-                selected={path === "registered"}
-                onPress={() => choosePath("registered")}
-              />
-              <ChoiceCard
-                icon="paper-plane-outline"
-                title="Send onboarding"
-                description={`After a meet & greet: emails them the join link and holds a ${pluralDay(weekday!)} place. Their dog's name fills in once they register.`}
-                selected={path === "onboard"}
-                onPress={() => choosePath("onboard")}
-              />
+              <ChoiceCard icon="today-outline" title="Just this day (one-off)" description={formatDay(date)} selected={plan === "one_off"} onPress={() => (hapticSelection(), setPlan("one_off"))} />
+              <ChoiceCard icon="repeat-outline" title="Every week from this date" description={`Every ${weekdayName}, from ${formatShortDay(date)}`} selected={plan === "weekly"} onPress={() => (hapticSelection(), setPlan("weekly"))} />
+              <ChoiceCard icon="swap-vertical-outline" title="Every other week from this date" description={`Alternate ${pluralDay(weekday!)}, from ${formatShortDay(date)}`} selected={plan === "alternating"} onPress={() => (hapticSelection(), setPlan("alternating"))} />
             </View>
-
-            {path === "registered" && (
-              <>
-                <GroupHeading>Dog</GroupHeading>
-                <DogPicker dogs={dogs} selected={dog} onSelect={setDog} alreadyIn={alreadyIn} />
-                <GroupHeading>When</GroupHeading>
-                <View style={{ gap: 10 }}>
-                  <ChoiceCard icon="today-outline" title="Just this day (one-off)" description={formatDay(date)} selected={plan === "one_off"} onPress={() => (hapticSelection(), setPlan("one_off"))} />
-                  <ChoiceCard icon="repeat-outline" title="Every week from this date" description={`Every ${weekday!.replace(/^./, (c) => c.toUpperCase())}, from ${formatShortDay(date)}`} selected={plan === "weekly"} onPress={() => (hapticSelection(), setPlan("weekly"))} />
-                  <ChoiceCard icon="swap-vertical-outline" title="Every other week from this date" description={`Alternate ${pluralDay(weekday!)}, from ${formatShortDay(date)}`} selected={plan === "alternating"} onPress={() => (hapticSelection(), setPlan("alternating"))} />
-                </View>
-              </>
+            {isRequest && (plan === "weekly" || plan === "alternating") && (
+              <View style={{ marginTop: 10 }}>
+                <Toggle
+                  on={sendLink}
+                  onChange={setSendLink}
+                  label="Send their join link now"
+                  note="Emails them the link to set up their Direct Debit and register their dog. Leave it off to just hold the place; you can start onboarding later."
+                />
+              </View>
             )}
-
-            {path === "onboard" && (
-              <>
-                <GroupHeading>Meet & greet request</GroupHeading>
-                {!requests ? (
-                  <ActivityIndicator color={colors.foreground} style={{ marginVertical: 20 }} />
-                ) : requests.length === 0 ? (
-                  <Text style={{ color: colors.muted, fontSize: 14 }}>No open meet & greet requests.</Text>
-                ) : (
-                  <ListBox>
-                    {requests.map((r, i) => (
-                      <PickRow
-                        key={r.id}
-                        first={i === 0}
-                        title={r.name}
-                        subtitle={[r.dogNames, STATUS_LABEL[r.status]].filter(Boolean).join(" · ")}
-                        avatar={{ name: r.name, url: null }}
-                        selected={request === r.id}
-                        onPress={() => {
-                          hapticSelection();
-                          setRequest(r.id);
-                        }}
-                      />
-                    ))}
-                  </ListBox>
-                )}
-                <GroupHeading>How often</GroupHeading>
-                <View style={{ gap: 10 }}>
-                  <ChoiceCard icon="repeat-outline" title="Every week" description={`Every ${weekday!.replace(/^./, (c) => c.toUpperCase())}, from ${formatShortDay(date)}`} selected={cadence === "weekly"} onPress={() => (hapticSelection(), setCadence("weekly"))} />
-                  <ChoiceCard icon="swap-vertical-outline" title="Every other week" description={`Alternate ${pluralDay(weekday!)}, from ${formatShortDay(date)}`} selected={cadence === "alternating"} onPress={() => (hapticSelection(), setCadence("alternating"))} />
-                </View>
-              </>
+            {picked?.type === "customer" && !picked.dog && (
+              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 10 }}>The place is held under {picked.customer.name}&apos;s name until they register a dog.</Text>
             )}
           </>
         )}
 
-        {(oneToOne || path) && <BigButton label={saveLabel} icon={path === "onboard" && !oneToOne ? "paper-plane" : "add"} onPress={save} busy={saving} style={{ marginTop: 28 }} />}
+        {(mode === "one_to_one" || mode === "meet_greet") && (
+          <>
+            <GroupHeading>Time</GroupHeading>
+            <ChipRow options={TIME_OPTIONS} value={time} onChange={setTime} />
+          </>
+        )}
+
+        {mode === "one_to_one" && (
+          <>
+            <GroupHeading>How long</GroupHeading>
+            <ChipRow options={MINUTE_OPTIONS} value={minutes} onChange={setMinutes} />
+            <GroupHeading>Notes</GroupHeading>
+            <TextField value={notes} onChangeText={setNotes} placeholder="What it's for (optional)" autoCapitalize="sentences" autoCorrect multiline style={MULTILINE} />
+          </>
+        )}
+
+        {mode === "meet_greet" && (
+          <>
+            <GroupHeading>Where</GroupHeading>
+            <TextField
+              value={address}
+              onChangeText={(v) => {
+                addressEdited.current = true;
+                setAddress(v);
+              }}
+              placeholder="Their address, or where you're meeting"
+              autoCapitalize="words"
+              textContentType="fullStreetAddress"
+              style={{ ...MULTILINE, minHeight: 0, marginBottom: 0 }}
+            />
+            <GroupHeading>Note for them</GroupHeading>
+            <TextField value={notes} onChangeText={setNotes} placeholder="e.g. Bring their favourite treats (optional)" autoCapitalize="sentences" autoCorrect multiline style={MULTILINE} />
+            {!!email && <Toggle on={emailThem} onChange={setEmailThem} label={`Email ${ownerFirst} the day and time`} />}
+          </>
+        )}
+
+        {!!accountId && !linkSends && <Toggle on={notify} onChange={setNotify} label={`Let ${ownerFirst} know in the app`} note="A notification on their phone. It's in their Schedule either way." />}
+
+        {picked && (mode !== "dog" || plan) && <BigButton label={saveLabel} icon={linkSends ? "paper-plane" : "add"} onPress={save} busy={saving} disabled={!!dogIn} style={{ marginTop: 24 }} />}
       </FormScrollView>
+      <PersonPicker visible={pickerOpen} onClose={() => setPickerOpen(false)} onPick={choose} service={SERVICE[mode]} allowNoDog={mode === "meet_greet"} alreadyIn={mode === "dog" ? alreadyIn : undefined} />
     </View>
   );
 }
