@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Keyboard, Platform, StyleSheet, View } from "react-native";
 
 import { GlassEdge } from "@/components/glass-edge";
+import { LIQUID_GLASS, NativeGlass, useReducedTransparency } from "@/components/native-glass";
 import { Pressable } from "@/components/pressable";
 import { hapticTab } from "@/lib/haptics";
 import { BAR_HEIGHT, useBarBottom, useFloatingBarState } from "@/lib/floating-bar";
@@ -14,8 +15,12 @@ import { colors, GLASS_FILL } from "@/theme";
  * drops its labels) while the page scrolls down. A grey selector slides
  * along to the tab that's showing; it moves the moment a tab is tapped,
  * before the page arrives. Tapping the tab you're on takes its page back
- * to the top. It steps aside for the keyboard. Plain views only (no native
- * blur), so it looks the same on iPhone and Android and ships over the air.
+ * to the top. It steps aside for the keyboard.
+ *
+ * On iOS 26 and later the bar is Apple's own Liquid Glass
+ * (components/native-glass.tsx), as in the Kanvas app; elsewhere (older
+ * iPhones, Android) it keeps its near-solid fill and glass edge, and with
+ * Reduce Transparency on it is fully solid.
  */
 
 export type BarTab = {
@@ -35,6 +40,8 @@ const LABEL_GAP = 3;
 export function FloatingBar({ tabs, activeKey }: { tabs: BarTab[]; activeKey: string | null }) {
   const bottom = useBarBottom();
   const { collapse, setCollapsed, scrollToTop } = useFloatingBarState();
+  const solid = useReducedTransparency();
+  const glass = LIQUID_GLASS && !solid;
   const [keyboard, setKeyboard] = useState(false);
 
   // Steps aside for the keyboard, so it never covers what's being typed.
@@ -108,9 +115,19 @@ export function FloatingBar({ tabs, activeKey }: { tabs: BarTab[]; activeKey: st
         transform: [{ translateY: Animated.add(hide, lift) }, { scale }],
       }}
     >
-      {/* The bar: near-solid, with a fine light edge. */}
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: BAR_HEIGHT / 2, backgroundColor: GLASS_FILL, boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }]} />
-      <GlassEdge radius={BAR_HEIGHT / 2} />
+      {/* The bar: Apple's Liquid Glass where the phone has it (components/native-glass.tsx);
+          otherwise near-solid (solid under Reduce Transparency), with a fine light edge. */}
+      {glass ? (
+        <NativeGlass radius={BAR_HEIGHT / 2} />
+      ) : (
+        <>
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { borderRadius: BAR_HEIGHT / 2, backgroundColor: solid ? colors.surface : GLASS_FILL, boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }]}
+          />
+          <GlassEdge radius={BAR_HEIGHT / 2} />
+        </>
+      )}
 
       {/* The selector. */}
       {tabWidth > 0 && selectedIndex >= 0 && (
@@ -123,7 +140,7 @@ export function FloatingBar({ tabs, activeKey }: { tabs: BarTab[]; activeKey: st
             bottom: INSET,
             width: tabWidth,
             borderRadius: (BAR_HEIGHT - INSET * 2) / 2,
-            backgroundColor: "rgba(245,242,234,0.12)",
+            backgroundColor: glass ? "rgba(255,255,255,0.14)" : "rgba(245,242,234,0.12)",
             transform: [{ translateX: slide }],
           }}
         />
