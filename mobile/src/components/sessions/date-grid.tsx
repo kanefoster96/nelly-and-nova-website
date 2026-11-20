@@ -1,19 +1,19 @@
 import { Text, View } from "react-native";
 
 import { Pressable } from "@/components/pressable";
-import { DAY_CAPACITY, plusDays, mondayOf, WEEKDAYS, type Availability, type Weekday } from "@/data/sessions";
+import { DAY_CAPACITY, plusDays, mondayOf, TRAINING_DAYS, type Availability, type Weekday } from "@/data/sessions";
 import { hapticSelection } from "@/lib/haptics";
 import { colors } from "@/theme";
 
 const DOT: Record<string, string> = { green: colors.success, orange: colors.warning };
-const SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const SHORT = ["Mon", "Tue", "Wed", "Thu"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /**
- * Weekdays for the next few weeks, Monday to Friday in columns, with a dot
- * under each: green (room), orange (one space left). A full day is faded
- * and can't be picked (a trainer can still pick it, with `allowFull`, and
- * sees the count). Weekends aren't shown: there's no Full Day Training.
+ * Training days for the next few weeks, Monday to Thursday in columns, with
+ * a dot under each: green (room), orange (one space left). A full day is
+ * faded and can't be picked (a trainer can still pick it, with `allowFull`,
+ * and sees the count). Fridays and weekends aren't shown: we don't train then.
  * One date, up to `max` dates, or (with `range`) a start and an end.
  */
 export function DateGrid({
@@ -42,7 +42,7 @@ export function DateGrid({
   marked?: Set<string>;
 }) {
   const start = mondayOf(plusDays(after, 1));
-  const rows = Array.from({ length: weeks }, (_, w) => WEEKDAYS.map((_, i) => plusDays(start, w * 7 + i)));
+  const rows = Array.from({ length: weeks }, (_, w) => TRAINING_DAYS.map((_, i) => plusDays(start, w * 7 + i)));
   const [a, b] = range ? [...selected].sort() : [];
 
   function tap(date: string) {
@@ -113,13 +113,13 @@ export function DateGrid({
         </View>
       ))}
       <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 4 }}>
-        {allowFull ? "Counts are dogs booked out of 6." : "Green days are best — we'll confirm or suggest another day. Orange has one space left; faded days are full."}
+        {allowFull ? `Counts are dogs booked out of ${DAY_CAPACITY}.` : "Green days are best — we'll confirm or suggest another day. Orange has one space left; faded days are full."}
       </Text>
     </View>
   );
 }
 
-/** Monday to Friday as pills, for a regular day. Coloured by how full the next one is. */
+/** Monday to Thursday as pills, for a regular day. Coloured by how full the next one is. */
 export function WeekdayPicker({
   value,
   onChange,
@@ -139,7 +139,7 @@ export function WeekdayPicker({
   };
   return (
     <View style={{ flexDirection: "row", gap: 6 }}>
-      {WEEKDAYS.map((d, i) => {
+      {TRAINING_DAYS.map((d, i) => {
         const on = value === d;
         const status = nextStatus(i);
         const off = d === exclude;

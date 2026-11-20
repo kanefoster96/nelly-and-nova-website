@@ -18,6 +18,7 @@ import { OptionPill, SessionSheet, type SheetMode } from "@/components/sessions/
 import { CARD, LoadingState, Tag } from "@/components/ui";
 import { ageFrom, getHomeworkDays, getMyDogDetails, getTrainerHighlights, type DogDetails } from "@/data/dog-profile";
 import { formatDate } from "@/data/inbox";
+import { getMyMemberships, membershipPrice, membershipSchedule, SERVICE_LABEL, type Membership, type MyMemberships } from "@/data/memberships";
 import { getDogProgress, getReportCards, HOMEWORK_TARGET_DAYS, type DogProgress, type ReportCard } from "@/data/reports";
 import {
   getDogSessions,
@@ -61,7 +62,9 @@ function StatItem({ value, label }: { value: string | number; label: string }) {
   );
 }
 
-function serviceLine(placements: Placement[], sessions: DogSession[]): string {
+function serviceLine(placements: Placement[], sessions: DogSession[], memberships: Membership[]): string {
+  const other = memberships.filter((m) => m.service !== "full_day");
+  if (!placements.length && other.length) return other.map((m) => `${SERVICE_LABEL[m.service]} · ${membershipSchedule(m)}`).join(" · ");
   if (placements.length) {
     return `Full Day Training · ${placements.map((p) => `${plural(p.day)}, ${p.cadence === "alternating" ? "every other week" : "every week"}`).join(" · ")}`;
   }
@@ -115,6 +118,7 @@ export default function DogProfileScreen() {
   const [pages, setPages] = useState<DogPage[] | null>(null);
   const [requests, setRequests] = useState<SessionRequest[]>([]);
   const [member, setMember] = useState(false);
+  const [mine, setMine] = useState<MyMemberships | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -125,11 +129,12 @@ export default function DogProfileScreen() {
     if (!userId) return;
     try {
       const today = todayLondon();
-      const [dogs, bundle, reqs, m] = await Promise.all([
+      const [dogs, bundle, reqs, m, my] = await Promise.all([
         getMyDogDetails(userId),
         getReportCards().catch(() => null),
         listRequests().catch(() => [] as SessionRequest[]),
-        hasMembership(userId).catch(() => false),
+        hasMembership(userId, "full_day").catch(() => false),
+        getMyMemberships().catch(() => null),
       ]);
       const next = await Promise.all(
         dogs.map(async (dog): Promise<DogPage> => {
@@ -149,6 +154,7 @@ export default function DogProfileScreen() {
       setPages(next);
       setRequests(reqs);
       setMember(m);
+      setMine(my);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load your dog's profile.");
@@ -215,6 +221,7 @@ export default function DogProfileScreen() {
           pages={pages}
           today={today}
           requests={requests.filter((r) => r.dogId === page.dog.id)}
+          memberships={(mine?.memberships ?? []).filter((m) => m.dogId === page.dog.id)}
           onSelect={setSelected}
           onManage={(mode) => {
             setDone(null);
@@ -236,6 +243,7 @@ export default function DogProfileScreen() {
           sessions={page.sessions.filter((s) => s.date > today)}
           placements={page.placements}
           member={member}
+          oneToOneMember={mine?.member ?? member}
           initialMode={sheet?.mode ?? "menu"}
           onDone={(message) => {
             setSheet(null);
@@ -253,6 +261,7 @@ function DogPageView({
   pages,
   today,
   requests,
+  memberships,
   onSelect,
   onManage,
   onChanged,
@@ -262,6 +271,7 @@ function DogPageView({
   pages: DogPage[];
   today: string;
   requests: SessionRequest[];
+  memberships: Membership[];
   onSelect: (id: string) => void;
   onManage: (mode: SheetMode) => void;
   onChanged: (message?: string) => void;
@@ -293,9 +303,9 @@ function DogPageView({
         <Text style={{ color: colors.foreground, fontSize: 22, fontWeight: "700", marginTop: 16 }}>{dog.name}</Text>
         {(dog.breed || age) && <Text style={{ color: colors.muted, fontSize: 14, marginTop: 4 }}>{[dog.breed, age].filter(Boolean).join(" · ")}</Text>}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, marginTop: 10, maxWidth: "100%" }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: placements.length ? colors.success : colors.muted }} />
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: placements.length || memberships.length ? colors.success : colors.muted }} />
           <Text style={{ color: colors.foreground, fontSize: 12, fontWeight: "500", flexShrink: 1 }} numberOfLines={2}>
-            {serviceLine(placements, sessions)}
+            {serviceLine(placements, sessions, memberships)}
           </Text>
         </View>
 
@@ -307,8 +317,25 @@ function DogPageView({
           <StatItem value={homework.thisWeek} label="This week" />
         </View>
 
+        {memberships.length > 0 && (
+          <View style={[BOX, { marginTop: 24, gap: 12 }]}>
+            <Text style={BOX_LABEL}>{memberships.length > 1 ? "Memberships" : "Membership"}</Text>
+            {memberships.map((m) => (
+              <View key={m.id}>
+                <Text style={{ color: colors.foreground, fontSize: 16, fontWeight: "600" }}>{SERVICE_LABEL[m.service]}</Text>
+                <Text style={{ color: colors.muted, fontSize: 14, marginTop: 2 }}>
+                  {membershipSchedule(m)} · {membershipPrice(m.service)}
+                  {m.startOn > today ? ` · from ${formatDate(`${m.startOn}T12:00:00Z`)}` : ""}
+                </Text>
+                {m.service === "online" && m.goals.length > 0 && <Text style={{ color: colors.foreground, fontSize: 13, marginTop: 4 }}>Goals: {m.goals.join(" · ")}</Text>}
+              </View>
+            ))}
+            <Text style={{ color: colors.muted, fontSize: 12 }}>Members pay £90 for any 1-1.</Text>
+          </View>
+        )}
+
         {next && (
-          <View style={[BOX, { marginTop: 24 }]}>
+          <View style={[BOX, { marginTop: memberships.length ? 16 : 24 }]}>
             <Text style={BOX_LABEL}>{next.date === today ? "Today's session" : "Next session"}</Text>
             <Text style={{ color: colors.foreground, fontSize: 16, fontWeight: "600", marginTop: 4 }}>{longDate(next.date)}</Text>
             <Text style={{ color: colors.muted, fontSize: 14, marginTop: 2 }}>{sessionLabel(next)}</Text>
@@ -369,7 +396,11 @@ function DogPageView({
       <Appear index={i++} style={{ marginTop: 28, gap: 10 }}>
         <Text style={{ color: colors.muted, fontSize: 11, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>Manage {dog.name}&apos;s sessions</Text>
         <OptionPill icon="close-circle-outline" label="Cancel a session or a holiday" hint="Up to the day before · no refund" onPress={() => onManage("cancel")} />
-        <OptionPill icon="add-circle-outline" label="Book an extra Full Day or a 1-1" hint="We'll confirm or suggest another day" onPress={() => onManage("one_off")} />
+        {memberships.some((m) => m.service === "online") && (
+          <OptionPill icon="clipboard-outline" label="Weekly check-in" hint="How this week's homework went · optional" onPress={() => onOpen("/checkin")} />
+        )}
+        <OptionPill icon="person-outline" label="Book a 1-1" hint="Monday to Thursday, 12–1pm or 1–2pm · booked straight away" onPress={() => onManage("one_to_one")} />
+        <OptionPill icon="add-circle-outline" label="Book an extra Full Day" hint="We'll confirm or suggest another day" onPress={() => onManage("one_off")} />
         {placements.length > 0 && <OptionPill icon="repeat-outline" label="Switch my regular day" hint="Just once, or for good" onPress={() => onManage("switch")} />}
         <OptionPill icon="calendar-outline" label="Add a regular day" hint="Every week, or every other week" onPress={() => onManage("add_regular")} />
         <OptionPill icon="chatbubble-ellipses-outline" label="Message us" onPress={() => onOpen("/chat")} />

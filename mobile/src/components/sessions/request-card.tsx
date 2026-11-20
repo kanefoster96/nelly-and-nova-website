@@ -298,7 +298,7 @@ export function UnpaidCard({ session: s, onChanged }: { session: UnpaidSession; 
 
   useEffect(() => {
     let live = true;
-    (s.accountId ? hasMembership(s.accountId) : Promise.resolve(false)).then((m) => {
+    (s.accountId ? hasMembership(s.accountId, s.kind) : Promise.resolve(false)).then((m) => {
       if (!live) return;
       setMember(m);
       const pence = s.amountPence ?? defaultSessionPrice(s.kind, m);

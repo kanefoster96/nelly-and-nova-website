@@ -22,6 +22,7 @@ export function OverlayCard({
   cta,
   href,
   index,
+  compact = false,
   className = "",
   sizes = "(min-width: 768px) 42rem, 100vw",
 }: {
@@ -35,6 +36,8 @@ export function OverlayCard({
   href?: string;
   /** 1-based position, shown as a faint "01" in the corner. */
   index?: number;
+  /** A shorter card, for when more sits beneath it (the homepage services). */
+  compact?: boolean;
   className?: string;
   sizes?: string;
 }) {
@@ -86,7 +89,8 @@ export function OverlayCard({
     </>
   );
 
-  const classes = `group relative isolate flex min-h-[24rem] flex-col overflow-hidden rounded-3xl bg-ink-raised sm:min-h-[26rem] ${className}`;
+  const height = compact ? "min-h-[19rem] sm:min-h-[21rem]" : "min-h-[24rem] sm:min-h-[26rem]";
+  const classes = `group relative isolate flex ${height} flex-col overflow-hidden rounded-3xl bg-ink-raised ${className}`;
 
   return href ? (
     <Link href={href} className={`${classes} focus-visible:outline-2 focus-visible:outline-offset-4`}>

@@ -5,12 +5,11 @@ import { Reviews } from "@/components/Reviews";
 import { Marquee } from "@/components/ui/Marquee";
 import { ContentSection } from "@/components/ContentSection";
 import { media } from "@/config/media";
-import { walkTrainPage } from "@/config/site";
+import { walkTrainPage, priceText, schedule } from "@/config/site";
 
 export const metadata: Metadata = {
   title: "Full Day Training",
-  description:
-    "Full Day Training sessions: real-world training, safe transport, detailed report cards and a free meet & greet across Tynemouth, Backworth and the North East.",
+  description: `Full Day Training across Tynemouth, Backworth and the North East: we collect your dog, train them in the real world all day and bring them home with a 5-minute handover. ${schedule.days}, ${schedule.fullDayDogsPerDay} dogs a day, ${priceText.fullDayMember} a week as a member or ${priceText.fullDay} one-off. Free meet & greet.`,
 };
 
 export default function FullDayTrainingPage() {

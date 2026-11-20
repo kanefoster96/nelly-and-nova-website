@@ -16,7 +16,14 @@ import { supabase } from "@/lib/supabase";
 // ---------------------------------------------------------------------------
 
 export type Weekday = "monday" | "tuesday" | "wednesday" | "thursday" | "friday";
+/** Every weekday, for reading what's there (older Friday places). */
 export const WEEKDAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+/** The days we train, Full Day and 1-1s alike: what can be picked. */
+export const TRAINING_DAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday"];
+export const isTrainingDay = (iso: string): boolean => {
+  const d = weekdayOf(iso);
+  return !!d && TRAINING_DAYS.includes(d);
+};
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -94,14 +101,24 @@ export async function getDogSessions(dogId: string, from: string, to: string): P
   }));
 }
 
-/** A dog's regular places still running. */
+/** A dog's regular Full Day places still running (1-1 and Online memberships: data/memberships.ts). */
 export async function getPlacements(dogId: string): Promise<Placement[]> {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("placements")
     .select("id, day, cadence, start_on, end_on")
     .eq("dog_id", dogId)
+    .eq("service", "full_day")
     .or(`end_on.is.null,end_on.gte.${todayLondon()}`)
     .order("start_on");
+  if (error && /service/.test(error.message)) {
+    // Before the database update: every place is a Full Day.
+    ({ data, error } = await supabase
+      .from("placements")
+      .select("id, day, cadence, start_on, end_on")
+      .eq("dog_id", dogId)
+      .or(`end_on.is.null,end_on.gte.${todayLondon()}`)
+      .order("start_on"));
+  }
   if (error) throw new Error(error.message);
   return ((data ?? []) as { id: string; day: Weekday; cadence: Placement["cadence"]; start_on: string; end_on: string | null }[]).map((p) => ({
     id: p.id,
@@ -130,10 +147,11 @@ export function sessionLabel(s: Pick<DogSession, "kind" | "notes"> & { startTime
 }
 
 // ---------------------------------------------------------------------------
-// How full each day is (6 dogs)
+// How full each day is (5 dogs, Monday to Thursday)
 // ---------------------------------------------------------------------------
 
-export const DAY_CAPACITY = 6;
+/** Full Day Training takes 5 dogs a day (nn_day_capacity): green up to 3, orange at 4, full at 5. */
+export const DAY_CAPACITY = 5;
 export type DayStatus = "green" | "orange" | "full";
 export type Availability = Record<string, { dogs: number; status: DayStatus }>;
 
@@ -409,15 +427,17 @@ export type DayCancellation = { dogName: string; ownerAccountId: string | null; 
 
 export async function getDayCancellations(date: string): Promise<DayCancellation[]> {
   const [skips, bookings] = await Promise.all([
-    supabase.from("placement_skips").select("reason, placements(account_id, dogs(name))").eq("on_date", date),
+    supabase.from("placement_skips").select("reason, placements(account_id, service, dogs(name))").eq("on_date", date),
     supabase.from("bookings").select("account_id, kind, dogs(name)").eq("on_date", date).not("cancelled_at", "is", null),
   ]);
   type Dog = { name: string } | { name: string }[] | null;
   const name = (d: Dog) => (Array.isArray(d) ? d[0]?.name : d?.name) ?? "A dog";
   const out: DayCancellation[] = [];
-  for (const s of (skips.data ?? []) as unknown as { reason: string | null; placements: { account_id: string | null; dogs: Dog } | null }[]) {
+  for (const s of (skips.data ?? []) as unknown as { reason: string | null; placements: { account_id: string | null; service?: string; dogs: Dog } | null }[]) {
     // Moved by a trainer rather than cancelled: it shows on the other day.
     if (s.reason?.startsWith("Moved to")) continue;
+    // A 1-1 membership's day off: its cancelled booking below says so.
+    if (s.placements?.service && s.placements.service !== "full_day") continue;
     out.push({ dogName: name(s.placements?.dogs ?? null), ownerAccountId: s.placements?.account_id ?? null, reason: s.reason, kind: "regular" });
   }
   for (const b of (bookings.data ?? []) as unknown as { account_id: string | null; dogs: Dog }[]) {
@@ -435,6 +455,12 @@ export function requestsForDate(list: SessionRequest[], date: string): SessionRe
 // Payments for one-off sessions
 // ---------------------------------------------------------------------------
 
+/**
+ * The default price, in pence (lib/config.ts sessionPrices). `hasMembership`
+ * is the answer for this kind (hasMembership(account, kind)): a Full Day is
+ * £60 with a Full Day membership, else £85; a 1-1 is £90 with any membership
+ * (Full Day, 1-1 or Online), else £120. As the website's lib/sessions/prices.ts.
+ */
 export function defaultSessionPrice(kind: "full_day" | "one_to_one", hasMembership: boolean): number {
   if (kind === "one_to_one") return hasMembership ? sessionPrices.oneToOneMember : sessionPrices.oneToOne;
   return hasMembership ? sessionPrices.fullDayMember : sessionPrices.fullDay;
@@ -448,10 +474,17 @@ export function priceLine(kind: "full_day" | "one_to_one", hasMembership: boolea
   return hasMembership ? `${p} (member price)` : p;
 }
 
-export async function hasMembership(accountId: string): Promise<boolean> {
-  const { data } = await supabase.rpc("nn_has_membership", { p_account_id: accountId });
-  return data === true;
+/** The member price for this kind: a Full Day membership for a Full Day, any membership for a 1-1. */
+export async function hasMembership(accountId: string, kind: "full_day" | "one_to_one" = "full_day"): Promise<boolean> {
+  const { data, error } = await supabase.rpc("nn_has_membership", { p_account_id: accountId, p_kind: kind });
+  if (!error) return data === true;
+  // Before the database update: the Full Day check.
+  const old = await supabase.rpc("nn_has_membership", { p_account_id: accountId });
+  return old.data === true;
 }
+
+/** A 1-1 membership's sessions only count as unpaid once their day has come (PostgREST filter). */
+const UNPAID_DUE = () => `placement_id.is.null,on_date.lte.${todayLondon()}`;
 
 export type UnpaidSession = {
   id: string;
@@ -473,6 +506,7 @@ export async function listUnpaid(): Promise<UnpaidSession[]> {
     .select("id, kind, on_date, account_id, dog_id, payment_status, amount_pence, notes, dogs(name)")
     .in("payment_status", ["unpaid", "failed"])
     .is("cancelled_at", null)
+    .or(UNPAID_DUE())
     .order("on_date")
     .limit(200);
   if (error) throw new Error(error.message);
@@ -506,8 +540,16 @@ export async function listUnpaid(): Promise<UnpaidSession[]> {
 }
 
 export async function countUnpaid(): Promise<number> {
-  const { count } = await supabase.from("bookings").select("id", { count: "exact", head: true }).in("payment_status", ["unpaid", "failed"]).is("cancelled_at", null);
-  return count ?? 0;
+  const { count, error } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .in("payment_status", ["unpaid", "failed"])
+    .is("cancelled_at", null)
+    .or(UNPAID_DUE());
+  if (!error) return count ?? 0;
+  // Before the database update (no placement_id yet).
+  const old = await supabase.from("bookings").select("id", { count: "exact", head: true }).in("payment_status", ["unpaid", "failed"]).is("cancelled_at", null);
+  return old.count ?? 0;
 }
 
 /** Trainer: charge by Direct Debit, through the website (it holds the GoCardless key). */
@@ -532,5 +574,71 @@ export async function chargeSession(bookingId: string, amountPence: number): Pro
 
 export async function setPaymentStatus(bookingId: string, status: "paid" | "waived" | "unpaid"): Promise<void> {
   const { error } = await supabase.from("bookings").update({ payment_status: status }).eq("id", bookingId);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 1-1 slots: Monday to Thursday, 12–1pm and 1–2pm, booked straight away
+// ---------------------------------------------------------------------------
+
+export const ONE_TO_ONE_SLOTS = [
+  { time: "12:00", label: "12–1pm" },
+  { time: "13:00", label: "1–2pm" },
+] as const;
+export type SlotTime = (typeof ONE_TO_ONE_SLOTS)[number]["time"];
+export const slotLabel = (time: string | null | undefined): string => ONE_TO_ONE_SLOTS.find((s) => time?.startsWith(s.time))?.label ?? clockTime(time);
+
+/** Free 1-1 slots by date (nn_one_to_one_slots): { "2026-11-24": ["12:00", "13:00"] }. Next 6 weeks by default. */
+export async function getOneToOneSlots(from?: string, to?: string): Promise<Record<string, SlotTime[]>> {
+  const { data, error } = await supabase.rpc("nn_one_to_one_slots", { p_from: from ?? null, p_to: to ?? null });
+  if (error) throw new Error(error.message);
+  const out: Record<string, SlotTime[]> = {};
+  for (const r of (data ?? []) as { on_date: string; start_time: string }[]) {
+    const t = String(r.start_time).slice(0, 5) as SlotTime;
+    (out[String(r.on_date).slice(0, 10)] ??= []).push(t);
+  }
+  return out;
+}
+
+/** Book a free slot: confirmed at once, £120 (or £90 for members), unpaid until we charge it. The trainers are told. */
+export async function bookOneToOne(dogId: string, date: string, time: SlotTime, note?: string): Promise<{ id: string; amountPence: number; member: boolean }> {
+  const { data, error } = await supabase.rpc("nn_one_to_one_book", { p_dog_id: dogId, p_date: date, p_time: time, p_note: note?.trim() || null });
+  if (error) throw new Error(error.message);
+  void push(data);
+  const d = data as { id: string; amountPence: number; member: boolean };
+  return { id: d.id, amountPence: d.amountPence, member: !!d.member };
+}
+
+// ---------------------------------------------------------------------------
+// Refunds the trainer owes (done by hand in GoCardless, then ticked off)
+// ---------------------------------------------------------------------------
+
+export type RefundOwed = { id: string; accountId: string | null; ownerName: string | null; amountPence: number; reason: string | null; createdAt: string };
+
+/** Trainer: refunds still to do. Empty before the database update. */
+export async function listRefundsOwed(): Promise<RefundOwed[]> {
+  const { data, error } = await supabase.from("refunds_owed").select("id, account_id, amount_pence, reason, created_at").is("done_at", null).order("created_at").limit(100);
+  if (error) return [];
+  const rows = (data ?? []) as { id: string; account_id: string | null; amount_pence: number; reason: string | null; created_at: string }[];
+  const owners = await ownerNames(rows.map((r) => r.account_id ?? ""));
+  return rows.map((r) => ({
+    id: r.id,
+    accountId: r.account_id,
+    ownerName: r.account_id ? owners[r.account_id] ?? null : null,
+    amountPence: r.amount_pence,
+    reason: r.reason,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function countRefundsOwed(): Promise<number> {
+  const { count, error } = await supabase.from("refunds_owed").select("id", { count: "exact", head: true }).is("done_at", null);
+  return error ? 0 : (count ?? 0);
+}
+
+/** Trainer: "Done" once it's refunded in GoCardless. */
+export async function markRefundDone(id: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const { error } = await supabase.from("refunds_owed").update({ done_at: new Date().toISOString(), done_by: data.session?.user.id ?? null }).eq("id", id);
   if (error) throw new Error(error.message);
 }

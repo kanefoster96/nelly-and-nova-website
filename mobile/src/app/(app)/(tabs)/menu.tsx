@@ -8,7 +8,7 @@ import { BuildInfo } from "@/components/build-info";
 import { PageTitle } from "@/components/page-title";
 import { GroupHeading, MenuCard } from "@/components/trainer/cards";
 import { countNewEnquiries } from "@/data/onboarding-board";
-import { countPendingRequests, countUnpaid } from "@/data/sessions";
+import { countPendingRequests, countRefundsOwed, countUnpaid } from "@/data/sessions";
 import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
 import { colors } from "@/theme";
 
@@ -16,7 +16,7 @@ import { colors } from "@/theme";
  * The trainer's toolkit, as the Kanvas coach's Menu tab lays it out: each
  * page a card (icon, name, what it's for), in groups. Everything that runs
  * the club but doesn't warrant a tab: Requests, the Calendar, the Homework
- * library, Onboarding (meet & greet requests to sign-up), Messages,
+ * library, Online Training (each online member's week), Onboarding (meet & greet requests to sign-up), Messages,
  * notifications and Profile. The day's dogs are on the Today tab.
  */
 export default function TrainerMenuScreen() {
@@ -25,14 +25,14 @@ export default function TrainerMenuScreen() {
   const barInset = useBarInset();
   const barScroll = useBarScroll();
   const topInset = useTopBarInset();
-  const [counts, setCounts] = useState({ requests: 0, unpaid: 0, enquiries: 0 });
+  const [counts, setCounts] = useState({ requests: 0, unpaid: 0, enquiries: 0, refunds: 0 });
 
   useFocusEffect(
     useCallback(() => {
       if (!isTrainer) return;
       let live = true;
-      Promise.all([countPendingRequests(), countUnpaid(), countNewEnquiries().catch(() => 0)])
-        .then(([requests, unpaid, enquiries]) => live && setCounts({ requests, unpaid, enquiries }))
+      Promise.all([countPendingRequests(), countUnpaid(), countNewEnquiries().catch(() => 0), countRefundsOwed()])
+        .then(([requests, unpaid, enquiries, refunds]) => live && setCounts({ requests, unpaid, enquiries, refunds }))
         .catch(() => undefined);
       return () => {
         live = false;
@@ -56,8 +56,8 @@ export default function TrainerMenuScreen() {
           <MenuCard
             icon="swap-horizontal-outline"
             title="Requests"
-            description={`Replacement days, extra sessions and day switches to accept.${counts.unpaid ? ` ${counts.unpaid} unpaid session${counts.unpaid === 1 ? "" : "s"} to charge.` : " Unpaid sessions to charge."}`}
-            count={counts.requests + counts.unpaid}
+            description={`Replacement days, extra sessions and day switches to accept.${counts.unpaid ? ` ${counts.unpaid} unpaid session${counts.unpaid === 1 ? "" : "s"} to charge.` : " Unpaid sessions to charge."}${counts.refunds ? ` ${counts.refunds} refund${counts.refunds === 1 ? "" : "s"} to do.` : ""}`}
+            count={counts.requests + counts.unpaid + counts.refunds}
             onPress={() => router.push("/requests")}
           />
           <MenuCard
@@ -65,6 +65,12 @@ export default function TrainerMenuScreen() {
             title="Calendar"
             description="Every date: full-day dogs, one-offs, 1-1s and meet & greets. Add a dog to a day."
             onPress={() => router.push("/calendar")}
+          />
+          <MenuCard
+            icon="phone-portrait-outline"
+            title="Online Training"
+            description="Each online member: their goals, this week's check-in, and sending this week's homework."
+            onPress={() => router.push("/online")}
           />
           <MenuCard
             icon="school-outline"

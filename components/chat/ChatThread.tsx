@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/community/Avatar";
-import { fillQuickReply, longDay, shortDay, type ChatCard, type RequestStatus } from "@/lib/chat/cards";
+import { DRILL_RATING_LABEL, fillQuickReply, longDay, OVERALL_LABEL, shortDay, type ChatCard, type RequestStatus } from "@/lib/chat/cards";
+import { formatPence } from "@/lib/sessions/prices";
 import { parseChatBody } from "@/lib/chat/links";
 import {
   chatSupabase,
@@ -306,6 +307,21 @@ function ChatCardView({
         ? [{ key: "reply", label: "Reply", onClick: () => onReply(`${card.title}, day ${card.day}: `), solid: true }]
         : []
       : [{ key: "view", label: "View homework", href: "/profile/practice" }];
+  } else if (card.kind === "membership") {
+    glyph = <CalendarCardGlyph />;
+    iconTone = "green";
+    title = card.service === "online" ? "Online Training" : card.service === "one_to_one" ? "1-1 membership" : "Full Day membership";
+    details = [card.dog, card.schedule].filter(Boolean).join(" · ");
+    pill = { label: card.refundPence > 0 ? `${formatPence(card.refundPence)} to refund` : "Welcome", tone: card.refundPence > 0 ? "amber" : "green" };
+    actions = isStaff ? [] : [{ key: "view", label: "View sessions", href: "/profile/sessions" }];
+  } else if (card.kind === "checkin") {
+    glyph = <HomeworkGlyph />;
+    iconTone = card.overall === "tough" ? "amber" : "blue";
+    title = `Weekly check-in: ${card.dog ?? "your dog"}`;
+    details = card.drills.map((d) => `${d.name}: ${DRILL_RATING_LABEL[d.rating]}`).join(" · ");
+    pill = { label: card.overall ? OVERALL_LABEL[card.overall] : "Checked in", tone: card.overall === "tough" ? "amber" : card.overall === "great" ? "green" : "blue" };
+    note = card.note;
+    actions = isStaff && onReply ? [{ key: "reply", label: "Reply", onClick: () => onReply(`${card.dog ?? "Your dog"}'s week: `), solid: true }] : [];
   } else {
     glyph = <ReportGlyph />;
     iconTone = "green";
@@ -330,7 +346,7 @@ function ChatCardView({
         </span>
       </div>
       <span className={`self-start rounded-full px-2.5 py-0.5 text-xs font-bold ${TONES[pill.tone].pill}`}>{pill.label}</span>
-      {note && <p className="whitespace-pre-wrap break-words text-sm">{card.kind === "homework_day" ? note : `“${note}”`}</p>}
+      {note && <p className="whitespace-pre-wrap break-words text-sm">{card.kind === "homework_day" || card.kind === "checkin" ? note : `“${note}”`}</p>}
       {media}
       {actions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">

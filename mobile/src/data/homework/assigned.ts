@@ -121,8 +121,12 @@ export function toDoCount(list: Homework[], dogId: string): number {
 
 export type PickedVideo = { uri: string; name: string; mimeType: string; durationMs: number | null; size: number | null };
 
-/** Upload a homework video into the owner's own folder of the private bucket. */
-async function uploadVideo(cardId: string, video: PickedVideo): Promise<string> {
+/**
+ * Upload a homework video into the owner's own folder of the private bucket
+ * (<account>/<folder>/…): a homework card's id, or "checkins" for Online
+ * Training's weekly check-in (data/memberships.ts).
+ */
+export async function uploadVideo(cardId: string, video: PickedVideo): Promise<string> {
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Please sign in again.");
   const ext = (video.name.split(".").pop() || (video.mimeType.includes("quicktime") ? "mov" : "mp4")).toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";

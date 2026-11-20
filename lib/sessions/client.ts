@@ -9,7 +9,7 @@
  * mobile/src/data/sessions.ts.
  */
 import { createClient } from "@/lib/supabase/client";
-import { formatPence } from "./prices";
+import { formatPence, type SessionKind } from "./prices";
 
 export type RequestKind = "replacement" | "one_off" | "add_regular" | "switch_week" | "switch_permanent";
 export type RequestStatus = "pending" | "offered" | "confirmed" | "declined" | "withdrawn";
@@ -193,24 +193,30 @@ export async function moveSession(opts: { dogId: string; from: string; to: strin
   await push(data);
 }
 
-/** Dogs booked for Full Day Training per date ("5" of 6). */
+/** Dogs booked for Full Day Training per date ("4" of 5). */
 export async function dayCounts(from: string, to: string): Promise<Record<string, number>> {
   const { data, error } = await sb().rpc("nn_day_availability", { p_from: from, p_to: to });
   if (error) return {};
   return Object.fromEntries(((data ?? []) as { on_date: string; dogs: number }[]).map((r) => [String(r.on_date).slice(0, 10), r.dogs]));
 }
 
-export const DAY_CAPACITY = 6;
+/** Full Day Training: 5 dogs a day, Monday to Thursday (nn_day_capacity). */
+export const DAY_CAPACITY = 5;
 
 // --- Session payments ---------------------------------------------------------
 
-/** One-offs, replacements, extra days and 1-1s still to be paid (or failed). */
+/**
+ * One-offs, replacements, extra days and 1-1s still to be paid (or failed).
+ * A 1-1 membership's sessions (placement_id) only once their day has come.
+ */
 export async function listUnpaid(): Promise<UnpaidSession[]> {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
   const { data, error } = await sb()
     .from("bookings")
     .select("id, kind, on_date, account_id, payment_status, amount_pence, notes, dogs(name)")
     .in("payment_status", ["unpaid", "failed"])
     .is("cancelled_at", null)
+    .or(`placement_id.is.null,on_date.lte.${today}`)
     .order("on_date")
     .limit(200);
   if (error) throw new Error(error.message);
@@ -241,9 +247,16 @@ export async function listUnpaid(): Promise<UnpaidSession[]> {
   });
 }
 
-export async function hasMembership(accountId: string): Promise<boolean> {
-  const { data } = await sb().rpc("nn_has_membership", { p_account_id: accountId });
-  return data === true;
+/**
+ * The member price for this kind of session: a Full Day membership for a
+ * Full Day, any membership (Full Day, 1-1 or Online) for a 1-1.
+ */
+export async function hasMembership(accountId: string, kind: SessionKind = "full_day"): Promise<boolean> {
+  const { data, error } = await sb().rpc("nn_has_membership", { p_account_id: accountId, p_kind: kind });
+  if (!error) return data === true;
+  // Before the database update: the Full Day check.
+  const { data: old } = await sb().rpc("nn_has_membership", { p_account_id: accountId });
+  return old === true;
 }
 
 /** Charge by Direct Debit (the trainer tapped Charge). */

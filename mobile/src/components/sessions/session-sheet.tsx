@@ -7,9 +7,11 @@ import { GlassButton } from "@/components/glass-button";
 import { Pressable } from "@/components/pressable";
 import { PrimaryButton } from "@/components/ui";
 import {
+  bookOneToOne,
   cancelSessions,
   createRequest,
   getAvailability,
+  getOneToOneSlots,
   longDate,
   plural,
   plusDays,
@@ -17,9 +19,12 @@ import {
   sessionLabel,
   shortDate,
   todayLondon,
+  ONE_TO_ONE_SLOTS,
+  pounds,
   type Availability,
   type DogSession,
   type Placement,
+  type SlotTime,
   type Weekday,
 } from "@/data/sessions";
 import { hapticError, hapticSelection, hapticSuccess } from "@/lib/haptics";
@@ -29,7 +34,7 @@ import { DateGrid, WeekdayPicker } from "./date-grid";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
-export type SheetMode = "menu" | "cancel" | "one_off" | "add_regular" | "switch";
+export type SheetMode = "menu" | "cancel" | "one_off" | "one_to_one" | "add_regular" | "switch";
 
 /** A full-width option, as Kanvas's class-pass actions. */
 export function OptionPill({ icon, label, hint, onPress, tone }: { icon: IoniconName; label: string; hint?: string; onPress: () => void; tone?: string }) {
@@ -126,11 +131,13 @@ function Chips({ dates, selected, onPick, label }: { dates: DogSession[]; select
  * Schedule tab:
  *   Cancel (one session, or every one in a holiday) — instant, no refund,
  *     with "Ask for a replacement day" in the same place;
- *   Book an extra Full Day or a 1-1 (with its price);
+ *   Book an extra Full Day (with its price), or a 1-1 in a free slot
+ *     (Monday to Thursday, 12–1pm or 1–2pm), booked straight away;
  *   Add a regular day;
  *   Switch my regular day (this week only, or for good).
- * Everything but a cancellation is a request the trainer accepts, offers
- * other days for, or declines. Date pickers show how full each day is.
+ * Everything but a cancellation and a 1-1 is a request the trainer accepts,
+ * offers other days for, or declines. Date pickers show how full each day
+ * is, Monday to Thursday.
  */
 export function SessionSheet({
   visible,
@@ -140,6 +147,7 @@ export function SessionSheet({
   sessions,
   placements,
   member,
+  oneToOneMember,
   initialMode = "menu",
   onDone,
 }: {
@@ -151,7 +159,10 @@ export function SessionSheet({
   /** Upcoming sessions (cancelled ones are left out here). */
   sessions: DogSession[];
   placements: Placement[];
+  /** Full Days at the member price (a Full Day membership). */
   member: boolean;
+  /** 1-1s at the member price (any membership). Defaults to `member`. */
+  oneToOneMember?: boolean;
   initialMode?: SheetMode;
   onDone: (message: string) => void;
 }) {
@@ -170,8 +181,11 @@ export function SessionSheet({
   const [replacement, setReplacement] = useState<string[]>([]);
   // One-off
   const [service, setService] = useState<"full_day" | "one_to_one">("full_day");
-  const [part, setPart] = useState<"morning" | "afternoon">("morning");
   const [date, setDate] = useState<string[]>([]);
+  // 1-1: free slots by date, and the one picked.
+  const [slots, setSlots] = useState<Record<string, SlotTime[]> | null>(null);
+  const [slot, setSlot] = useState<{ date: string; time: SlotTime } | null>(null);
+  const oneToOnePrice = oneToOneMember ?? member;
   // Regular day / switch
   const [day, setDay] = useState<Weekday | null>(null);
   const [cadence, setCadence] = useState<"weekly" | "alternating">("weekly");
@@ -184,15 +198,17 @@ export function SessionSheet({
   // Fresh each time it opens, from whatever was tapped.
   useEffect(() => {
     if (!visible) return;
-    setMode(initialMode);
+    setMode(initialMode === "one_to_one" ? "one_off" : initialMode);
     setNote("");
     setCancelKind("one");
     setCancelDate(session && !session.cancelled && session.date > today ? session : null);
     setRange([]);
     setWantReplacement(false);
     setReplacement([]);
-    setService("full_day");
+    setService(initialMode === "one_to_one" ? "one_to_one" : "full_day");
     setDate([]);
+    setSlot(null);
+    setSlots(null);
     setDay(null);
     setCadence("weekly");
     setPlacementId(session?.placementId ?? placements[0]?.id ?? null);
@@ -202,6 +218,9 @@ export function SessionSheet({
     getAvailability(tomorrow, plusDays(tomorrow, 7 * 8))
       .then((a) => live && setAvailability(a))
       .catch(() => undefined);
+    getOneToOneSlots()
+      .then((s) => live && setSlots(s))
+      .catch(() => live && setSlots({}));
     return () => {
       live = false;
     };
@@ -253,10 +272,18 @@ export function SessionSheet({
   }
 
   function submitOneOff() {
+    if (service === "one_to_one") {
+      if (!slot) return Alert.alert("Pick a time");
+      return run(async () => {
+        const r = await bookOneToOne(dog.id, slot.date, slot.time, note);
+        const label = ONE_TO_ONE_SLOTS.find((s) => s.time === slot.time)?.label ?? slot.time;
+        return `Booked! ${dog.name}'s 1-1 is on ${longDate(slot.date)}, ${label}. ${pounds(r.amountPence)}${r.member ? " (member price)" : ""}, taken by Direct Debit.`;
+      });
+    }
     if (!date[0]) return Alert.alert("Pick a day");
     return run(async () => {
-      await createRequest({ dogId: dog.id, kind: "one_off", date: date[0], service, partOfDay: service === "one_to_one" ? part : null, note });
-      return `Asked for ${service === "one_to_one" ? "a 1-1" : "an extra Full Day"} on ${shortDate(date[0])}. We'll confirm or suggest another day.`;
+      await createRequest({ dogId: dog.id, kind: "one_off", date: date[0], service: "full_day", note });
+      return `Asked for an extra Full Day on ${shortDate(date[0])}. We'll confirm or suggest another day.`;
     });
   }
 
@@ -293,7 +320,9 @@ export function SessionSheet({
       : mode === "cancel"
         ? "Cancel"
         : mode === "one_off"
-          ? "Book an extra session"
+          ? service === "one_to_one"
+            ? "Book a 1-1"
+            : "Book an extra session"
           : mode === "add_regular"
             ? "Add a regular day"
             : "Switch my regular day";
@@ -368,7 +397,24 @@ export function SessionSheet({
               )}
               {!session && (
                 <>
-                  <OptionPill icon="add-circle-outline" label="Book an extra Full Day or a 1-1" hint="A one-off session" onPress={() => setMode("one_off")} />
+                  <OptionPill
+                    icon="person-outline"
+                    label="Book a 1-1"
+                    hint={`Monday to Thursday, 12–1pm or 1–2pm · ${priceLine("one_to_one", oneToOnePrice)}`}
+                    onPress={() => {
+                      setService("one_to_one");
+                      setMode("one_off");
+                    }}
+                  />
+                  <OptionPill
+                    icon="add-circle-outline"
+                    label="Book an extra Full Day"
+                    hint={`A one-off day · ${priceLine("full_day", member)}`}
+                    onPress={() => {
+                      setService("full_day");
+                      setMode("one_off");
+                    }}
+                  />
                   <OptionPill icon="calendar-outline" label="Add a regular day" hint="Every week, or every other week" onPress={() => setMode("add_regular")} />
                 </>
               )}
@@ -457,28 +503,28 @@ export function SessionSheet({
                 ]}
               />
               <Text style={{ color: colors.foreground, fontSize: 15, fontWeight: "700", marginTop: 14 }}>
-                {service === "full_day" ? `Full Day ${priceLine("full_day", member)}` : `1-1 ${priceLine("one_to_one", member)}`}
+                {service === "full_day" ? `Full Day ${priceLine("full_day", member)}` : `1-1 ${priceLine("one_to_one", oneToOnePrice)}`}
               </Text>
-              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>We&apos;ll take this by Direct Debit once we&apos;ve confirmed your session.</Text>
-              {service === "one_to_one" && (
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
+                {service === "full_day"
+                  ? "We'll take this by Direct Debit once we've confirmed your session."
+                  : "Pick a free time and it's booked straight away. We take it by Direct Debit."}
+              </Text>
+              {service === "one_to_one" ? (
                 <>
-                  <Label>Time of day</Label>
-                  <Toggle
-                    value={part}
-                    onChange={setPart}
-                    options={[
-                      { value: "morning", label: "Morning" },
-                      { value: "afternoon", label: "Afternoon" },
-                    ]}
-                  />
+                  <Label>Free times</Label>
+                  <SlotPicker slots={slots} selected={slot} onPick={setSlot} />
+                </>
+              ) : (
+                <>
+                  <Label>Day</Label>
+                  <DateGrid availability={availability} selected={date} onChange={setDate} after={today} />
                 </>
               )}
-              <Label>Day</Label>
-              <DateGrid availability={availability} selected={date} onChange={setDate} after={today} allowFull={service === "one_to_one"} />
               <Label>Anything to tell us? (optional)</Label>
               <Note value={note} onChange={setNote} placeholder="e.g. What you'd like to work on" />
               <View style={{ marginTop: 20 }}>
-                <PrimaryButton title="Send request" onPress={submitOneOff} loading={busy} />
+                <PrimaryButton title={service === "one_to_one" ? (slot ? `Book ${shortDate(slot.date)}, ${ONE_TO_ONE_SLOTS.find((s) => s.time === slot.time)?.label}` : "Book 1-1") : "Send request"} onPress={submitOneOff} loading={busy} />
               </View>
             </View>
           )}
@@ -566,5 +612,41 @@ export function SessionSheet({
         </ScrollView>
       </View>
     </Modal>
+  );
+}
+
+/** The free 1-1 slots, a row per date (Monday to Thursday, the next 6 weeks), each free time a chip. */
+function SlotPicker({ slots, selected, onPick }: { slots: Record<string, SlotTime[]> | null; selected: { date: string; time: SlotTime } | null; onPick: (s: { date: string; time: SlotTime }) => void }) {
+  if (!slots) return <ActivityIndicator color={colors.muted} style={{ alignSelf: "flex-start" }} />;
+  const dates = Object.keys(slots).sort();
+  if (dates.length === 0) return <Text style={{ color: colors.muted, fontSize: 14 }}>No free 1-1 times in the next six weeks. Message us and we&apos;ll find one.</Text>;
+  return (
+    <View style={{ gap: 8 }}>
+      {dates.map((d) => (
+        <View key={d} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={{ width: 92, color: colors.foreground, fontSize: 14, fontWeight: "600" }}>{shortDate(d)}</Text>
+          {ONE_TO_ONE_SLOTS.map((s) => {
+            const free = slots[d].includes(s.time);
+            const on = selected?.date === d && selected.time === s.time;
+            return (
+              <Pressable
+                key={s.time}
+                disabled={!free}
+                onPress={() => {
+                  hapticSelection();
+                  onPick({ date: d, time: s.time });
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on, disabled: !free }}
+                accessibilityLabel={`${shortDate(d)}, ${s.label}${free ? "" : ", taken"}`}
+                style={{ flex: 1, minHeight: 40, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: on ? colors.foreground : "rgba(245,245,242,0.06)", opacity: free ? 1 : 0.3 }}
+              >
+                <Text style={{ color: on ? colors.background : colors.foreground, fontSize: 13, fontWeight: "700" }}>{free ? s.label : "Taken"}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
   );
 }

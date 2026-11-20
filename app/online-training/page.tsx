@@ -5,12 +5,11 @@ import { Reviews } from "@/components/Reviews";
 import { Marquee } from "@/components/ui/Marquee";
 import { ContentSection } from "@/components/ContentSection";
 import { media } from "@/config/media";
-import { onlineTrainingPage } from "@/config/site";
+import { onlineTrainingPage, priceText } from "@/config/site";
 
 export const metadata: Metadata = {
   title: "Online Training",
-  description:
-    "Online dog training from Nelly & Nova — £25 a week. We learn your dog and your goal, teach you the communication, lead handling, socialisation and management skills to get there, and you can message us any time.",
+  description: `Online dog training from Nelly & Nova, ${priceText.online} a week. Custom weekly homework written by our trainers, an end-of-week review, and messages answered within 12 hours in our app. Cancel any time.`,
 };
 
 export default function OnlineTrainingPage() {

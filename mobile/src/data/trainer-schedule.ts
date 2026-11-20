@@ -47,19 +47,24 @@ export function dayIndex(iso: string): number {
   return toDate(iso).getUTCDay();
 }
 
+/**
+ * A training day: Monday to Thursday (Full Day Training and 1-1s). Fridays
+ * and weekends are off; anything already on a Friday still shows on the
+ * calendar, it just can't be added to.
+ */
 export function isWeekday(iso: string): boolean {
   const i = dayIndex(iso);
-  return i >= 1 && i <= 5;
+  return i >= 1 && i <= 4;
 }
 
-/** The date itself on a weekday, else the Monday after. */
+/** The date itself on a training day, else the next one. */
 export function nextWeekday(iso: string): string {
   let d = iso;
   while (!isWeekday(d)) d = addDays(d, 1);
   return d;
 }
 
-/** "monday" for a weekday date, null at the weekend. */
+/** "monday" for a training day (Monday to Thursday), null on a Friday or at the weekend. */
 export function weekdayOf(iso: string): Weekday | null {
   return isWeekday(iso) ? (WEEKDAY_NAMES[dayIndex(iso)] as Weekday) : null;
 }
@@ -300,7 +305,7 @@ export async function addOneOffDay(date: string, target: BookingTarget): Promise
 /** A regular place on this date's weekday, from this date. Returns the place's id. */
 export async function addRegularPlace(date: string, cadence: "weekly" | "alternating", target: BookingTarget): Promise<string> {
   const day = weekdayOf(date);
-  if (!day) throw new Error("Full Day Training runs Monday to Friday.");
+  if (!day) throw new Error("Full Day Training runs Monday to Thursday.");
   const { data, error } = await supabase
     .from("placements")
     .insert({ day, cadence, start_on: date, ...targetColumns(target), created_by: await myId() })
@@ -462,7 +467,7 @@ export async function startOnboarding(enquiryId: string, place?: { day: Weekday;
  */
 export async function sendOnboarding(enquiryId: string, date: string, cadence: "weekly" | "alternating"): Promise<OnboardingResult> {
   const day = weekdayOf(date);
-  if (!day) throw new Error("Full Day Training runs Monday to Friday.");
+  if (!day) throw new Error("Full Day Training runs Monday to Thursday.");
   return startOnboarding(enquiryId, { day, cadence, startOn: date });
 }
 

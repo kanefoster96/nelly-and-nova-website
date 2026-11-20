@@ -3,6 +3,10 @@
  * Options, copy and pricing live here so the form and the email stay in sync.
  * Structured to slot into a future chat / notification system without changes.
  */
+import { onlineTrainingWeekly, priceText, schedule, sessionPrices } from "./site";
+
+/** Pence → whole pounds, for the `base` prices below. */
+const gbp = (pence: number) => pence / 100;
 
 export type BookingTypeOption = {
   value: string;
@@ -38,8 +42,8 @@ export const booking = {
       desc: "We collect, train & drop off",
       icon: "paw",
       bookingTypes: [
-        { value: "weekly", label: "Weekly Membership", desc: "Same day every week", base: 60, unit: "week" },
-        { value: "one-off", label: "One Off", desc: "A single day, no membership", base: 80, unit: "day" },
+        { value: "weekly", label: "Weekly Membership", desc: "Same day every week", base: gbp(sessionPrices.fullDayMember), unit: "week" },
+        { value: "one-off", label: "One Off", desc: "A single day, no membership", base: gbp(sessionPrices.fullDay), unit: "day" },
       ],
     },
     {
@@ -48,16 +52,16 @@ export const booking = {
       desc: "In-person training",
       icon: "handshake",
       bookingTypes: [
-        { value: "session", label: "1-1 Session", desc: "One hour with you and your dog", base: 90, unit: "session" },
+        { value: "session", label: "1-1 Session", desc: "One hour with you and your dog", base: gbp(sessionPrices.oneToOneMember), unit: "session" },
       ],
     },
     {
       value: "online-training",
       label: "Online Training",
-      desc: "Videos, feedback and 24/7 help",
+      desc: "Custom weekly homework, replies within 12 hours",
       icon: "handshake",
       bookingTypes: [
-        { value: "weekly", label: "Weekly", desc: "Cancel any time", base: 25, unit: "week" },
+        { value: "weekly", label: "Weekly", desc: "Cancel any time", base: gbp(onlineTrainingWeekly), unit: "week" },
       ],
     },
   ] as ServiceOption[],
@@ -136,9 +140,9 @@ export type MeetGreetChoice = { value: string; label: string; desc: string; icon
 export const meetGreet = {
   /** Step 2 — what they're interested in. */
   services: [
-    { value: "full-day-training", label: "Full Day Training", desc: "We collect, train all day and drop off — starts with a free meet & greet", icon: "paw" },
-    { value: "one-to-one", label: "1-1 Training", desc: "An hour with you and your dog", icon: "handshake" },
-    { value: "online-training", label: "Online Training", desc: "We teach you the skills, you message us any time — £25 a week" },
+    { value: "full-day-training", label: "Full Day Training", desc: `We collect, train all day and drop off, ${schedule.days}. Starts with a free meet & greet`, icon: "paw" },
+    { value: "one-to-one", label: "1-1 Training", desc: `Book a 1-1 slot: an hour with you and your dog, ${schedule.days}, ${schedule.oneToOneSlots.join(" or ")}`, icon: "handshake" },
+    { value: "online-training", label: "Online Training", desc: `Custom weekly homework and a reply within 12 hours. ${priceText.online} a week` },
     { value: "not-sure", label: "Not sure yet", desc: "We'll chat and help you choose" },
   ] as MeetGreetChoice[],
 
@@ -218,12 +222,12 @@ export function requestNextSteps(service: string, dog: string): { kicker: string
     case "one-to-one":
       return {
         kicker: "1-1 Training",
-        body: `We'll read through everything you've told us about ${dog} and get in touch to chat about what you'd like to work on and book your 1-1 session.`,
+        body: `We'll read through everything you've told us about ${dog} and get in touch to chat about what you'd like to work on and confirm your 1-1 slot (${schedule.days}, ${schedule.oneToOneSlots.join(" or ")}).`,
       };
     case "online-training":
       return {
         kicker: "Online Training",
-        body: `We'll read through everything you've told us about ${dog} and get in touch for a quick, free chat to get you started with Online Training.`,
+        body: `We'll read through everything you've told us about ${dog} and get in touch for a quick, free chat to find the main things you'd like help with. Then we'll get you started with your first week of custom homework in the Nelly & Nova app.`,
       };
     default:
       return {

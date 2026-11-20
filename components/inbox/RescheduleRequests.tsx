@@ -45,9 +45,10 @@ function addDays(iso: string, n: number): string {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+/** A training day: Monday to Thursday. */
 function isWeekday(iso: string): boolean {
   const d = new Date(`${iso}T12:00:00Z`).getUTCDay();
-  return d >= 1 && d <= 5;
+  return d >= 1 && d <= 4;
 }
 
 /**
@@ -190,7 +191,7 @@ function OpenRequest({
     const picked = dates.filter(Boolean);
     if (decision === "suggest") {
       if (picked.length === 0) return onError("Pick at least one date to suggest.");
-      if (picked.some((d) => !isWeekday(d))) return onError("Suggest weekdays only (Monday to Friday).");
+      if (picked.some((d) => !isWeekday(d))) return onError("Suggest days from Monday to Thursday.");
     }
     setBusy(true);
     try {
@@ -297,7 +298,7 @@ function RecentRequest({ request: r, onDone, onError }: { request: SessionReques
   const canMove = r.status === "confirmed" && !!r.resultBookingId && !!r.confirmedDate && r.confirmedDate >= londonToday();
 
   async function move() {
-    if (!to || !isWeekday(to)) return onError("Pick a weekday to move it to.");
+    if (!to || !isWeekday(to)) return onError("Pick a day from Monday to Thursday to move it to.");
     setBusy(true);
     try {
       await moveSession({ dogId: r.dogId, from: r.confirmedDate!, to, bookingId: r.resultBookingId });
@@ -348,7 +349,7 @@ function UnpaidRow({ session: s, onDone, onError }: { session: UnpaidSession; on
   useEffect(() => {
     if (!s.accountId) return;
     let live = true;
-    hasMembership(s.accountId).then((m) => {
+    hasMembership(s.accountId, s.kind).then((m) => {
       if (!live) return;
       setMember(m);
       setAmount((prev) => prev || ((s.amountPence ?? defaultSessionPrice(s.kind, m)) / 100).toFixed(2).replace(/\.00$/, ""));

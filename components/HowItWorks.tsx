@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { stepIcons } from "./ui/Icons";
+import { SectionHeading } from "./ui/SectionHeading";
 import { howItWorks } from "@/config/site";
 import { media } from "@/config/media";
 
@@ -67,9 +68,8 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-ink py-20 sm:py-32">
       <div className="mx-auto max-w-xl px-4 sm:px-6">
-        <h2 className="sr-only">
-          {howItWorks.heading}
-        </h2>
+        {/* The Full Day Training journey: the eyebrow makes that clear. */}
+        <SectionHeading align="center" eyebrow={howItWorks.eyebrow} lines={[howItWorks.heading]} />
 
         <div className="relative mt-12">
           {/* Travelling marker — moved only via transform, so it never affects layout */}

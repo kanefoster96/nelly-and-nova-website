@@ -1,6 +1,8 @@
 import { Reveal } from "./Reveal";
 
 type SectionHeadingProps = {
+  /** id on the heading itself, for aria-labelledby. */
+  id?: string;
   eyebrow?: string;
   /** Each string renders on its own line (for stacked display titles). */
   lines: string[];
@@ -17,6 +19,7 @@ const sizes = {
 };
 
 export function SectionHeading({
+  id,
   eyebrow,
   lines,
   as = "h2",
@@ -32,7 +35,7 @@ export function SectionHeading({
           {eyebrow}
         </p>
       )}
-      <Tag className={`display-heading text-paper ${sizes[size]}`}>
+      <Tag id={id} className={`display-heading text-paper ${sizes[size]}`}>
         {lines.map((line) => (
           <span key={line} className="block">
             {line}

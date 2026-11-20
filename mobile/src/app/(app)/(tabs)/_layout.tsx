@@ -7,7 +7,8 @@ import { useAuth } from "@/auth/AuthProvider";
 import { ChatBadge } from "@/components/chat/chat-badge";
 import { FloatingBar, type BarTab } from "@/components/floating-bar";
 import { TopBar } from "@/components/top-bar";
-import { countPendingRequests, countUnpaid } from "@/data/sessions";
+import { getMyMemberships, isOnlineOnly } from "@/data/memberships";
+import { countPendingRequests, countRefundsOwed, countUnpaid } from "@/data/sessions";
 import { FloatingBarProvider } from "@/lib/floating-bar";
 import { colors } from "@/theme";
 
@@ -20,7 +21,11 @@ function TabIcon({ name, focused, color }: { name: IoniconName; focused: boolean
 type TabKey = "community" | "dog" | "homework" | "schedule" | "chat" | "today" | "registers" | "menu";
 type TabDef = { key: TabKey; label: string; icon: IoniconName };
 
-/** Owners: Profile sits on the right, where Kanvas has the Class Pass. */
+/**
+ * Owners: Profile sits on the right, where Kanvas has the Class Pass.
+ * Online-only members (Online Training, no Full Day or 1-1 membership and
+ * nothing booked) have no Schedule: Community, Homework, Chat, Profile.
+ */
 const MEMBER_TABS: TabDef[] = [
   { key: "community", label: "Community", icon: "home" },
   { key: "homework", label: "Homework", icon: "school" },
@@ -32,7 +37,7 @@ const MEMBER_TABS: TabDef[] = [
 /**
  * A trainer's tabs mirror the Kanvas coach's (Home, Registers, Chat, Menu),
  * with Today second: the day's dogs, pick-ups and drop-offs, and its
- * register. Week (the "registers" screen) is Monday to Friday. The Homework
+ * register. Week (the "registers" screen) is Monday to Thursday. The Homework
  * library moved into Menu, with the Calendar, Onboarding and Profile.
  */
 const TRAINER_TABS: TabDef[] = [
@@ -75,19 +80,32 @@ function Badge({ count }: { count: number }) {
 export default function TabsLayout() {
   const router = useRouter();
   const { isTrainer } = useAuth();
-  const TABS = isTrainer ? TRAINER_TABS : MEMBER_TABS;
   const segments = useSegments() as string[];
   // ["(app)", "(tabs)", "schedule"]
   const shownKey = segments[2] ?? "community";
   const activeKey = shownKey;
+
+  // Owners: hide Schedule for online-only members, checked again as they move between tabs.
+  const [onlineOnly, setOnlineOnly] = useState(false);
+  useEffect(() => {
+    if (isTrainer) return;
+    let live = true;
+    getMyMemberships()
+      .then((m) => live && setOnlineOnly(isOnlineOnly(m)))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [isTrainer, shownKey]);
+  const TABS = isTrainer ? TRAINER_TABS : onlineOnly ? MEMBER_TABS.filter((t) => t.key !== "schedule") : MEMBER_TABS;
 
   // Trainers: requests waiting for them (and unpaid sessions) on Menu, refreshed as they move between tabs.
   const [menuCount, setMenuCount] = useState(0);
   useEffect(() => {
     if (!isTrainer) return;
     let live = true;
-    Promise.all([countPendingRequests(), countUnpaid()])
-      .then(([a, b]) => live && setMenuCount(a + b))
+    Promise.all([countPendingRequests(), countUnpaid(), countRefundsOwed()])
+      .then(([a, b, c]) => live && setMenuCount(a + b + c))
       .catch(() => undefined);
     return () => {
       live = false;

@@ -13,6 +13,11 @@ const WEBSITE_FOR_APP: [prefix: string, website: string][] = [
   ["/profile", "/profile"],
   // The owner's Profile tab in the app (pick-up and drop-off notices).
   ["/dog", "/profile"],
+  // Online Training's weekly check-in form (app only), and the trainer's Online board.
+  ["/checkin", "/messages"],
+  ["/online", "/admin"],
+  // A trainer's day (a new 1-1 booked in a free slot).
+  ["/day", "/admin/schedule"],
 ];
 
 export function websiteHref(actionHref: string | null | undefined): string | undefined {

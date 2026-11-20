@@ -2,8 +2,10 @@ import { supabase } from "@/lib/supabase";
 
 /**
  * Cards in chat: a line the system writes (a session request, a
- * cancellation, a day of homework, a report card) carries `kind` and `meta`
- * (supabase/migrations/20261104120000_chat_cards.sql in the website repo),
+ * cancellation, a day of homework, a report card, a membership starting, an
+ * online member's weekly check-in) carries `kind` and `meta`
+ * (supabase/migrations/20261104120000_chat_cards.sql and
+ * 20261120000000_memberships_online.sql in the website repo),
  * and the thread shows it as a card with buttons rather than plain text.
  * A message without a kind, or with one this version doesn't know, shows
  * its body as before.
@@ -28,7 +30,17 @@ export type ChatCard =
     }
   | { kind: "cancellation"; dog: string | null; count: number; when: string; from: string | null; to: string | null; reason: string | null }
   | { kind: "homework_day"; cardId: string; title: string; day: number; of: number; note: string | null; video: boolean; dog: string | null }
-  | { kind: "report_card"; cardId: string; dogId: string | null; dog: string | null; date: string | null; title: string; homework: number };
+  | { kind: "report_card"; cardId: string; dogId: string | null; dog: string | null; date: string | null; title: string; homework: number }
+  | { kind: "membership"; service: "full_day" | "one_to_one" | "online"; dog: string | null; dogId: string | null; schedule: string; refundPence: number }
+  | {
+      kind: "checkin";
+      dog: string | null;
+      dogId: string | null;
+      overall: "great" | "ok" | "tough" | null;
+      drills: { name: string; rating: "great" | "ok" | "struggled" }[];
+      note: string | null;
+      video: boolean;
+    };
 
 type Meta = Record<string, unknown>;
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
@@ -67,6 +79,21 @@ export function toCard(kind: unknown, meta: unknown): ChatCard | undefined {
     const cardId = str(m.card_id);
     if (!cardId) return undefined;
     return { kind, cardId, dogId: str(m.dog_id), dog: str(m.dog), date: str(m.date), title: str(m.title) ?? "Training session", homework: num(m.homework) };
+  }
+  if (kind === "membership") {
+    const service = m.service === "one_to_one" || m.service === "online" ? m.service : "full_day";
+    return { kind, service, dog: str(m.dog), dogId: str(m.dog_id), schedule: str(m.schedule) ?? "", refundPence: num(m.refund_pence) };
+  }
+  if (kind === "checkin") {
+    const overall = m.overall === "great" || m.overall === "ok" || m.overall === "tough" ? m.overall : null;
+    const drills = Array.isArray(m.drills)
+      ? (m.drills as Meta[]).flatMap((d) =>
+          d && typeof d === "object" && str(d.name) && (d.rating === "great" || d.rating === "ok" || d.rating === "struggled")
+            ? [{ name: str(d.name)!, rating: d.rating as "great" | "ok" | "struggled" }]
+            : [],
+        )
+      : [];
+    return { kind, dog: str(m.dog), dogId: str(m.dog_id), overall, drills, note: str(m.note), video: m.video === true };
   }
   return undefined;
 }

@@ -109,12 +109,16 @@ export function OnboardingChecklist({ onChanged }: { onChanged?: () => void }) {
   const allRegistered = dogs.length > 0 && dogs.every((d) => d.registered);
   const day = trainingDayLabel(e.trainingDay, e.trainingCadence);
   const isDayTraining = !e.service || e.service === "Full Day Training";
-  if (met && ddDone && allRegistered && day) return null;
+  // Online Training and 1-1s have no regular training day to confirm.
+  const isOnline = /online/i.test(e.service ?? "");
+  const isOneToOne = !isDayTraining && !isOnline;
+  const noDay = isOnline || isOneToOne;
+  if (met && ddDone && allRegistered && (day || noDay)) return null;
 
   const when = e.meetGreetAt
     ? new Date(e.meetGreetAt).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })
     : null;
-  const doneCount = [met, ddDone, true, allRegistered, !!day].filter(Boolean).length;
+  const doneCount = [met, ddDone, true, allRegistered, !!day || (noDay && met)].filter(Boolean).length;
 
   const steps: { key: string; title: string; body: string; state: StepState; action?: ReactNode }[] = [
     {
@@ -183,7 +187,21 @@ export function OnboardingChecklist({ onChanged }: { onChanged?: () => void }) {
         </View>
       ),
     },
-    {
+    isOnline
+      ? {
+          key: "day",
+          title: "Your weekly homework",
+          body: `Each week your homework for ${dogLabel} arrives in the Homework tab, and on Sunday evenings we'll ask how it went. Message us any time — we reply within 12 hours.`,
+          state: met ? "done" : "waiting",
+        }
+      : isOneToOne
+        ? {
+            key: "day",
+            title: "Your 1-1s",
+            body: "Book a 1-1 from your Profile: Monday to Thursday, 12–1pm or 1–2pm. £120, or £90 for members.",
+            state: met ? "done" : "waiting",
+          }
+        : {
       key: "day",
       title: day ? `Training day confirmed: ${day}` : "Your training day",
       body: day
@@ -192,7 +210,7 @@ export function OnboardingChecklist({ onChanged }: { onChanged?: () => void }) {
           : "We'll see you then."
         : `We'll confirm ${dogLabel}'s day with you once everything above is done.`,
       state: day ? "done" : "waiting",
-    },
+          },
   ];
 
   return (

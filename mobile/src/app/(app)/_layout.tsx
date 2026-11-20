@@ -31,6 +31,8 @@ export default function AppLayout() {
       <Stack.Screen name="my-dogs/[id]" />
       <Stack.Screen name="my-dogs/new" />
       <Stack.Screen name="homework-detail/[id]" />
+      {/* Online Training's weekly check-in. */}
+      <Stack.Screen name="checkin" />
       {/* Trainer pages: the Calendar, a day on it, adding a dog to a day, a dog, a report card, and Menu's pages. */}
       <Stack.Screen name="calendar" />
       <Stack.Screen name="day/[date]" />
@@ -44,6 +46,10 @@ export default function AppLayout() {
       <Stack.Screen name="team" />
       <Stack.Screen name="guidelines" />
       <Stack.Screen name="send-notification" />
+      {/* Memberships: starting one, and the Online board with its weekly homework. */}
+      <Stack.Screen name="start-membership" />
+      <Stack.Screen name="online" />
+      <Stack.Screen name="online-week/[dogId]" />
       <Stack.Screen name="delete-account" />
     </Stack>
   );

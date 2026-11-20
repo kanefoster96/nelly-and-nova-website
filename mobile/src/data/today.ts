@@ -23,6 +23,8 @@ export type TodayDog = {
   request: SessionRequest | null;
   /** A 1-1's length, in minutes. */
   durationMin: number | null;
+  /** A 1-1 membership's session (rather than a one-off). */
+  membership: boolean;
 };
 
 /** A meet & greet: where it is and their number (from the request). */
@@ -65,7 +67,8 @@ export async function getToday(date: string): Promise<TodayData> {
   const ownerById = new Map(
     ((owners.data ?? []) as { id: string; owner_name: string | null; phone: string | null; pickup_address: string | null; address: string | null; city: string | null; postcode: string | null }[]).map((p) => [p.id, p]),
   );
-  const bookingRows = (bookings.data ?? []) as { id: string; payment_status: string | null; duration_min?: number | null }[];
+  const bookingRows = (bookings.data ?? []) as { id: string; payment_status: string | null; duration_min?: number | null; placement_id?: string | null }[];
+  const fromMembership = new Set(bookingRows.filter((b) => b.placement_id).map((b) => b.id));
   const unpaid = new Set(bookingRows.filter((b) => b.payment_status === "unpaid" || b.payment_status === "failed").map((b) => b.id));
   const minutes = new Map(bookingRows.map((b) => [b.id, b.duration_min ?? null]));
   const meetById = new Map(((meets.data ?? []) as Record<string, unknown>[]).map((m) => [String(m.id), m]));
@@ -84,6 +87,7 @@ export async function getToday(date: string): Promise<TodayData> {
       unpaid: unpaid.has(e.refId),
       request: (e.dogId && requests.find((r) => r.dogId === e.dogId)) || null,
       durationMin: minutes.get(e.refId) ?? null,
+      membership: fromMembership.has(e.refId),
     };
   };
 

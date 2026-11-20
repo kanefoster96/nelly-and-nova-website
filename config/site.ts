@@ -13,19 +13,57 @@ export const CONTACT_HREF = "/contact";
 /**
  * What a one-off session costs, in pence: the default amount on a trainer's
  * "Charge" button (app/api/sessions/charge) and the price an owner sees when
- * asking for one. Members (a Full Day membership: a current regular place and
- * a Direct Debit) pay £60 for a Full Day and £90 for a 1-1; everyone else
- * pays £85 for a one-off Full Day and £120 for a 1-1. Mirrored in
- * mobile/src/lib/config.ts. Worked out by defaultSessionPrice() in
+ * booking one. A Full Day is £60 with a Full Day membership, else £85. A 1-1
+ * is £90 with any membership (Full Day, 1-1 or Online), else £120. A
+ * membership is a current place (placements.service) and a Direct Debit:
+ * nn_has_membership(account, kind). Mirrored in mobile/src/lib/config.ts and
+ * nn_session_price() in the database. Worked out by defaultSessionPrice() in
  * lib/sessions/prices.ts.
  */
 export const sessionPrices = { fullDay: 8500, fullDayMember: 6000, oneToOne: 12000, oneToOneMember: 9000 } as const;
+
+/**
+ * Online Training's weekly fee, in pence. Kept apart from sessionPrices
+ * (which drives the trainers' Charge button) because it isn't a session.
+ */
+export const onlineTrainingWeekly = 2500;
+
+/** Pence → "£60" (or "£60.50" when there are pennies). For the website's copy. */
+export function pounds(pence: number): string {
+  return `£${pence % 100 === 0 ? pence / 100 : (pence / 100).toFixed(2)}`;
+}
+
+/** The price strings the copy uses, all worked out from the numbers above. */
+export const priceText = {
+  fullDay: pounds(sessionPrices.fullDay),
+  fullDayMember: pounds(sessionPrices.fullDayMember),
+  oneToOne: pounds(sessionPrices.oneToOne),
+  oneToOneMember: pounds(sessionPrices.oneToOneMember),
+  /** What we refund when someone joins a 1-1 membership after their first 1-1. */
+  oneToOneJoinRefund: pounds(sessionPrices.oneToOne - sessionPrices.oneToOneMember),
+  online: pounds(onlineTrainingWeekly),
+};
+
+/** Days and places for the in-person services (as the copy describes them). */
+export const schedule = {
+  days: "Monday to Thursday",
+  fullDayDogsPerDay: 5,
+  // A word joiner after the dash keeps "1–2pm" from breaking across lines.
+  oneToOneSlots: ["12–\u20601pm", "1–\u20602pm"],
+} as const;
 
 /**
  * When Full Day Training dogs are collected and brought home (as "How it
  * works" says). Used by the evening-before reminder (lib/reminders/evening.ts).
  */
 export const fullDayTimes = { collect: "between 7:30 and 9:00am", home: "between 4:00 and 5:30pm" } as const;
+
+/** Homepage hero words (the photo and badges live in components/Hero.tsx). */
+export const hero = {
+  heading: "Happy. Healthy. Dogs.",
+  subline: "Real-world dog training through engagement and motivation. Full days, 1-1 sessions or online: choose what suits you.",
+  cta: "Find the right training",
+};
 
 /**
  * Where the app is installed from: the /app page (the link and QR code a
@@ -79,8 +117,6 @@ export const understand = {
       body: "You've heard conflicting advice, and now you're stuck in a loop.",
     },
   ] as PainPoint[],
-  footer: "Tell us what you'd like help with, and we will show you exactly how to get there.",
-  cta: "Contact Us",
 };
 
 export type NavLink = { label: string; href: string };
@@ -105,79 +141,109 @@ export const areas: string[] = [
   "Cramlington",
 ];
 
-/** "What we do" — tabbed services. */
+/** "Three ways we can help": the three services, as equal choices. */
 export type ServiceTab = {
   id: string;
   label: string;
+  /** Small spaced-out label above the title on the photo. */
   subtitle: string;
-  /** A line or two on the card. */
+  /** A line or two on the photo. */
   description: string;
   /** Card photo. */
   image: string;
+  /** Who it suits. */
+  bestFor: string;
+  /** How much time it asks of the owner. */
+  time: string;
+  /** What you get: 3–4 short points. */
   points: string[];
+  /** The headline price, e.g. { amount: "£60", unit: "a week", note: "as a member, or £85 one-off" }. */
+  price: { amount: string; unit: string; note: string };
   cta: string;
-  ctaHref: string;
-  /** Optional dedicated page for this service. */
-  pageHref?: string;
+  /** The service's own page. */
+  pageHref: string;
 };
 
+const days = schedule.days;
+
 export const services = {
-  heading: "What we do.",
+  eyebrow: "Our Training",
+  heading: "Three ways we can help.",
+  lead: "Every dog and every owner is different, so there's more than one way to get there. Choose the one that suits you best.",
   tabs: [
     {
       id: "walk-train",
-      label: "Full Day Training.",
-      subtitle: "We collect, train and drop off.",
-      description:
-        "We collect your dog, train them out in the real world all day and bring them home — with a report card and homework for you.",
+      label: "Full Day Training",
+      subtitle: "We train, you learn as you go",
+      description: "We collect your dog, train them out in the real world all day and bring them home.",
       image: media.walkTrain.hero,
+      bestFor: "Busy owners who'd like us to do the groundwork, and dogs who need real-world practice around other dogs, people and places.",
+      time: "Very little. A 5-minute handover at drop-off, then short homework until the next session.",
       points: [
-        "We collect and drop them off from your home",
-        "We build confidence through structured, positive experiences.",
-        "We work around other dogs, people and locations so your training holds up everywhere",
-        "You get report cards with homework to continue the training at home",
+        "Collection from home and a full day of real-world training",
+        "A 5-minute handover at every drop-off explaining your homework",
+        "“On our way” updates, photos from the day and a report card in the app",
+        `${days}, with only ${schedule.fullDayDogsPerDay} dogs a day`,
       ],
-      cta: "Book a Free Meet & Greet",
-      ctaHref: `${BOOKING_HREF}?service=full-day-training`,
+      price: { amount: priceText.fullDayMember, unit: "a week", note: `as a member, or ${priceText.fullDay} for a one-off day` },
+      cta: "Explore Full Day Training",
       pageHref: "/full-day-training",
     },
     {
       id: "one-to-one",
-      label: "1-1 Training.",
-      subtitle: "Learn how to train your dog.",
-      description:
-        "An hour with you and your dog, built around your goals — so you leave knowing exactly how to train them.",
+      label: "1-1 Training",
+      subtitle: "One focused, hands-on hour",
+      description: "We find the main issues, explain the solutions and change how you handle your dog, so you see results in the hour.",
       image: media.oneToOne.hero,
+      bestFor: "Owners who want to learn hands-on and get to the bottom of a specific problem quickly.",
+      time: "One hour with us, then practising what we covered. Weekly or every other week if you'd like to keep going.",
       points: [
-        "1 hour of training with you and your dog tailored to your goals",
-        "We look at dog and handler skillsets so you feel confident training",
-        'We cover general obedience explaining the "why" behind everything we teach',
-        "Report card sent out after each session, so you can remember exactly what we covered",
+        "An hour of hands-on training with you and your dog",
+        "We pinpoint the main issues and show you how to fix them",
+        "A written report and review of the session in the app",
+        `${days}, ${schedule.oneToOneSlots.join(" or ")}`,
       ],
-      cta: "Book a Session",
-      ctaHref: `${BOOKING_HREF}?service=one-to-one`,
+      price: { amount: priceText.oneToOne, unit: "a session", note: `or ${priceText.oneToOneMember} for members` },
+      cta: "Explore 1-1 Training",
       pageHref: "/one-to-one",
     },
     {
       id: "online-training",
-      label: "Online Training.",
-      subtitle: "Train at home, with us beside you.",
-      description:
-        "£25 a week: we learn your goal, teach you the skills to get there, review your training videos, and you can message us any time — wherever you are.",
+      label: "Online Training",
+      subtitle: "Expert guidance, at your pace",
+      description: "Custom homework from our trainers every week, an end-of-week review, and a reply to every message within 12 hours.",
       image: media.oneToOne.consultation,
+      bestFor: "Owners who are happy to practise at home and want expert guidance that fits around their week, wherever they live.",
+      time: "Low. Short homework when it suits you, and an optional quick check-in at the end of the week.",
       points: [
-        "We learn all about your dog and set your end goal together",
-        "We teach you our communication system, lead handling, socialisation and management skills",
-        "Send us videos of your training and we'll review them",
-        "Constant access to us for help and advice, in the app and on WhatsApp",
+        "Custom weekly homework written by our trainers, never automated",
+        "An optional weekly check-in, with videos only if you want to",
+        "An end-of-week review and your next steps",
+        "Message us any time, with a reply guaranteed within 12 hours",
       ],
-      cta: "Get started",
-      ctaHref: `${BOOKING_HREF}?service=online-training`,
+      price: { amount: priceText.online, unit: "a week", note: "Cancel any time, no limit on places" },
+      cta: "Explore Online Training",
       pageHref: "/online-training",
     },
   ] as ServiceTab[],
+  /** Side-by-side comparison (a stacked list on phones). One value per service, in `tabs` order. */
+  compare: {
+    heading: "At a glance.",
+    rows: [
+      { label: "Price", values: [`${priceText.fullDay} a day`, `${priceText.oneToOne} a session`, `${priceText.online} a week`] },
+      { label: "Members", values: [`${priceText.fullDayMember} a week`, `${priceText.oneToOneMember} a session`, `${priceText.online} a week`] },
+      { label: "Who trains", values: ["We do, then show you how", "You do, with us beside you", "You do, guided by us"] },
+      { label: "Time from you", values: ["A 5-minute handover and homework", "One hour, then practice", "Homework at your own pace"] },
+      { label: "When", values: [`${days}`, `${days}, afternoons`, "Whenever suits you"] },
+      { label: "Starts with", values: ["A free meet & greet", "Booking a 1-1 slot", "A quick request form"] },
+    ],
+  },
+  membership: `You can join any of the three as a member. Members pay ${priceText.fullDayMember} for a Full Day and ${priceText.oneToOneMember} for a 1-1.`,
+  cta: "Find the right training",
+  ctaHref: BOOKING_HREF,
   areaCta: "Check if we cover your area",
-  areaHref: "#areas",
+  /** The request form checks the postcode. */
+  areaHref: BOOKING_HREF,
 };
 
 /**
@@ -237,8 +303,9 @@ export const walkTrainPage = {
     titleLines: ["Full Day Training."],
     paragraphs: [
       "Our Full Day Training sessions give dogs the time and structure to build lasting skills in real-world environments. Training takes place throughout the day in different outdoor settings, helping dogs stay calm, confident, and focused no matter what's happening around them.",
-      "Your dog will take part in multiple short training sessions mixed with rest breaks, social exposure, and training around other dogs. We focus on key obedience skills such as loose lead walking, recall, and engagement, while also teaching dogs to settle and relax in public spaces.",
-      "At the end of the day, you'll receive a detailed report on what your dog worked on, how they progressed, and homework to keep their learning consistent at home.",
+      "Your dog will take part in multiple short training sessions mixed with rest breaks, social exposure, and training around other dogs. We focus on key obedience skills such as loose lead walking, recall, and engagement, while also teaching dogs to settle and relax in public spaces. We install the behaviours, so you're not starting from scratch.",
+      `We collect your dog ${fullDayTimes.collect} and bring them home ${fullDayTimes.home}. Every drop-off includes a 5-minute handover, where we explain what your dog worked on and the homework for the week. You learn how to train your dog as you go, practising the homework until the next session.`,
+      `Full Day Training runs ${schedule.days}, and we take only ${schedule.fullDayDogsPerDay} dogs a day, so places are limited. It's ${priceText.fullDayMember} a week as a member with a regular weekly place, or ${priceText.fullDay} for a one-off day.`,
       "Our goal is to help dogs return home calm, fulfilled, and better prepared for everyday life both on and off the lead.",
     ],
   },
@@ -253,8 +320,9 @@ export const walkTrainPage = {
     eyebrow: "Report Card",
     titleLines: ["Continue.", "Your.", "Training."],
     paragraphs: [
-      "Our report cards are designed to give you complete clarity and confidence in your dog's training. After each session, you'll receive a detailed breakdown of what your dog worked on, how they performed, and exactly how you can continue that progress at home.",
-      "We don't just tell you what happened, we show you how to apply it, with simple, structured homework you can follow step by step. This keeps training consistent between sessions, helps your dog improve faster, and makes sure you understand how to communicate clearly with them.",
+      "Our report cards are designed to give you complete clarity and confidence in your dog's training. After each session, you'll find a detailed breakdown in the Nelly & Nova app of what your dog worked on, how they performed, and exactly how you can continue that progress at home.",
+      "We don't just tell you what happened, we show you how to apply it. The 5-minute handover at drop-off walks you through it, and the simple, structured homework in the app means you can follow it step by step. This keeps training consistent between sessions, helps your dog improve faster, and makes sure you understand how to communicate clearly with them.",
+      "The app keeps you close to the day too, with “On our way” updates, photos from the day, your report cards and homework, and chat with our trainers.",
       "Over time, these reports build into a clear journey of progress, so you can see exactly how far your dog has come and what to focus on next.",
     ],
   },
@@ -432,6 +500,9 @@ export const cookies = {
   ] as { heading: string; blocks: TermsBlock[] }[],
 };
 
+/** What a Full Day member saves in a year of 48 sessions, e.g. "£1,200". */
+const fullDayYearlySaving = `£${(((sessionPrices.fullDay - sessionPrices.fullDayMember) * 48) / 100).toLocaleString("en-GB")}`;
+
 /** Holidays / planned closures page. Dates are inclusive ISO (yyyy-mm-dd). */
 export const holidays = {
   heading: "Holidays.",
@@ -443,12 +514,13 @@ export const holidays = {
     lead: "Our memberships are designed to reward commitment. Even with our four-week annual holiday allowance included, members make substantial savings while securing a guaranteed weekly space.",
     pricingHeading: "Full Day Sessions",
     pricing: [
-      { label: "Membership", value: "£60 per day" },
-      { label: "One off", value: "£85 per day" },
+      { label: "Membership", value: `${priceText.fullDayMember} per day` },
+      { label: "One off", value: `${priceText.fullDay} per day` },
     ],
+    // (one-off − member price) × 48 sessions a year (52 weeks less the four holiday weeks).
     savings: {
-      text: "This means full-day members save up to £1,200 per year based on 48 sessions per year.",
-      highlight: "members save up to £1,200 per year",
+      text: `This means full-day members save up to ${fullDayYearlySaving} per year based on 48 sessions per year.`,
+      highlight: `members save up to ${fullDayYearlySaving} per year`,
     },
     paragraphs: [
       "Memberships secure ongoing professional training support and a reserved place in our weekly schedule. Even during closure periods, members continue to receive support via chat and email for guidance, troubleshooting, and help with at home training. Members also receive discounts and offers for extra sessions with up to 50% off!",
@@ -471,14 +543,14 @@ export type TermsBlock = { p: string } | { ul: string[] };
 
 export const terms = {
   heading: "Terms & Conditions.",
-  updated: "26 Apr 2026",
+  updated: "20 Nov 2026",
   intro:
     "This website is owned and operated by Charlotte Smallwood (“we,” “our,” or “us”). These Terms set forth the conditions under which you may use our website and the services we provide. By accessing or using this website, you confirm that you have read, understood, and agree to be bound by these Terms.",
   sections: [
     {
       heading: "1. Services and Products",
       blocks: [
-        { p: "This website offers visitors the ability to purchase dog accessories such as collars and leads, and to book professional dog training services including Full Day Training, 1-1 Training, and Puppy Training." },
+        { p: "This website offers visitors the ability to purchase dog accessories such as collars and leads, and to book professional dog training services including Full Day Training, 1-1 Training, and Online Training." },
         { p: "By completing a booking or purchase, you agree that:" },
         { ul: [
           "You are responsible for reading all product or service details before placing an order or making a booking.",
@@ -500,13 +572,43 @@ export const terms = {
         { ul: [
           "Cancellations made with less than 48 hours’ notice may result in the full session fee being charged.",
           "Refunds or reschedules will be offered at our discretion, depending on notice given and trainer availability.",
+          "Sessions and weeks that have already started are not refunded.",
           "We reserve the right to cancel or reschedule sessions due to illness, extreme weather, or other safety concerns. In such cases, an alternative session will be arranged.",
           "We are entitled to 4 weeks holidays without refunding memberships due to their discounted rate. Holidays can be found [[here|/holidays]] if you'd like to check our unavailable dates.",
         ] },
       ],
     },
     {
-      heading: "4. Right to Refuse or Cancel Services",
+      heading: "4. Memberships and Member Prices",
+      blocks: [
+        { p: "You can join any of our training services as a member. Members pay the following member prices:" },
+        { ul: [
+          `Full Day Training: ${priceText.fullDayMember} per day, with a regular weekly place.`,
+          `1-1 Training: ${priceText.oneToOneMember} per session.`,
+        ] },
+        { p: `Without a membership, a one-off Full Day is ${priceText.fullDay} and a 1-1 session is ${priceText.oneToOne}.` },
+      ],
+    },
+    {
+      heading: "5. 1-1 Memberships",
+      blocks: [
+        { p: `1-1 Training can be taken as a membership, with a regular session every week or every other week, at ${priceText.oneToOneMember} per session.` },
+        { p: `If you join a 1-1 membership after your first 1-1 session, we will refund the ${priceText.oneToOneJoinRefund} difference between the full price and the member price for that session. All of your future sessions are then charged at ${priceText.oneToOneMember}.` },
+      ],
+    },
+    {
+      heading: "6. Online Training",
+      blocks: [
+        { p: `Online Training is charged at ${priceText.online} per week.` },
+        { ul: [
+          "You can message us at any time through the Nelly & Nova app, and we guarantee a reply within 12 hours.",
+          "You can cancel at any time.",
+          "Fees are not refunded for a week that has already started, or for any week where your homework has already been sent.",
+        ] },
+      ],
+    },
+    {
+      heading: "7. Right to Refuse or Cancel Services",
       blocks: [
         { p: "We reserve the right to refuse or cancel services for any reason, including but not limited to:" },
         { ul: [
@@ -518,7 +620,7 @@ export const terms = {
       ],
     },
     {
-      heading: "5. Owner Responsibilities",
+      heading: "8. Owner Responsibilities",
       blocks: [
         { p: "When using our training services, you agree to:" },
         { ul: [
@@ -530,14 +632,14 @@ export const terms = {
       ],
     },
     {
-      heading: "6. Use of Photos and Videos",
+      heading: "9. Use of Photos and Videos",
       blocks: [
         { p: "During training sessions, we may capture photos and videos of your dog for progress tracking, updates, and marketing purposes. These may be shared on our website and social media channels." },
         { p: "By booking our training services, you agree that we may use these materials for promotional purposes unless you request otherwise in writing before your session. We always ensure all media is respectful and focused on showcasing your dog’s training journey." },
       ],
     },
     {
-      heading: "7. Product Sales",
+      heading: "10. Product Sales",
       blocks: [
         { p: "All products are sold subject to availability." },
         { ul: [
@@ -548,7 +650,7 @@ export const terms = {
       ],
     },
     {
-      heading: "8. Liability Disclaimer",
+      heading: "11. Liability Disclaimer",
       blocks: [
         { p: "While we take every precaution to ensure safe and effective training, all dogs behave differently and results may vary. We cannot guarantee specific outcomes." },
         { p: "To the maximum extent permitted by law, we are not liable for any indirect, incidental, or consequential damages, including but not limited to injury, loss, or damage arising from the use of our services or products." },
@@ -556,7 +658,7 @@ export const terms = {
       ],
     },
     {
-      heading: "9. Changes to Services",
+      heading: "12. Changes to Services",
       blocks: [
         { p: "We may, without prior notice:" },
         { ul: [
@@ -568,14 +670,14 @@ export const terms = {
       ],
     },
     {
-      heading: "10. Communication",
+      heading: "13. Communication",
       blocks: [
         { p: "By using our services, you consent to receive booking confirmations, progress updates, and relevant communications about your sessions." },
         { p: "You may also receive occasional promotional emails or updates, which you can opt out of at any time by contacting us directly." },
       ],
     },
     {
-      heading: "11. Governing Law",
+      heading: "14. Governing Law",
       blocks: [
         { p: "These Terms are governed by the laws of England. Any disputes shall be handled exclusively by a court of competent jurisdiction within England." },
       ],
@@ -589,10 +691,11 @@ export const oneToOnePage = {
     eyebrow: "Learn How to Train",
     titleLines: ["1-1 Training."],
     paragraphs: [
-      "Our 1-1 training sessions are an hour long, designed to give you and your dog personalised support tailored specifically to your goals. Whether you're looking to improve heel work, recall, and engagement, or need help with specific challenges within obedience, each session is adapted to suit both you and your dog's individual needs.",
+      "Our 1-1 sessions are a focused, high-value hour with you and your dog. We find the main issues, explain the solutions, and work hands-on to change how you handle your dog, so you see results in the hour and keep getting them afterwards. Whether you're looking to improve heel work, recall, and engagement, or need help with specific challenges within obedience, each session is adapted to suit both you and your dog.",
       "As part of our approach, we also take a look at your dog's lifestyle. This includes reviewing their day-to-day routine, discussing diet, and considering any potential health factors that could be contributing to unwanted behaviours. This allows us to address the root cause, not just the symptoms.",
-      "Sessions are £120, or £90 for Full Day Training members, and can take place at a location of your choice, provided it is within our travelling radius. This allows training to happen in an environment where you feel most comfortable and where your dog can learn effectively.",
-      "Following your session, you will receive a detailed report outlining everything covered, along with clear guidance on how to continue progressing at home. To ensure ongoing support, you'll also have one month of access to your trainer via WhatsApp. During this time, you can send videos, ask questions, and receive personalised feedback to help you stay on track and achieve lasting results.",
+      `Sessions run ${schedule.days}, in two afternoon slots: ${schedule.oneToOneSlots.join(" and ")}. They're ${priceText.oneToOne}, or ${priceText.oneToOneMember} for members, and can take place at a location of your choice, provided it is within our travelling radius. This allows training to happen in an environment where you feel most comfortable and where your dog can learn effectively.`,
+      `1-1s can be a membership too, with a regular session every week or every other week at ${priceText.oneToOneMember} a session. If you decide to join after your first 1-1, we'll refund the ${priceText.oneToOneJoinRefund} difference for that day, and all your future sessions are ${priceText.oneToOneMember}.`,
+      "Following your session, you'll receive a written report and review in the Nelly & Nova app, outlining everything we covered along with clear guidance on how to keep progressing at home. To ensure ongoing support, you'll also have one month of chat with your trainer in the app, where you can send videos, ask questions, and receive personalised feedback.",
     ],
   },
   understand: {
@@ -606,16 +709,17 @@ export const oneToOnePage = {
     eyebrow: "Report Card",
     titleLines: ["Continue.", "Your.", "Training."],
     paragraphs: [
-      "After your in person 1 to 1 session, you'll receive a clear recap of everything we covered so you don't have to rely on memory or guesswork. We break down each exercise step by step, explain why we used it, and show you exactly how to practise it at home.",
+      "After your 1-1 session, you'll receive a written report and review in the app, so everything we covered is down in writing and you don't have to rely on memory or guesswork. We break down each exercise step by step, explain why we used it, and show you exactly how to practise it at home.",
       "You'll get simple, structured instructions for things like handling, timing, rewards, and corrections, so you know exactly what to do and when to do it. This turns the session into something you can repeat confidently on your own, rather than a one off lesson.",
       "The goal is that you leave not just with a better behaved dog on the day, but with the understanding and tools to continue improving long after the session ends.",
     ],
   },
   consultation: {
-    eyebrow: "Our Trainers",
-    titleLines: ["Free Consultation."],
+    eyebrow: "Getting Started",
+    titleLines: ["Book a 1-1 Slot."],
     paragraphs: [
-      "Before your 1-1 session, we offer a free consultation where we chat with you on WhatsApp to understand your dog and what you want to achieve. It is a relaxed, light conversation where you can tell us about any struggles, triggers, or how your dog is around people and different situations.",
+      `Anyone can book an open slot online, with no meet & greet needed. Choose a ${schedule.days} afternoon slot, ${schedule.oneToOneSlots.join(" or ")}, and tell us about your dog and what you'd like to achieve.`,
+      "Before your session, we'll have a relaxed, free chat with you to understand your dog: any struggles, triggers, or how they are around people and different situations, so we can make the most of your hour.",
     ],
   },
 };
@@ -626,31 +730,32 @@ export const onlineTrainingPage = {
     eyebrow: "Train From Anywhere",
     titleLines: ["Online Training."],
     paragraphs: [
-      "Online Training starts with you telling us all about your dog, and together we work out what your end goal is. Then we teach you everything you'll need to get there.",
-      "It's £25 a week, there's no travel involved, and it works wherever you live.",
+      "Online Training is our low-maintenance option. It starts with you telling us all about your dog, and we find the main things you need help with. Then, every week, our trainers write custom homework just for you and your dog. It's never automated.",
+      `It's ${priceText.online} a week, there's no travel involved, there's no limit on places, and it works wherever you live.`,
     ],
   },
   review: {
-    eyebrow: "What You'll Learn",
-    titleLines: ["Learn.", "The.", "Skills."],
+    eyebrow: "Your Weekly Homework",
+    titleLines: ["Custom.", "Weekly.", "Homework."],
     paragraphs: [
-      "We teach you our communication system, lead handling, socialisation techniques and the management skills you'll need, with regular training videos showing you exactly what to practise and how.",
-      "Film your own training and send it to us. We'll watch it back and tell you what's working, what to change and what to try next — so the small things, like timing and reward placement, don't hold you back.",
+      "Each week's homework is written by our trainers for your dog, building on how the last week went. It covers our communication system, lead handling, socialisation and the management skills you'll need, with clear steps showing you exactly what to practise and how.",
+      "There's an optional quick check-in form in the app to tell us how the homework and the week went. You're welcome to add videos, but they're never required.",
+      "At the end of each week, we review how it went and tell you what's working, what to change and what comes next, so the small things, like timing and reward placement, don't hold you back.",
     ],
   },
   support: {
     eyebrow: "Never Left Alone",
-    titleLines: ["24/7.", "Support."],
+    titleLines: ["Message.", "Us.", "Any Time."],
     paragraphs: [
-      "You're never left on your own waiting for the next scheduled call. You have constant access to us for help and advice, through live chat in the Nelly & Nova app and on WhatsApp — had a tricky walk, or not sure what to do next? Just message us.",
-      "Your videos, your progress and your chat with us all live in our app, in one place.",
+      "You're never left on your own waiting for the next scheduled call. You can message us 24 hours a day in the Nelly & Nova app, and we guarantee a reply within 12 hours. Had a tricky walk, or not sure what to do next? Just message us.",
+      "Everything happens in the app, in one place: your homework, the community feed, and chat with our trainers.",
     ],
   },
   start: {
     eyebrow: "Get Started",
     titleLines: ["Tell Us About Your Dog."],
     paragraphs: [
-      "Tell us about your dog and what you'd like to achieve, and we'll get in touch to chat about your goal and get you started. £25 per week, cancel any time.",
+      `Tell us about your dog and what you'd like to achieve, and we'll get in touch to chat about your goal and get you started. ${priceText.online} a week, cancel any time.`,
     ],
   },
 };
@@ -665,17 +770,38 @@ export const faq = {
     {
       q: "How much is dog training?",
       a: [
-        "Our Full Day Training days are £60 per week, if you sign up for a membership with a fixed slot.",
-        "We also offer one-off Full Day Training days for £85, if you'd like to book in as and when you need it without a membership.",
-        "Our 1-1 sessions are an hour of in-person training, where we work with you and your dog to improve handling skills and address specific issues you're having. These are £120 per hour, or £90 for Full Day Training members.",
-        "Online Training is £25 per week: we learn about your dog and your goal, teach you the skills to get there, review videos of your training, and you can message us any time in our app and on WhatsApp.",
+        `Full Day Training is ${priceText.fullDayMember} a week as a member, with a regular weekly place. One-off days are ${priceText.fullDay}, if you'd like to book in as and when you need it.`,
+        `Our 1-1 sessions are an hour of hands-on training with you and your dog, where we find the main issues and change how you handle your dog. These are ${priceText.oneToOne}, or ${priceText.oneToOneMember} for members.`,
+        `Online Training is ${priceText.online} a week. Our trainers write custom homework for you each week, review how it went at the end of the week, and you can message us any time in our app.`,
+        `You can join any of the three as a member. Members pay ${priceText.fullDayMember} for a Full Day and ${priceText.oneToOneMember} for a 1-1.`,
+      ],
+    },
+    {
+      q: "Can 1-1s be regular?",
+      a: [
+        `Yes. You can book a 1-1 every week or every other week as a member, at ${priceText.oneToOneMember} a session. Sessions run ${schedule.days}, ${schedule.oneToOneSlots.join(" or ")}.`,
+        `If you decide to join after your first 1-1, we'll refund the ${priceText.oneToOneJoinRefund} difference for that session, and all your future sessions are ${priceText.oneToOneMember}.`,
+      ],
+    },
+    {
+      q: "How quickly do you reply?",
+      a: [
+        "With Online Training, you can message us any time, day or night, in the Nelly & Nova app, and we guarantee a reply within 12 hours.",
+        "If you train with us in person, you can chat with us in the app too, and we'll get back to you as soon as we can.",
+      ],
+    },
+    {
+      q: "Can I cancel?",
+      a: [
+        "Yes, you can cancel any time. Sessions and weeks that have already started aren't refunded. For Online Training, that's because the homework for the week has already been sent.",
+        "If you need to cancel or move a booked session, please give us at least 48 hours' notice, or the full session fee may be charged.",
       ],
     },
     {
       q: "What areas do you cover?",
       a: [
         "We started in Tynemouth, but now we're able to travel to surrounding areas such as Cramlington, Backworth and Blyth.",
-        "To check if we work in your area, please contact us using the button below and we will be happy to help!",
+        "To check if we work in your area, please contact us using the button below and we will be happy to help! Online Training works wherever you live.",
       ],
     },
     {
@@ -688,8 +814,9 @@ export const faq = {
     {
       q: "Do I need a meet and greet?",
       a: [
-        "Yes. Before we can collect your dog for training, they need to be familiar with us. We also like to know how your dog behaves with you, and chat in-person about your struggles and goals for their training.",
+        "For Full Day Training, yes, and it's free. Before we can collect your dog for training, they need to be familiar with us. We also like to know how your dog behaves with you, and chat in-person about your struggles and goals for their training.",
         "There are no wrong answers. If you don't care about your dog jumping up but would just like to have them not pull on the lead - that's what we will help you with!",
+        "For 1-1 and Online Training, you don't need one. You can book a 1-1 slot or get started with Online Training straight from our request form.",
       ],
     },
     {
@@ -713,6 +840,8 @@ export const faq = {
 export type Step = { icon: "handshake" | "calendar" | "paw" | "home"; title: string; body: string };
 
 export const howItWorks = {
+  /** It's the Full Day Training journey; the eyebrow says so. */
+  eyebrow: "Full Day Training",
   heading: "How it works.",
   steps: [
     {
@@ -722,18 +851,18 @@ export const howItWorks = {
     },
     {
       icon: "calendar",
-      title: "Choose your weekly slot",
-      body: "When you decide to book, you can choose from our available days. There's a short waiver to complete, and payments are made via GoCardless (Direct Debit), cancel anytime.",
+      title: "Choose your day",
+      body: `When you decide to book, choose a regular weekly place as a member (${priceText.fullDayMember} a week) or a one-off day (${priceText.fullDay}). We train ${schedule.days} and take only ${schedule.fullDayDogsPerDay} dogs a day. There's a short waiver to complete, and memberships are paid via GoCardless (Direct Debit), cancel anytime.`,
     },
     {
       icon: "paw",
-      title: "Weekly training sessions",
-      body: "Every week, we will collect your dog between 7:30 and 9:00 am. They'll get a full day of training before coming home between 4:00 and 5:30 pm.",
+      title: "Training day",
+      body: `We collect your dog ${fullDayTimes.collect}, train them out in the real world all day and bring them home ${fullDayTimes.home}. You'll get “On our way” updates and photos from the day in the app.`,
     },
     {
       icon: "home",
-      title: "Homework & reports",
-      body: "Every session includes a report card that tells you what we covered that day, what your dog did well/not so well, and a breakdown on how to continue the training at home. You'll have 24/7 access to our trainers via WhatsApp for any extra support. When you have the confidence to take over, you can cancel your membership any time with no cancellation fees or notices.",
+      title: "Handover & homework",
+      body: "Every drop-off includes a 5-minute handover explaining what we worked on and your homework, and your report card is waiting in the app. You practise until the next session, and can chat with us in the app any time. When you have the confidence to take over, you can cancel your membership with no cancellation fees or notices.",
     },
   ] as Step[],
 };
@@ -750,11 +879,12 @@ export const contact = {
 export type Benefit = { label: string; icon: "message" | "close" | "card" | "insured" | "check" };
 
 export const heroBenefits: Benefit[] = [
-  { label: "24/7 Training Support", icon: "message" },
-  { label: "Cancel Anytime", icon: "close" },
+  { label: "Free Meet & Greet", icon: "check" },
   { label: "Report Cards", icon: "card" },
   { label: "Fully Insured", icon: "insured" },
-  { label: "Free Meet & Greet", icon: "check" },
+  { label: "Cancel Anytime", icon: "close" },
+  // Last: it gets the centred row of its own, which suits the longest label.
+  { label: "Message Us Any Time", icon: "message" },
 ];
 
 export const reviews = {
@@ -789,7 +919,7 @@ export const site = {
   name: "Nelly & Nova",
   tagline: "Dog training in Tynemouth, Backworth & local areas",
   description:
-    "Dog training through engagement and motivation across Tynemouth, Backworth and the North East. Full day training, 1-1 sessions and confidence building.",
+    "Dog training through engagement and motivation across Tynemouth, Backworth and the North East. Full Day Training, 1-1 sessions and Online Training.",
   region: "North East England",
   year: 2026,
 };

@@ -1,12 +1,10 @@
 import { Reveal } from "./ui/Reveal";
-import { Button } from "./ui/Button";
 import Image from "next/image";
-import { ArrowRightIcon } from "./ui/Icons";
-import { understand, CONTACT_HREF } from "@/config/site";
+import { understand } from "@/config/site";
 
 export function WeUnderstand() {
   return (
-    <section id="understand" aria-labelledby="understand-heading" className="bg-ink py-20 sm:py-32">
+    <section id="understand" aria-labelledby="understand-heading" className="bg-ink pb-8 pt-20 sm:pb-12 sm:pt-32">
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
         {/* No visible title — the cards speak for themselves. */}
         <h2 id="understand-heading" className="sr-only">
@@ -30,18 +28,6 @@ export function WeUnderstand() {
             </Reveal>
           ))}
         </ul>
-
-        <Reveal delay={0.1}>
-          <div className="mt-20 text-center">
-            <p className="mx-auto max-w-md text-paper/80">{understand.footer}</p>
-            <div className="mt-6 flex justify-center">
-              <Button href={CONTACT_HREF} size="lg">
-                {understand.cta}
-                <ArrowRightIcon width={20} height={20} />
-              </Button>
-            </div>
-          </div>
-        </Reveal>
       </div>
     </section>
   );

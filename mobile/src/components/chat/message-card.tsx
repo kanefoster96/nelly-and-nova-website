@@ -39,6 +39,9 @@ type Action = { key: string; label: string; onPress: () => void; solid?: boolean
  *   homework_day  The owner's note and video inline; Reply (trainer) starts
  *                 an answer in the composer, View (owner) opens the homework.
  *   report_card   Open report.
+ *   membership    Welcome to a membership (the price, a refund owed); View.
+ *   checkin       An online member's weekly check-in: each drill's rating,
+ *                 the week, the note and video; Reply (trainer).
  */
 export function MessageCard({
   card,
@@ -112,6 +115,40 @@ export function MessageCard({
         ? [{ key: "reply", label: "Reply", onPress: () => onReply(`${card.title}, day ${card.day}: `), solid: true }]
         : []
       : [{ key: "view", label: "View homework", onPress: () => go({ pathname: "/homework-detail/[id]", params: { id: card.cardId } }) }];
+  } else if (card.kind === "membership") {
+    icon = "ribbon";
+    iconTone = GREEN;
+    title = card.service === "online" ? "Online Training" : card.service === "one_to_one" ? "1-1 membership" : "Full Day membership";
+    details = [card.dog, card.schedule].filter(Boolean).join(" · ");
+    pill = card.refundPence > 0 ? { label: `£${card.refundPence % 100 === 0 ? card.refundPence / 100 : (card.refundPence / 100).toFixed(2)} to refund`, tone: AMBER } : { label: "Welcome", tone: GREEN };
+    const dogId = card.dogId;
+    actions = viewerIsStaff
+      ? dogId
+        ? [{ key: "dog", label: "Open dog", onPress: () => go({ pathname: "/dog/[id]", params: { id: dogId } }) }]
+        : []
+      : [{ key: "view", label: card.service === "online" ? "View homework" : "View schedule", onPress: () => go(card.service === "online" ? "/homework" : "/schedule") }];
+  } else if (card.kind === "checkin") {
+    const RATING = { great: "Great", ok: "OK", struggled: "Struggled" } as const;
+    icon = "clipboard";
+    iconTone = card.overall === "tough" ? AMBER : BLUE;
+    title = `Weekly check-in: ${card.dog ?? "your dog"}`;
+    details = card.drills.map((d) => `${d.name}: ${RATING[d.rating]}`).join(" · ");
+    pill =
+      card.overall === "great"
+        ? { label: "A great week", tone: GREEN }
+        : card.overall === "tough"
+          ? { label: "A tough week", tone: AMBER }
+          : card.overall === "ok"
+            ? { label: "An OK week", tone: BLUE }
+            : { label: "Checked in", tone: BLUE };
+    note = card.note;
+    media = attachment;
+    actions = viewerIsStaff
+      ? [
+          ...(onReply ? [{ key: "reply", label: "Reply", onPress: () => onReply(`${card.dog ?? "Your dog"}'s week: `), solid: true }] : []),
+          { key: "board", label: "Online board", onPress: () => go("/online") },
+        ]
+      : [];
   } else {
     icon = "document-text";
     iconTone = GREEN;
@@ -156,7 +193,7 @@ export function MessageCard({
         </View>
       </View>
 
-      {!!note && <Text style={{ color: colors.foreground, fontSize: 14, lineHeight: 20 }}>{card.kind === "homework_day" ? note : `“${note}”`}</Text>}
+      {!!note && <Text style={{ color: colors.foreground, fontSize: 14, lineHeight: 20 }}>{card.kind === "homework_day" || card.kind === "checkin" ? note : `“${note}”`}</Text>}
 
       {media && (
         <View style={{ alignSelf: "center" }}>

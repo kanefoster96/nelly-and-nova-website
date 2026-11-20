@@ -29,9 +29,9 @@ import { useBarInset, useBarScroll, useTopBarInset } from "@/lib/floating-bar";
 import { hapticSelection } from "@/lib/haptics";
 import { colors, GLASS_BORDER } from "@/theme";
 
-/** This week's Monday, or next week's at the weekend (the week coming up is the one to see). */
+/** This week's Monday, or next week's from Friday (the week coming up is the one to see). */
 function startingMonday(today: string): string {
-  return isWeekday(today) ? mondayOf(today) : mondayOf(addDays(today, 2));
+  return isWeekday(today) ? mondayOf(today) : mondayOf(addDays(today, 3));
 }
 
 function dogCountLine(entries: CalendarEntry[], requests: number): string {
@@ -71,7 +71,7 @@ function DogFaces({ entries }: { entries: CalendarEntry[] }) {
 
 /**
  * Trainer: the Week tab (the file keeps its old name, so /registers links
- * still land here). Full Day Training, Monday to Friday, as Kanvas's
+ * still land here). Full Day Training, Monday to Thursday, as Kanvas's
  * Registers tab lists a coach's week: one card per day with how many dogs
  * are in (regular places and one-offs), their faces and names, and what
  * else is on (1-1s, meet & greets, requests). A tap opens the day's page to
@@ -131,7 +131,7 @@ export default function RegistersScreen() {
     setMonday(next);
   }
 
-  const days = [0, 1, 2, 3, 4].map((i) => addDays(monday, i));
+  const days = [0, 1, 2, 3].map((i) => addDays(monday, i));
   const weekLabel = monday === mondayOf(today) ? "This week" : monday === addDays(mondayOf(today), 7) ? "Next week" : monday === addDays(mondayOf(today), -7) ? "Last week" : "Week of";
 
   return (
@@ -151,7 +151,7 @@ export default function RegistersScreen() {
           />
         }
       >
-        <PageTitle title="Week" subtitle="Full Day Training, Monday to Friday. Tap a day to open it." style={{ marginBottom: 14 }} />
+        <PageTitle title="Week" subtitle="Full Day Training, Monday to Thursday. Tap a day to open it." style={{ marginBottom: 14 }} />
 
         <Pressable
           onPress={() => router.push("/calendar")}

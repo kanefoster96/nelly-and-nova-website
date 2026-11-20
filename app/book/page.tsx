@@ -4,9 +4,9 @@ import { Footer } from "@/components/Footer";
 import { BookingForm } from "@/components/BookingForm";
 
 export const metadata: Metadata = {
-  title: "Book a Free Meet & Greet",
+  title: "Find the Right Training",
   description:
-    "Get started with Nelly & Nova — Full Day Training (with a free meet & greet), 1-1 or Online Training. Tell us about your dog and we'll be in touch.",
+    "Get started with Nelly & Nova: Full Day Training (with a free meet & greet), book a 1-1 slot, or start Online Training. Tell us about your dog and we'll be in touch.",
 };
 
 export default function BookPage() {

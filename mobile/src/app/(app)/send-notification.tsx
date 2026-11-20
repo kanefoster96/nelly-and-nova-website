@@ -127,7 +127,7 @@ export default function SendNotificationScreen() {
               <TextInput
                 value={titleText}
                 onChangeText={(t) => setTitleText(t.slice(0, TITLE_MAX - 3))}
-                placeholder="Title, e.g. Closed on Friday"
+                placeholder="Title, e.g. Closed on Monday"
                 placeholderTextColor={colors.muted}
                 style={{ flex: 1, color: colors.foreground, fontSize: 17, fontWeight: "600", paddingVertical: 14 }}
               />

@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 
 import { AvatarCircle } from "@/components/avatar-circle";
 import { AddDayPhoto } from "@/components/day-photos/add-day-photo";
@@ -14,11 +14,12 @@ import { ScreenHeader } from "@/components/screen-header";
 import { ActionTile, BigButton, DetailCard } from "@/components/trainer/cards";
 import { KIND_COLOR } from "@/components/trainer/entry-row";
 import { LoadingState, Tag } from "@/components/ui";
+import { endMembership, getDogMemberships, membershipPrice, membershipSchedule, SERVICE_LABEL, type Membership } from "@/data/memberships";
 import { getDogProgress, HOMEWORK_TARGET_DAYS, type DogProgress } from "@/data/reports";
 import { sessionLabel } from "@/data/sessions";
 import { DOCUMENT_LABEL, documentLink, getTrainerDog, type TrainerDog } from "@/data/trainer-dog";
 import { drillCount, getDogCards, type TrainerCard } from "@/data/trainer-reports";
-import { conversationForAccount, formatShortDay, pluralDay } from "@/data/trainer-schedule";
+import { addDays, conversationForAccount, formatShortDay, todayISO } from "@/data/trainer-schedule";
 import { ageFrom } from "@/data/dog-profile";
 import { callNumber, openDirections, openWhatsApp, sendEmail } from "@/lib/contact";
 import { hapticError } from "@/lib/haptics";
@@ -69,13 +70,20 @@ export default function DogScreen() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
 
   const load = useCallback(async () => {
     if (!id) return;
     setError(null);
     try {
-      const [d, p, c] = await Promise.all([getTrainerDog(String(id)), getDogProgress(String(id)).catch(() => null), getDogCards(String(id)).catch(() => [] as TrainerCard[])]);
+      const [d, p, c, m] = await Promise.all([
+        getTrainerDog(String(id)),
+        getDogProgress(String(id)).catch(() => null),
+        getDogCards(String(id)).catch(() => [] as TrainerCard[]),
+        getDogMemberships(String(id)).catch(() => [] as Membership[]),
+      ]);
       setDog(d);
+      setMemberships(m);
       setProgress(p);
       setCards(c);
     } catch (err) {
@@ -88,6 +96,27 @@ export default function DogScreen() {
       load();
     }, [load]),
   );
+
+  /** End a 1-1 or Online membership after today (a Full Day place ends from its day's page). */
+  function confirmEnd(m: Membership) {
+    const last = todayISO();
+    Alert.alert(`End ${SERVICE_LABEL[m.service]}?`, m.service === "one_to_one" ? `Their 1-1s after ${formatShortDay(last)} come off the calendar (any already charged stay).` : `Online Training ends after ${formatShortDay(last)}.`, [
+      { text: "Keep it", style: "cancel" },
+      {
+        text: "End membership",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await endMembership(m.id, m.startOn > last ? addDays(m.startOn, -1) : last);
+            load();
+          } catch (err) {
+            hapticError();
+            Alert.alert("That didn't go through", err instanceof Error ? err.message : "Please try again.");
+          }
+        },
+      },
+    ]);
+  }
 
   async function openChat(accountId: string) {
     setChatBusy(true);
@@ -262,13 +291,15 @@ export default function DogScreen() {
           )}
         </DetailCard>
 
-        <DetailCard index={6} title="Full Day Training" icon="calendar-outline">
-          {dog.places.length === 0 && dog.upcoming.length === 0 && <Text style={{ color: colors.muted, fontSize: 14 }}>No regular day or sessions coming up.</Text>}
-          {dog.places.map((p) => (
+        <DetailCard index={6} title="Memberships & sessions" icon="calendar-outline">
+          {memberships.length === 0 && dog.upcoming.length === 0 && <Text style={{ color: colors.muted, fontSize: 14 }}>No membership or sessions coming up.</Text>}
+          {memberships.map((m) => (
             <Line
-              key={p.id}
-              label={p.cadence === "alternating" ? "Regular day · every other week" : "Regular day · every week"}
-              value={`${pluralDay(p.day)}, from ${formatShortDay(p.startOn)}${p.endOn ? ` until ${formatShortDay(p.endOn)}` : ""}`}
+              key={m.id}
+              label={`${SERVICE_LABEL[m.service]} · ${membershipPrice(m.service)}`}
+              value={`${membershipSchedule(m)}, from ${formatShortDay(m.startOn)}${m.endOn ? ` until ${formatShortDay(m.endOn)}` : ""}`}
+              icon="close-circle-outline"
+              onPress={m.service === "full_day" ? undefined : () => confirmEnd(m)}
               last={dog.upcoming.length === 0}
             />
           ))}
@@ -286,6 +317,15 @@ export default function DogScreen() {
               {(s.paymentStatus === "unpaid" || s.paymentStatus === "failed") && <Tag label="Unpaid" tone={colors.warning} />}
             </View>
           ))}
+          {dog.owner && (
+            <BigButton
+              icon="ribbon-outline"
+              label="Start membership"
+              variant="outline"
+              onPress={() => router.push({ pathname: "/start-membership", params: { dogId: dog.id } })}
+              style={{ marginTop: 12 }}
+            />
+          )}
         </DetailCard>
 
         {/* Skills, as the owner sees them; ticked off from Skills. */}

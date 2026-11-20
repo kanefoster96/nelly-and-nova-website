@@ -140,7 +140,7 @@ export default function DayScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHeader
         title={formatDay(date)}
-        subtitle={entries ? (weekday ? `${dogs.length}/${DAY_CAPACITY} dogs at Full Day Training` : "No Full Day Training at the weekend") : null}
+        subtitle={entries ? (weekday ? `${dogs.length}/${DAY_CAPACITY} dogs at Full Day Training` : "No training today: we train Monday to Thursday") : null}
       />
       {!entries ? (
         <LoadingState error={error} />

@@ -3,10 +3,12 @@ import { sessionPrices } from "@/config/site";
 export type SessionKind = "full_day" | "one_to_one";
 
 /**
- * The default price of a one-off session, in pence (config/site.ts
- * sessionPrices): the member price for an account with a Full Day
- * membership, otherwise the standard price, for a Full Day and a 1-1 alike.
- * The trainer can always change the amount before charging.
+ * The default price of a session, in pence (config/site.ts sessionPrices).
+ * `hasMembership` is the answer for this kind: nn_has_membership(account,
+ * kind) — a Full Day membership for a Full Day (£60, else £85), any
+ * membership (Full Day, 1-1 or Online) for a 1-1 (£90, else £120). The
+ * trainer can always change the amount before charging. The app has the
+ * same in mobile/src/data/sessions.ts.
  */
 export function defaultSessionPrice(kind: SessionKind, hasMembership: boolean): number {
   if (kind === "one_to_one") return hasMembership ? sessionPrices.oneToOneMember : sessionPrices.oneToOne;

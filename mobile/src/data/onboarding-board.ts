@@ -245,7 +245,8 @@ export function reopen(e: Enquiry): Promise<void> {
   return updateEnquiry(e.id, { status: "new", closedReason: null });
 }
 
-const DAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+/** Monday to Thursday (a Friday or weekend date maps to nothing). */
+const DAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday"];
 
 /**
  * Set their regular Full Day Training day: the website's TrainingDayForm

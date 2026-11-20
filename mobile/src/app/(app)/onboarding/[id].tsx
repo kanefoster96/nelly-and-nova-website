@@ -39,7 +39,8 @@ import { hapticError, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { animateListChange } from "@/lib/layout-animation";
 import { colors } from "@/theme";
 
-const WEEKDAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+/** Full Day Training runs Monday to Thursday. */
+const WEEKDAYS: Weekday[] = ["monday", "tuesday", "wednesday", "thursday"];
 /** 8am to 7:30pm, every half hour. */
 const TIMES = Array.from({ length: 24 }, (_, i) => `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

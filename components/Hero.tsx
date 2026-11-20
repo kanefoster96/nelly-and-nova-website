@@ -6,7 +6,7 @@ import { Button } from "./ui/Button";
 import { Marquee } from "./ui/Marquee";
 import { benefitIcons, StarIcon } from "./ui/Icons";
 import { media } from "@/config/media";
-import { heroBenefits, reviews, BOOKING_HREF } from "@/config/site";
+import { hero, heroBenefits, reviews, BOOKING_HREF } from "@/config/site";
 
 // Vertical dark gradient: darkens the sky (behind the headline) and the base
 // (behind the benefits) while keeping the dogs in the middle legible.
@@ -55,14 +55,14 @@ export function Hero() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         >
           <h1 className="display-heading text-paper text-[clamp(1.4rem,6.7vw,4.5rem)] whitespace-nowrap">
-            Happy. Healthy. Dogs.
+            {hero.heading}
           </h1>
           <p className="mx-auto mt-3 max-w-md text-base text-paper/85 sm:text-lg">
-            Training dogs through engagement and motivation.
+            {hero.subline}
           </p>
           <div className="mt-6 flex justify-center">
             <Button href={BOOKING_HREF} variant="frosted" size="lg">
-              Book a Free Visit
+              {hero.cta}
             </Button>
           </div>
         </motion.div>

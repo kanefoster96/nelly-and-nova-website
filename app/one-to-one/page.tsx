@@ -5,12 +5,11 @@ import { Reviews } from "@/components/Reviews";
 import { Marquee } from "@/components/ui/Marquee";
 import { ContentSection } from "@/components/ContentSection";
 import { media } from "@/config/media";
-import { oneToOnePage } from "@/config/site";
+import { oneToOnePage, priceText, schedule } from "@/config/site";
 
 export const metadata: Metadata = {
   title: "1-1 Training",
-  description:
-    "One-to-one dog training sessions across the North East — personalised, in-person training that teaches you how to understand and communicate with your dog, plus a free consultation and detailed report cards.",
+  description: `1-1 dog training across the North East: a hands-on hour with you and your dog, ${schedule.days}, with a written report in our app. ${priceText.oneToOne}, or ${priceText.oneToOneMember} for members, weekly or fortnightly.`,
 };
 
 export default function OneToOnePage() {
@@ -67,7 +66,7 @@ export default function OneToOnePage() {
           imageAlt="A puppy running happily on a training walk"
           imageAspect="aspect-[16/11]"
           cta
-          ctaLabel="Book a 1-1 Session"
+          ctaLabel="Book a 1-1 Slot"
           ctaHref="/book?service=one-to-one"
         />
 

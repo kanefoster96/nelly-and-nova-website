@@ -24,7 +24,8 @@ async function requestClient(request: Request) {
   });
 }
 
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+/** Full Day Training runs Monday to Thursday (existing Friday places stay as they are). */
+const DAYS = ["monday", "tuesday", "wednesday", "thursday"];
 
 export async function POST(request: Request) {
   const supabase = await requestClient(request);

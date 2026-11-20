@@ -9,8 +9,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * extra day or a 1-1) to the owner's Direct Debit. Only ever runs from a
  * trainer tapping Charge: nothing calls it automatically.
  *
- * Body: { bookingId, amountPence? } — the amount defaults to the session
- * price (lib/sessions/prices.ts). Uses only a mandate this site saved in
+ * Body: { bookingId, amountPence? } — the amount defaults to the amount on
+ * the booking (a 1-1 membership's sessions are £90), else the session price
+ * (lib/sessions/prices.ts) for that kind of membership. Uses only a mandate this site saved in
  * payment_mandates for that account. The booking goes to "pending" with
  * the GoCardless payment id; the webhook marks it paid or failed.
  * Signed in by cookie (website) or a Bearer token (the app). Trainers only.
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
 
   const { data: booking, error } = await supabase
     .from("bookings")
-    .select("id, kind, on_date, account_id, dog_id, cancelled_at, payment_status, gc_payment_id, charged_at, dogs(name)")
+    .select("id, kind, on_date, account_id, dog_id, cancelled_at, payment_status, amount_pence, gc_payment_id, charged_at, dogs(name)")
     .eq("id", bookingId)
     .maybeSingle();
   if (error || !booking) return Response.json({ error: "Session not found." }, { status: 404 });
@@ -50,8 +51,13 @@ export async function POST(request: Request) {
 
   const kind = booking.kind === "one_to_one" ? "one_to_one" : "full_day";
   let amountPence = Number(body?.amountPence);
+  if ((!Number.isFinite(amountPence) || amountPence <= 0) && typeof booking.amount_pence === "number" && booking.amount_pence > 0) {
+    amountPence = booking.amount_pence;
+  }
   if (!Number.isFinite(amountPence) || amountPence <= 0) {
-    const { data: member } = await supabase.rpc("nn_has_membership", { p_account_id: booking.account_id });
+    // A Full Day: a Full Day membership. A 1-1: any membership.
+    const byKind = await supabase.rpc("nn_has_membership", { p_account_id: booking.account_id, p_kind: kind });
+    const member = byKind.error ? (await supabase.rpc("nn_has_membership", { p_account_id: booking.account_id })).data : byKind.data;
     amountPence = defaultSessionPrice(kind, member === true);
   }
   amountPence = Math.round(amountPence);

@@ -612,8 +612,8 @@ export default function TodayScreen() {
             {!isWeekday(date) ? (
               <Appear index={0} style={[CARD, { marginTop: 20, alignItems: "center", paddingVertical: 28 }]}>
                 <Ionicons name="sunny-outline" size={30} color={colors.warning} />
-                <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700", marginTop: 10 }}>No Full Day Training at the weekend</Text>
-                <Text style={{ color: colors.muted, fontSize: 14, marginTop: 4, textAlign: "center", lineHeight: 20 }}>Enjoy the break! Tap {dayOptions[1].label} to see who&apos;s in next.</Text>
+                <Text style={{ color: colors.foreground, fontSize: 17, fontWeight: "700", marginTop: 10 }}>No training today</Text>
+                <Text style={{ color: colors.muted, fontSize: 14, marginTop: 4, textAlign: "center", lineHeight: 20 }}>We train Monday to Thursday. Enjoy the break! Tap {dayOptions[1].label} to see who&apos;s in next.</Text>
               </Appear>
             ) : (
               <>
@@ -688,6 +688,25 @@ export default function TodayScreen() {
                         </View>
                       )}
                       {date <= today && <View style={{ paddingBottom: 12, paddingLeft: 52 }}>{oneToOneButtons(d)}</View>}
+                      {/* After a one-off 1-1: put them on 1-1 membership (today's session becomes £90). */}
+                      {date <= today && register.oneToOne.get(d.entry.refId) === "done" && !d.membership && d.entry.dogId && d.entry.accountId && (
+                        <View style={{ paddingBottom: 12, paddingLeft: 52 }}>
+                          <Pressable
+                            onPress={() =>
+                              router.push({
+                                pathname: "/start-membership",
+                                params: { dogId: d.entry.dogId!, service: "one_to_one", bookingId: d.entry.refId, date, time: d.entry.startTime ?? "" },
+                              })
+                            }
+                            accessibilityRole="button"
+                            style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: "rgba(34,197,94,0.5)" }}
+                          >
+                            <Ionicons name="ribbon-outline" size={15} color={colors.success} />
+                            <Text style={{ color: colors.success, fontSize: 13, fontWeight: "700" }}>Start 1-1 membership</Text>
+                          </Pressable>
+                        </View>
+                      )}
+                      {d.membership && <View style={{ paddingBottom: 10, paddingLeft: 52, marginTop: -4 }}><Tag label="1-1 member" tone={colors.success} /></View>}
                     </View>
                   ))}
                 </View>

@@ -63,6 +63,7 @@ export function MemberSchedule() {
   const [data, setData] = useState<DogData[] | null>(null);
   const [requests, setRequests] = useState<SessionRequest[]>([]);
   const [member, setMember] = useState(false);
+  const [oneToOneMember, setOneToOneMember] = useState(false);
   const [dogId, setDogId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +74,12 @@ export function MemberSchedule() {
     if (!userId) return;
     try {
       const today = todayLondon();
-      const [dogs, reqs, m] = await Promise.all([getMyDogDetails(userId), listRequests({ open: true }).catch(() => []), hasMembership(userId).catch(() => false)]);
+      const [dogs, reqs, m, m1] = await Promise.all([
+        getMyDogDetails(userId),
+        listRequests({ open: true }).catch(() => []),
+        hasMembership(userId, "full_day").catch(() => false),
+        hasMembership(userId, "one_to_one").catch(() => false),
+      ]);
       const rows = await Promise.all(
         dogs.map(async (dog) => {
           const [sessions, placements] = await Promise.all([getDogSessions(dog.id, today, plusDays(today, WEEKS_AHEAD * 7)), getPlacements(dog.id)]);
@@ -83,6 +89,7 @@ export function MemberSchedule() {
       setData(rows);
       setRequests(reqs);
       setMember(m);
+      setOneToOneMember(m1);
       setError(null);
     } catch {
       setError("Could not load your schedule.");
@@ -235,6 +242,7 @@ export function MemberSchedule() {
           sessions={current.sessions.filter((s) => s.date > today)}
           placements={current.placements}
           member={member}
+          oneToOneMember={oneToOneMember}
           onDone={(message) => {
             setSheet(null);
             setDone(message);
