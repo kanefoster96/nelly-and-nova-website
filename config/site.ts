@@ -13,12 +13,13 @@ export const CONTACT_HREF = "/contact";
 /**
  * What a one-off session costs, in pence: the default amount on a trainer's
  * "Charge" button (app/api/sessions/charge) and the price an owner sees when
- * asking for one. A Full Day is £60 for someone with a Full Day membership
- * (a current regular place and a Direct Debit), £80 otherwise; a 1-1 is £90
- * for everyone. Mirrored in mobile/src/lib/config.ts. Worked out by
- * defaultSessionPrice() in lib/sessions/prices.ts.
+ * asking for one. Members (a Full Day membership: a current regular place and
+ * a Direct Debit) pay £60 for a Full Day and £90 for a 1-1; everyone else
+ * pays £85 for a one-off Full Day and £120 for a 1-1. Mirrored in
+ * mobile/src/lib/config.ts. Worked out by defaultSessionPrice() in
+ * lib/sessions/prices.ts.
  */
-export const sessionPrices = { fullDay: 8000, fullDayMember: 6000, oneToOne: 9000 } as const;
+export const sessionPrices = { fullDay: 8500, fullDayMember: 6000, oneToOne: 12000, oneToOneMember: 9000 } as const;
 
 /**
  * When Full Day Training dogs are collected and brought home (as "How it
@@ -443,11 +444,11 @@ export const holidays = {
     pricingHeading: "Full Day Sessions",
     pricing: [
       { label: "Membership", value: "£60 per day" },
-      { label: "One off", value: "£80 per day" },
+      { label: "One off", value: "£85 per day" },
     ],
     savings: {
-      text: "This means full-day members save up to £960 per year based on 48 sessions per year.",
-      highlight: "members save up to £960 per year",
+      text: "This means full-day members save up to £1,200 per year based on 48 sessions per year.",
+      highlight: "members save up to £1,200 per year",
     },
     paragraphs: [
       "Memberships secure ongoing professional training support and a reserved place in our weekly schedule. Even during closure periods, members continue to receive support via chat and email for guidance, troubleshooting, and help with at home training. Members also receive discounts and offers for extra sessions with up to 50% off!",
@@ -590,7 +591,7 @@ export const oneToOnePage = {
     paragraphs: [
       "Our 1-1 training sessions are an hour long, designed to give you and your dog personalised support tailored specifically to your goals. Whether you're looking to improve heel work, recall, and engagement, or need help with specific challenges within obedience, each session is adapted to suit both you and your dog's individual needs.",
       "As part of our approach, we also take a look at your dog's lifestyle. This includes reviewing their day-to-day routine, discussing diet, and considering any potential health factors that could be contributing to unwanted behaviours. This allows us to address the root cause, not just the symptoms.",
-      "Sessions are priced at £90 and can take place at a location of your choice, provided it is within our travelling radius. This allows training to happen in an environment where you feel most comfortable and where your dog can learn effectively.",
+      "Sessions are £120, or £90 for Full Day Training members, and can take place at a location of your choice, provided it is within our travelling radius. This allows training to happen in an environment where you feel most comfortable and where your dog can learn effectively.",
       "Following your session, you will receive a detailed report outlining everything covered, along with clear guidance on how to continue progressing at home. To ensure ongoing support, you'll also have one month of access to your trainer via WhatsApp. During this time, you can send videos, ask questions, and receive personalised feedback to help you stay on track and achieve lasting results.",
     ],
   },
@@ -665,8 +666,8 @@ export const faq = {
       q: "How much is dog training?",
       a: [
         "Our Full Day Training days are £60 per week, if you sign up for a membership with a fixed slot.",
-        "We also offer one-off Full Day Training days for £80, if you'd like to book in as and when you need it without a membership.",
-        "Our 1-1 sessions are an hour of in-person training, where we work with you and your dog to improve handling skills and address specific issues you're having. These are £90 per hour.",
+        "We also offer one-off Full Day Training days for £85, if you'd like to book in as and when you need it without a membership.",
+        "Our 1-1 sessions are an hour of in-person training, where we work with you and your dog to improve handling skills and address specific issues you're having. These are £120 per hour, or £90 for Full Day Training members.",
         "Online Training is £25 per week: we learn about your dog and your goal, teach you the skills to get there, review videos of your training, and you can message us any time in our app and on WhatsApp.",
       ],
     },

@@ -436,16 +436,16 @@ export function requestsForDate(list: SessionRequest[], date: string): SessionRe
 // ---------------------------------------------------------------------------
 
 export function defaultSessionPrice(kind: "full_day" | "one_to_one", hasMembership: boolean): number {
-  if (kind === "one_to_one") return sessionPrices.oneToOne;
+  if (kind === "one_to_one") return hasMembership ? sessionPrices.oneToOneMember : sessionPrices.oneToOne;
   return hasMembership ? sessionPrices.fullDayMember : sessionPrices.fullDay;
 }
 export function pounds(pence: number): string {
   return pence % 100 === 0 ? `£${pence / 100}` : `£${(pence / 100).toFixed(2)}`;
 }
-/** "£60 (member price)", "£80", "£90". */
+/** "£60 (member price)", "£85", "£120", "£90 (member price)". */
 export function priceLine(kind: "full_day" | "one_to_one", hasMembership: boolean): string {
   const p = pounds(defaultSessionPrice(kind, hasMembership));
-  return kind === "full_day" && hasMembership ? `${p} (member price)` : p;
+  return hasMembership ? `${p} (member price)` : p;
 }
 
 export async function hasMembership(accountId: string): Promise<boolean> {

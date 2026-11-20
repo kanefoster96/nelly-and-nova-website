@@ -20,8 +20,8 @@ export const isSupabaseConfigured = Boolean(config.supabaseUrl && config.supabas
 
 /**
  * One-off session prices in pence — the same numbers as the website's
- * config/site.ts sessionPrices (keep them in step). A Full Day is the member
- * price for someone with a Full Day membership (a current regular place and
+ * config/site.ts sessionPrices (keep them in step). Full Days and 1-1s are the
+ * member price for someone with a Full Day membership (a current regular place and
  * a Direct Debit). See defaultSessionPrice in data/sessions.ts.
  */
-export const sessionPrices = { fullDay: 8000, fullDayMember: 6000, oneToOne: 9000 } as const;
+export const sessionPrices = { fullDay: 8500, fullDayMember: 6000, oneToOne: 12000, oneToOneMember: 9000 } as const;

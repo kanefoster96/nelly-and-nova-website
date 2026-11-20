@@ -338,7 +338,7 @@ export function UnpaidCard({ session: s, onChanged }: { session: UnpaidSession; 
       <Text style={{ color: colors.muted, fontSize: 13, marginTop: 2 }}>
         {s.ownerName ?? "Owner"}
         {s.notes ? ` · ${s.notes}` : ""}
-        {member !== null ? ` · ${pounds(defaultSessionPrice(s.kind, member))}${s.kind === "full_day" && member ? " · member price" : ""}` : ""}
+        {member !== null ? ` · ${pounds(defaultSessionPrice(s.kind, member))}${member ? " · member price" : ""}` : ""}
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "center", height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 12 }}>
